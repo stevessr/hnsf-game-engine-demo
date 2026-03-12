@@ -41,7 +41,6 @@ public class App {
         WallObject rightWall = new WallObject("right-wall", 610, 250, 80, 120);
 
         PlayerObject player = new PlayerObject("player", 120, 320);
-        player.setVelocity(24, 0);
 
         MonsterObject slime = new MonsterObject("slime", 420, 330, 40);
         MonsterObject bat = new MonsterObject("bat", 720, 260, 60);
@@ -65,7 +64,7 @@ public class App {
             620,
             64,
             "Guide",
-            "欢迎来到基础场景：这里已经有墙壁、边界、菜单和对话框。"
+            "Use WASD or arrow keys to move, Q/E to switch menu, and Enter or left click to confirm."
         );
 
         world.addObject(ground);
