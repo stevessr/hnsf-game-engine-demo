@@ -1,7 +1,10 @@
 package lib.object;
 
 import java.awt.Color;
+import java.awt.Graphics2D;
 import java.util.Objects;
+
+import lib.game.GameWorld;
 
 public abstract class BaseObject implements GameObject {
     private final GameObjectType type;
@@ -113,6 +116,29 @@ public abstract class BaseObject implements GameObject {
         this.active = active;
     }
 
+    @Override
+    public void update(GameWorld world, double deltaSeconds) {
+        // default no-op
+    }
+
+    @Override
+    public void render(Graphics2D graphics) {
+        graphics.setColor(color);
+        graphics.fillRect(x, y, width, height);
+        graphics.setColor(Color.BLACK);
+        graphics.drawRect(x, y, width, height);
+    }
+
+    protected final void moveWithinWorld(GameWorld world, int targetX, int targetY) {
+        if (world == null) {
+            setPosition(targetX, targetY);
+            return;
+        }
+        int maxX = Math.max(0, world.getWidth() - width);
+        int maxY = Math.max(0, world.getHeight() - height);
+        setPosition(clamp(targetX, 0, maxX), clamp(targetY, 0, maxY));
+    }
+
     private static String normalizeName(String name) {
         if (name == null || name.isBlank()) {
             return "object";
@@ -130,5 +156,9 @@ public abstract class BaseObject implements GameObject {
 
     private static int clampColor(int value) {
         return Math.max(0, Math.min(255, value));
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 }

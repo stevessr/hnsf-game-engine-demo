@@ -1,6 +1,7 @@
 package lib.object;
 
 import java.awt.Color;
+import java.awt.Graphics2D;
 
 public final class SceneObject extends BaseObject {
     private boolean solid;
@@ -30,5 +31,15 @@ public final class SceneObject extends BaseObject {
 
     public void setBackground(boolean background) {
         this.background = background;
+    }
+
+    @Override
+    public void render(Graphics2D graphics) {
+        graphics.setColor(getColor());
+        graphics.fillRect(getX(), getY(), getWidth(), getHeight());
+        if (solid) {
+            graphics.setColor(Color.DARK_GRAY);
+            graphics.drawRect(getX(), getY(), getWidth(), getHeight());
+        }
     }
 }
