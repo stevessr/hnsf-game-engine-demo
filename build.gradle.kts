@@ -21,6 +21,8 @@ repositories {
 
 dependencies {
     implementation("ch.qos.logback:logback-classic:1.5.20")
+    implementation("org.xerial:sqlite-jdbc:3.46.1.0")
+    implementation("org.json:json:20250517")
 
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")

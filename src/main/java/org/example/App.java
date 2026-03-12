@@ -5,6 +5,7 @@ import java.util.List;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
+import lib.editor.EditorWindow;
 import lib.game.GameWorld;
 import lib.object.BoundaryObject;
 import lib.object.DialogObject;
@@ -13,12 +14,18 @@ import lib.object.MonsterObject;
 import lib.object.PlayerObject;
 import lib.object.SceneObject;
 import lib.object.WallObject;
+import lib.persistence.MapDataMapper;
+import lib.persistence.MapRepository;
 import lib.render.SwingGamePanel;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class App {
     public static void main(String[] args) {
+        if (args != null && args.length > 0 && "editor".equalsIgnoreCase(args[0])) {
+            SwingUtilities.invokeLater(App::startEditor);
+            return;
+        }
         SwingUtilities.invokeLater(App::startGame);
     }
 
@@ -27,6 +34,34 @@ public class App {
     }
 
     private static void startGame() {
+        MapRepository repository = new MapRepository();
+        GameWorld world = loadWorld(repository, "demo-map");
+
+        SwingGamePanel panel = new SwingGamePanel(world);
+
+        JFrame frame = new JFrame("Primary Software Game Demo");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setContentPane(panel);
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+        frame.setResizable(false);
+        frame.setVisible(true);
+        panel.start();
+
+        log.info("Game window started with {} objects", world.getObjects().size());
+    }
+
+    private static void startEditor() {
+        MapRepository repository = new MapRepository();
+        GameWorld world = loadWorld(repository, "demo-map");
+        EditorWindow.open(world, repository);
+    }
+
+    private static GameWorld loadWorld(MapRepository repository, String name) {
+        var mapData = repository.loadMapByName(name);
+        if (mapData != null) {
+            return MapDataMapper.toWorld(mapData);
+        }
         GameWorld world = new GameWorld(960, 540);
 
         SceneObject ground = new SceneObject("ground", 0, 420, 960, 120, true, true);
@@ -80,17 +115,7 @@ public class App {
         world.addObject(menu);
         world.addObject(dialog);
 
-        SwingGamePanel panel = new SwingGamePanel(world);
-
-        JFrame frame = new JFrame("Primary Software Game Demo");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setContentPane(panel);
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setResizable(false);
-        frame.setVisible(true);
-        panel.start();
-
-        log.info("Game window started with {} objects", world.getObjects().size());
+        repository.saveMap(MapDataMapper.fromWorld(world, name));
+        return world;
     }
 }
