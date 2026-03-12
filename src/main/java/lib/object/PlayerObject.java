@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 
 import lib.game.GameWorld;
+import lib.physics.MovementResult;
 
 public final class PlayerObject extends ActorObject {
     private int level;
@@ -69,7 +70,17 @@ public final class PlayerObject extends ActorObject {
     public void update(GameWorld world, double deltaSeconds) {
         int nextX = getX() + (int) Math.round(velocityX * deltaSeconds);
         int nextY = getY() + (int) Math.round(velocityY * deltaSeconds);
-        moveWithinWorld(world, nextX, nextY);
+        if (world == null) {
+            setPosition(nextX, nextY);
+            return;
+        }
+        MovementResult movementResult = world.moveObject(this, nextX, nextY);
+        if (movementResult.isBlockedX()) {
+            velocityX = 0;
+        }
+        if (movementResult.isBlockedY()) {
+            velocityY = 0;
+        }
     }
 
     @Override

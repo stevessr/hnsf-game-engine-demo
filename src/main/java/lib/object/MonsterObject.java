@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 
 import lib.game.GameWorld;
+import lib.physics.MovementResult;
 
 public final class MonsterObject extends ActorObject {
     private int rewardExperience;
@@ -51,12 +52,14 @@ public final class MonsterObject extends ActorObject {
             deltaX = directionX;
         }
         int nextX = getX() + deltaX;
-        int maxX = Math.max(0, world.getWidth() - getWidth());
-        if (nextX < 0 || nextX > maxX) {
-            directionX *= -1;
-            nextX = getX() + (int) Math.round(getSpeed() * directionX * deltaSeconds);
+        if (world == null) {
+            setPosition(nextX, getY());
+            return;
         }
-        moveWithinWorld(world, nextX, getY());
+        MovementResult movementResult = world.moveObject(this, nextX, getY());
+        if (movementResult.isBlockedX()) {
+            directionX *= -1;
+        }
     }
 
     @Override
