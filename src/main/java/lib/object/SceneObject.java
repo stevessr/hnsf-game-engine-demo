@@ -3,16 +3,29 @@ package lib.object;
 import java.awt.Color;
 import java.awt.Graphics2D;
 
-public final class SceneObject extends BaseObject {
+public class SceneObject extends BaseObject {
     private boolean solid;
     private boolean background;
 
     public SceneObject(String name) {
-        this(name, 0, 0, 128, 128, true, false);
+        this(GameObjectType.SCENE, name, 0, 0, 128, 128, true, false);
     }
 
     public SceneObject(String name, int x, int y, int width, int height, boolean solid, boolean background) {
-        super(GameObjectType.SCENE, name, x, y, width, height, new Color(120, 180, 120), true);
+        this(GameObjectType.SCENE, name, x, y, width, height, solid, background);
+    }
+
+    protected SceneObject(
+        GameObjectType type,
+        String name,
+        int x,
+        int y,
+        int width,
+        int height,
+        boolean solid,
+        boolean background
+    ) {
+        super(type, name, x, y, width, height, new Color(120, 180, 120), true);
         this.solid = solid;
         this.background = background;
     }

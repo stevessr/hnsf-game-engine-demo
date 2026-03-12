@@ -3,11 +3,11 @@ package lib.object;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import org.junit.jupiter.api.Test;
 
 import lib.game.GameWorld;
@@ -117,5 +117,52 @@ class GameObjectModelTest {
 
         assertEquals(Color.BLACK.getRGB(), image.getRGB(0, 0));
         assertEquals(scene.getColor().getRGB(), image.getRGB(15, 15));
+    }
+
+    @Test
+    void wallAndBoundaryShouldExposeDedicatedTypes() {
+        WallObject wall = new WallObject("wall", 8, 9, 24, 26);
+        BoundaryObject boundary = BoundaryObject.right(120, 90, 10);
+
+        assertEquals(GameObjectType.WALL, wall.getType());
+        assertTrue(wall.isSolid());
+        assertEquals(GameObjectType.BOUNDARY, boundary.getType());
+        assertTrue(boundary.isSolid());
+        assertEquals(110, boundary.getX());
+        assertEquals(10, boundary.getWidth());
+    }
+
+    @Test
+    void menuAndDialogShouldKeepSimpleUiState() {
+        MenuObject menu = new MenuObject("menu", 5, 5, 140, 90, "Main", List.of("Start", "Exit"));
+        DialogObject dialog = new DialogObject("dialog", 10, 50, 160, 40, "Guide", "Welcome");
+
+        menu.nextOption();
+        dialog.setMessage("Ready");
+
+        assertEquals(GameObjectType.MENU, menu.getType());
+        assertEquals(1, menu.getSelectedIndex());
+        assertEquals("Exit", menu.getSelectedOption());
+        assertEquals(GameObjectType.DIALOG, dialog.getType());
+        assertEquals("Guide", dialog.getSpeakerName());
+        assertEquals("Ready", dialog.getMessage());
+    }
+
+    @Test
+    void uiObjectsShouldRenderTheirPanels() {
+        MenuObject menu = new MenuObject("menu", 10, 10, 120, 80, "Main", List.of("Start"));
+        DialogObject dialog = new DialogObject("dialog", 20, 60, 140, 50, "Guide", "Hello");
+
+        BufferedImage image = new BufferedImage(200, 140, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            menu.render(graphics);
+            dialog.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        assertEquals(menu.getColor().getRGB(), image.getRGB(20, 20));
+        assertEquals(dialog.getColor().getRGB(), image.getRGB(60, 95));
     }
 }

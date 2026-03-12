@@ -3,5 +3,9 @@ package lib.object;
 public enum GameObjectType {
     PLAYER,
     MONSTER,
-    SCENE
+    SCENE,
+    WALL,
+    BOUNDARY,
+    MENU,
+    DIALOG
 }
