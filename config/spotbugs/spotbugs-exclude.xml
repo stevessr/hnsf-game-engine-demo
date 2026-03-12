@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- 1) 代码生成器产物：通常不作为手写代码质量门禁 -->
+    <Match>
+        <Or>
+            <Class name="~.*\.(generated|gen)\..*"/>
+            <Class name="~.*(Generated|AutoValue_.*|_Factory|_MembersInjector|\$MockitoMock\$).*"/>
+            <Annotation name="javax.annotation.Generated"/>
+            <Annotation name="jakarta.annotation.Generated"/>
+            <Annotation name="lombok.Generated"/>
+        </Or>
+    </Match>
+
+    <!-- 2) 测试代码：单独由测试规范保障，可避免噪音 -->
+    <Match>
+        <Or>
+            <Class name="~.*\.(test|tests)\..*"/>
+            <Class name="~.*(Test|Tests|IT|ITCase)$"/>
+        </Or>
+    </Match>
+
+    <!-- 3) Serializable 的 serialVersionUID 告警：在多数业务项目中可接受 -->
+    <Match>
+        <Bug pattern="SE_NO_SERIALVERSIONID"/>
+    </Match>
+
+    <!-- 4) DTO/VO/请求响应对象中的可变暴露告警：按团队规范常见放行 -->
+    <Match>
+        <Or>
+            <Class name="~.*\.(dto|vo|request|response)\..*"/>
+            <Class name="~.*(DTO|VO|Request|Response)$"/>
+        </Or>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+</FindBugsFilter>

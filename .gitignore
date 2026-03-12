@@ -1,0 +1,9 @@
+.gradle/
+build/
+out/
+.idea/
+.vscode/
+hnsfGame01
+*.zip
+初级实作课程素材资源
+gradle
