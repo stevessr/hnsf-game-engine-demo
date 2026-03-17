@@ -99,7 +99,7 @@ public class App {
             620,
             64,
             "Guide",
-            "Use WASD or arrow keys to move, Q/E to switch menu, and Enter or left click to confirm."
+            "Use WASD/IJKL or arrow keys to move, Q/E to switch menu, and Enter or left click to confirm."
         );
 
         world.addObject(ground);

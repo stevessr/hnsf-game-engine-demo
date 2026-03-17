@@ -24,12 +24,16 @@ public final class InputActionMapper {
         InputActionMapper mapper = new InputActionMapper();
         mapper.bindKey(InputAction.MOVE_UP, KeyEvent.VK_W);
         mapper.bindKey(InputAction.MOVE_UP, KeyEvent.VK_UP);
+        mapper.bindKey(InputAction.MOVE_UP, KeyEvent.VK_I);
         mapper.bindKey(InputAction.MOVE_DOWN, KeyEvent.VK_S);
         mapper.bindKey(InputAction.MOVE_DOWN, KeyEvent.VK_DOWN);
+        mapper.bindKey(InputAction.MOVE_DOWN, KeyEvent.VK_K);
         mapper.bindKey(InputAction.MOVE_LEFT, KeyEvent.VK_A);
         mapper.bindKey(InputAction.MOVE_LEFT, KeyEvent.VK_LEFT);
+        mapper.bindKey(InputAction.MOVE_LEFT, KeyEvent.VK_J);
         mapper.bindKey(InputAction.MOVE_RIGHT, KeyEvent.VK_D);
         mapper.bindKey(InputAction.MOVE_RIGHT, KeyEvent.VK_RIGHT);
+        mapper.bindKey(InputAction.MOVE_RIGHT, KeyEvent.VK_L);
         mapper.bindKey(InputAction.MENU_PREVIOUS, KeyEvent.VK_Q);
         mapper.bindKey(InputAction.MENU_NEXT, KeyEvent.VK_E);
         mapper.bindKey(InputAction.MENU_CONFIRM, KeyEvent.VK_ENTER);
