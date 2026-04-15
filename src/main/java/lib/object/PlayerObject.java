@@ -17,7 +17,7 @@ public final class PlayerObject extends ActorObject {
     }
 
     public PlayerObject(String name, int x, int y) {
-        super(GameObjectType.PLAYER, name, x, y, 48, 48, new Color(66, 135, 245), 120, 18, 8);
+        super(GameObjectType.PLAYER, name, x, y, 48, 48, new Color(66, 135, 245), 120, 18, 200);
         this.level = 1;
         this.experience = 0;
     }
@@ -68,12 +68,32 @@ public final class PlayerObject extends ActorObject {
 
     @Override
     public void update(GameWorld world, double deltaSeconds) {
-        int nextX = getX() + (int) Math.round(velocityX * deltaSeconds);
-        int nextY = getY() + (int) Math.round(velocityY * deltaSeconds);
+        if (velocityX == 0 && velocityY == 0) {
+            return;
+        }
+
+        double moveX = velocityX * deltaSeconds;
+        double moveY = velocityY * deltaSeconds;
+
+        int deltaX = (int) Math.round(moveX);
+        int deltaY = (int) Math.round(moveY);
+
+        // 确保非零速度时至少移动 1 像素（处理小位移）
+        if (deltaX == 0 && velocityX != 0) {
+            deltaX = velocityX > 0 ? 1 : -1;
+        }
+        if (deltaY == 0 && velocityY != 0) {
+            deltaY = velocityY > 0 ? 1 : -1;
+        }
+
+        int nextX = getX() + deltaX;
+        int nextY = getY() + deltaY;
+
         if (world == null) {
             setPosition(nextX, nextY);
             return;
         }
+
         MovementResult movementResult = world.moveObject(this, nextX, nextY);
         if (movementResult.isBlockedX()) {
             velocityX = 0;

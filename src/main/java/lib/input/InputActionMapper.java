@@ -35,10 +35,18 @@ public final class InputActionMapper {
         mapper.bindKey(InputAction.MOVE_RIGHT, KeyEvent.VK_RIGHT);
         mapper.bindKey(InputAction.MOVE_RIGHT, KeyEvent.VK_L);
         mapper.bindKey(InputAction.MENU_PREVIOUS, KeyEvent.VK_Q);
+        mapper.bindKey(InputAction.MENU_PREVIOUS, KeyEvent.VK_W);
+        mapper.bindKey(InputAction.MENU_PREVIOUS, KeyEvent.VK_UP);
         mapper.bindKey(InputAction.MENU_NEXT, KeyEvent.VK_E);
+        mapper.bindKey(InputAction.MENU_NEXT, KeyEvent.VK_S);
+        mapper.bindKey(InputAction.MENU_NEXT, KeyEvent.VK_DOWN);
         mapper.bindKey(InputAction.MENU_CONFIRM, KeyEvent.VK_ENTER);
         mapper.bindKey(InputAction.MENU_CONFIRM, KeyEvent.VK_SPACE);
         mapper.bindMouseButton(InputAction.MENU_CONFIRM, MouseEvent.BUTTON1);
+        mapper.bindKey(InputAction.PAUSE, KeyEvent.VK_ESCAPE);
+        mapper.bindKey(InputAction.PAUSE, KeyEvent.VK_P);
+        mapper.bindKey(InputAction.DIALOG_NEXT, KeyEvent.VK_SPACE);
+        mapper.bindKey(InputAction.DIALOG_NEXT, KeyEvent.VK_ENTER);
         return mapper;
     }
 

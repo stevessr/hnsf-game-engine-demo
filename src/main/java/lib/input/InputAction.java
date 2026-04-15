@@ -7,5 +7,7 @@ public enum InputAction {
     MOVE_RIGHT,
     MENU_PREVIOUS,
     MENU_NEXT,
-    MENU_CONFIRM
+    MENU_CONFIRM,
+    PAUSE,
+    DIALOG_NEXT
 }

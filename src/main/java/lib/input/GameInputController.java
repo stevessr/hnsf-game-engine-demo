@@ -9,6 +9,7 @@ import lib.object.GameObject;
 import lib.object.GameObjectType;
 import lib.object.MenuObject;
 import lib.object.PlayerObject;
+import lib.state.GameStateContext;
 
 public final class GameInputController {
     private final KeyboardManager keyboardManager;
@@ -37,12 +38,61 @@ public final class GameInputController {
         return actionMapper;
     }
 
+    /**
+     * 应用输入到游戏世界（向后兼容方法）。
+     * 建议使用状态机处理输入，此方法保留用于兼容性。
+     *
+     * @param world 游戏世界
+     */
     public void applyInputs(GameWorld world) {
         if (world == null) {
             return;
         }
+        if (world.getStateMachine() != null) {
+            world.getStateMachine().processInput(new GameStateContext(world, this));
+            return;
+        }
         applyPlayerMovement(world.findPlayer().orElse(null));
+        applyMenuNavigation(world);
+    }
 
+    /**
+     * 处理玩家移动输入。
+     * 根据 WASD/IJKL 或方向键设置玩家速度。
+     *
+     * @param player 玩家对象，可以为 null
+     */
+    public void applyPlayerMovement(PlayerObject player) {
+        if (player == null || !player.isActive()) {
+            return;
+        }
+        int velocityX = 0;
+        int velocityY = 0;
+        int speed = player.getSpeed();
+
+        if (actionMapper.isActive(InputAction.MOVE_LEFT, keyboardManager, mouseManager)) {
+            velocityX -= speed;
+        }
+        if (actionMapper.isActive(InputAction.MOVE_RIGHT, keyboardManager, mouseManager)) {
+            velocityX += speed;
+        }
+        if (actionMapper.isActive(InputAction.MOVE_UP, keyboardManager, mouseManager)) {
+            velocityY -= speed;
+        }
+        if (actionMapper.isActive(InputAction.MOVE_DOWN, keyboardManager, mouseManager)) {
+            velocityY += speed;
+        }
+
+        player.setVelocity(velocityX, velocityY);
+    }
+
+    /**
+     * 处理菜单导航输入。
+     * 支持键盘和鼠标选择菜单选项。
+     *
+     * @param world 游戏世界
+     */
+    public void applyMenuNavigation(GameWorld world) {
         MenuObject menu = findFirstActiveMenu(world);
         if (menu == null) {
             return;
@@ -72,30 +122,6 @@ public final class GameInputController {
     public void finishFrame() {
         keyboardManager.clearTransientStates();
         mouseManager.clearTransientStates();
-    }
-
-    private void applyPlayerMovement(PlayerObject player) {
-        if (player == null || !player.isActive()) {
-            return;
-        }
-        int velocityX = 0;
-        int velocityY = 0;
-        int speed = player.getSpeed();
-
-        if (actionMapper.isActive(InputAction.MOVE_LEFT, keyboardManager, mouseManager)) {
-            velocityX -= speed;
-        }
-        if (actionMapper.isActive(InputAction.MOVE_RIGHT, keyboardManager, mouseManager)) {
-            velocityX += speed;
-        }
-        if (actionMapper.isActive(InputAction.MOVE_UP, keyboardManager, mouseManager)) {
-            velocityY -= speed;
-        }
-        if (actionMapper.isActive(InputAction.MOVE_DOWN, keyboardManager, mouseManager)) {
-            velocityY += speed;
-        }
-
-        player.setVelocity(velocityX, velocityY);
     }
 
     private MenuObject findFirstActiveMenu(GameWorld world) {

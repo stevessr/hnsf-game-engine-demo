@@ -12,10 +12,13 @@ import lib.object.PlayerObject;
 import lib.object.SceneObject;
 import lib.physics.MovementResult;
 import lib.physics.PhysicsEngine;
+import lib.state.GameState;
+import lib.state.GameStateMachine;
 
 public final class GameWorld {
     private final EntityManager entityManager;
     private final PhysicsEngine physicsEngine;
+    private GameStateMachine stateMachine;
     private int width;
     private int height;
     private Color backgroundColor;
@@ -58,6 +61,34 @@ public final class GameWorld {
             return;
         }
         this.backgroundColor = backgroundColor;
+    }
+
+    /**
+     * 设置游戏状态机。
+     *
+     * @param stateMachine 状态机实例
+     */
+    public void setStateMachine(GameStateMachine stateMachine) {
+        this.stateMachine = stateMachine;
+    }
+
+    /**
+     * 获取游戏状态机。
+     *
+     * @return 状态机实例，如果未设置则返回 null
+     */
+    public GameStateMachine getStateMachine() {
+        return stateMachine;
+    }
+
+    /**
+     * 获取当前游戏状态。
+     * 如果未设置状态机，默认返回 PLAYING 状态。
+     *
+     * @return 当前游戏状态
+     */
+    public GameState getCurrentState() {
+        return stateMachine != null ? stateMachine.getCurrentState() : GameState.PLAYING;
     }
 
     public void addObject(GameObject gameObject) {
@@ -116,6 +147,9 @@ public final class GameWorld {
 
     public void update(double deltaSeconds) {
         if (deltaSeconds <= 0) {
+            return;
+        }
+        if (!getCurrentState().allowsWorldUpdate()) {
             return;
         }
         entityManager.updateAll(this, deltaSeconds);

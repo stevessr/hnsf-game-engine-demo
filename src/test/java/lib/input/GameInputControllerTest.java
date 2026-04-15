@@ -20,6 +20,7 @@ class GameInputControllerTest {
         GameInputController inputController = GameInputController.createDefault();
         GameWorld world = new GameWorld(200, 160);
         PlayerObject player = new PlayerObject("hero", 10, 20);
+        player.setSpeed(8);
         world.addObject(player);
 
         inputController.getKeyboardManager().pressKey(KeyEvent.VK_D);

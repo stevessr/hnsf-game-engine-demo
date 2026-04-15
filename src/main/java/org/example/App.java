@@ -9,6 +9,8 @@ import lib.editor.EditorWindow;
 import lib.game.GameWorld;
 import lib.object.BoundaryObject;
 import lib.object.DialogObject;
+import lib.object.GameObject;
+import lib.object.GameObjectType;
 import lib.object.MenuObject;
 import lib.object.MonsterObject;
 import lib.object.PlayerObject;
@@ -17,6 +19,8 @@ import lib.object.WallObject;
 import lib.persistence.MapDataMapper;
 import lib.persistence.MapRepository;
 import lib.render.SwingGamePanel;
+import lib.state.DefaultGameStateMachine;
+import lib.state.GameState;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -36,6 +40,7 @@ public class App {
     private static void startGame() {
         MapRepository repository = new MapRepository();
         GameWorld world = loadWorld(repository, "demo-map");
+        installStateMachine(world);
 
         SwingGamePanel panel = new SwingGamePanel(world);
 
@@ -49,6 +54,52 @@ public class App {
         panel.start();
 
         log.info("Game window started with {} objects", world.getObjects().size());
+    }
+
+    private static void installStateMachine(GameWorld world) {
+        selectStartMenuOption(world);
+        world.setStateMachine(new DefaultGameStateMachine(resolveInitialState(world)));
+    }
+
+    private static GameState resolveInitialState(GameWorld world) {
+        if (hasActiveObject(world, GameObjectType.MENU)) {
+            return GameState.MENU;
+        }
+        if (hasActiveObject(world, GameObjectType.DIALOG)) {
+            return GameState.DIALOG;
+        }
+        return GameState.PLAYING;
+    }
+
+    private static boolean hasActiveObject(GameWorld world, GameObjectType type) {
+        for (GameObject object : world.getObjectsByType(type)) {
+            if (object.isActive()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void selectStartMenuOption(GameWorld world) {
+        for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) {
+            if (object instanceof MenuObject menu && menu.isActive()) {
+                int startIndex = findStartOptionIndex(menu);
+                if (startIndex >= 0) {
+                    menu.setSelectedIndex(startIndex);
+                }
+            }
+        }
+    }
+
+    private static int findStartOptionIndex(MenuObject menu) {
+        List<String> options = menu.getOptions();
+        for (int index = 0; index < options.size(); index++) {
+            String option = options.get(index);
+            if ("Start".equals(option) || "开始游戏".equals(option) || "开始".equals(option)) {
+                return index;
+            }
+        }
+        return -1;
     }
 
     private static void startEditor() {
@@ -90,7 +141,7 @@ public class App {
             "Demo Menu",
             List.of("Start", "Options", "Exit")
         );
-        menu.setSelectedIndex(1);
+        menu.setSelectedIndex(0);
 
         DialogObject dialog = new DialogObject(
             "intro-dialog",
