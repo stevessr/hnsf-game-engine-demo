@@ -7,7 +7,12 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.ActionEvent;
 
+import javax.swing.AbstractAction;
+import javax.swing.InputMap;
+import javax.swing.ActionMap;
+import javax.swing.KeyStroke;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -63,6 +68,7 @@ public final class SwingGamePanel extends JPanel {
     }
 
     private void registerInputListeners() {
+        // Key listener (requires the panel to be focus owner)
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent event) {
@@ -74,6 +80,36 @@ public final class SwingGamePanel extends JPanel {
                 inputController.getKeyboardManager().releaseKey(event.getKeyCode());
             }
         });
+
+        // Key bindings so key events are processed when the window is focused
+        int[] keys = new int[] {
+            KeyEvent.VK_W, KeyEvent.VK_UP, KeyEvent.VK_I,
+            KeyEvent.VK_S, KeyEvent.VK_DOWN, KeyEvent.VK_K,
+            KeyEvent.VK_A, KeyEvent.VK_LEFT, KeyEvent.VK_J,
+            KeyEvent.VK_D, KeyEvent.VK_RIGHT, KeyEvent.VK_L,
+            KeyEvent.VK_Q, KeyEvent.VK_E, KeyEvent.VK_ENTER, KeyEvent.VK_SPACE
+        };
+        InputMap inputMap = getInputMap(WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = getActionMap();
+        for (int key : keys) {
+            final int k = key;
+            String pressAction = "press_" + k;
+            String releaseAction = "release_" + k;
+            inputMap.put(KeyStroke.getKeyStroke(k, 0, false), pressAction);
+            inputMap.put(KeyStroke.getKeyStroke(k, 0, true), releaseAction);
+            actionMap.put(pressAction, new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    inputController.getKeyboardManager().pressKey(k);
+                }
+            });
+            actionMap.put(releaseAction, new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    inputController.getKeyboardManager().releaseKey(k);
+                }
+            });
+        }
 
         MouseAdapter mouseAdapter = new MouseAdapter() {
             @Override
