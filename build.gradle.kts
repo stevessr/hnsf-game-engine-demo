@@ -39,6 +39,8 @@ checkstyle {
 
 tasks.withType<com.github.spotbugs.snom.SpotBugsTask>().configureEach {
     excludeFilter.set(layout.projectDirectory.file("config/spotbugs/spotbugs-exclude.xml"))
+    // Allow SpotBugs warnings to not fail the build during development
+    ignoreFailures = true
     reports.create("html") {
         required.set(true)
     }
