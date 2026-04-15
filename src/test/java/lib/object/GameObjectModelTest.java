@@ -61,6 +61,7 @@ class GameObjectModelTest {
     void playerShouldUpdatePositionAndRenderColor() {
         GameWorld world = new GameWorld(200, 160);
         PlayerObject player = new PlayerObject("hero", 10, 20);
+        player.setFriction(1.0);
         player.setVelocity(30, 15);
 
         player.update(world, 2.0);

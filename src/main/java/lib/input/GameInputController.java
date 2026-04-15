@@ -68,7 +68,7 @@ public final class GameInputController {
 
     /**
      * 处理玩家移动输入。
-     * 根据 WASD/IJKL 或方向键设置玩家速度。
+     * 根据 WASD/IJKL 或方向键对玩家应用加速度。
      *
      * @param player 玩家对象，可以为 null
      */
@@ -76,24 +76,43 @@ public final class GameInputController {
         if (player == null || !player.isActive()) {
             return;
         }
-        int velocityX = 0;
-        int velocityY = 0;
-        int speed = player.getSpeed();
+        double ax = 0;
+        double ay = 0;
 
         if (actionMapper.isActive(InputAction.MOVE_LEFT, keyboardManager, mouseManager)) {
-            velocityX -= speed;
+            ax -= 1.0;
         }
         if (actionMapper.isActive(InputAction.MOVE_RIGHT, keyboardManager, mouseManager)) {
-            velocityX += speed;
+            ax += 1.0;
         }
         if (actionMapper.isActive(InputAction.MOVE_UP, keyboardManager, mouseManager)) {
-            velocityY -= speed;
+            ay -= 1.0;
         }
         if (actionMapper.isActive(InputAction.MOVE_DOWN, keyboardManager, mouseManager)) {
-            velocityY += speed;
+            ay += 1.0;
+        }
+        
+        if (actionMapper.isActive(InputAction.THROTTLE_LEFT, keyboardManager, mouseManager)) {
+            ax -= 1.0;
+        }
+        if (actionMapper.isActive(InputAction.THROTTLE_RIGHT, keyboardManager, mouseManager)) {
+            ax += 1.0;
+        }
+        if (actionMapper.isActive(InputAction.THROTTLE_UP, keyboardManager, mouseManager)) {
+            ay -= 1.0;
+        }
+        if (actionMapper.isActive(InputAction.THROTTLE_DOWN, keyboardManager, mouseManager)) {
+            ay += 1.0;
         }
 
-        player.setVelocity(velocityX, velocityY);
+        // 归一化
+        if (ax != 0 && ay != 0) {
+            double mag = Math.sqrt(ax * ax + ay * ay);
+            ax /= mag;
+            ay /= mag;
+        }
+
+        player.accelerate(ax, ay, 1.0 / 60.0);
     }
 
     /**

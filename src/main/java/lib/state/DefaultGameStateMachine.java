@@ -25,6 +25,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     private GameState currentState;
     private GameState previousState;
     private final Map<GameState, Set<GameState>> allowedTransitions;
+    private DialogObject hiddenDialog;
 
     /**
      * 创建默认游戏状态机。
@@ -57,8 +58,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         // DIALOG -> PLAYING: 对话结束
         allowedTransitions.put(GameState.DIALOG, EnumSet.of(GameState.PLAYING));
 
-        // PAUSED -> PLAYING: 按 ESC/P 恢复
-        allowedTransitions.put(GameState.PAUSED, EnumSet.of(GameState.PLAYING));
+        // PAUSED -> PLAYING, MENU: 按 ESC/P 恢复或从菜单退出
+        allowedTransitions.put(GameState.PAUSED, EnumSet.of(GameState.PLAYING, GameState.MENU));
     }
 
     @Override
@@ -99,17 +100,34 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     public void togglePause(GameWorld world) {
         if (currentState == GameState.PAUSED) {
             removePauseMenu(world);
+            restoreHiddenDialog(world);
             transitionTo(previousState == GameState.PAUSED ? GameState.PLAYING : previousState);
         } else if (currentState == GameState.PLAYING) {
+            hideActiveDialog(world);
             transitionTo(GameState.PAUSED);
             createPauseMenu(world);
         }
     }
 
+    private void hideActiveDialog(GameWorld world) {
+        if (world == null) return;
+        DialogObject dialog = findActiveDialog(world);
+        if (dialog != null && dialog.isActive()) {
+            hiddenDialog = dialog;
+            dialog.setActive(false);
+        }
+    }
+
+    private void restoreHiddenDialog(GameWorld world) {
+        if (world == null || hiddenDialog == null) return;
+        hiddenDialog.setActive(true);
+        hiddenDialog = null;
+    }
+
     private void createPauseMenu(GameWorld world) {
         if (world == null) return;
         int menuWidth = 200;
-        int menuHeight = 120;
+        int menuHeight = 150;
         int menuX = (world.getWidth() - menuWidth) / 2;
         int menuY = (world.getHeight() - menuHeight) / 2;
         MenuObject pauseMenu = new MenuObject(
@@ -119,7 +137,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             menuWidth,
             menuHeight,
             "Paused",
-            List.of("Resume", "Exit to Menu")
+            List.of("Resume", "Options", "Exit to Menu")
         );
         world.addObject(pauseMenu);
     }
@@ -127,9 +145,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     private void removePauseMenu(GameWorld world) {
         if (world == null) return;
         world.getObjectsByType(GameObjectType.MENU).stream()
-            .filter(obj -> "pause-menu".equals(obj.getName()))
-            .findFirst()
-            .ifPresent(world::removeObject);
+            .filter(obj -> "pause-menu".equals(obj.getName()) || "options-menu".equals(obj.getName()))
+            .forEach(world::removeObject);
     }
 
     @Override
@@ -190,8 +207,11 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             menu.setActive(false);
             DialogObject dialog = findActiveDialog(context.getWorld());
             transitionTo(dialog == null ? GameState.PLAYING : GameState.DIALOG);
+        } else if (isResumeOption(selected)) {
+            removePauseMenu(context.getWorld());
+            transitionTo(previousState);
         } else if (isOptionsOption(selected)) {
-            showOptionsMenu(context.getWorld());
+            showOptionsMenu(context.getWorld(), context.getSettings());
         } else if (isExitOption(selected)) {
             transitionTo(GameState.MENU);
         }
@@ -203,6 +223,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         if (isResumeOption(selected)) {
             removePauseMenu(context.getWorld());
             transitionTo(previousState);
+        } else if (isOptionsOption(selected)) {
+            showOptionsMenu(context.getWorld(), context.getSettings());
         } else if (isExitToMenuOption(selected)) {
             removePauseMenu(context.getWorld());
             // 激活主菜单
@@ -215,17 +237,19 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         clearPlayerMovement(context);
     }
 
-    private void showOptionsMenu(GameWorld world) {
-        // 隐藏主菜单
+    private void showOptionsMenu(GameWorld world, GameSettings settings) {
+        // 隐藏当前活跃菜单
         world.getObjectsByType(GameObjectType.MENU).stream()
-            .filter(obj -> "main-menu".equals(obj.getName()))
-            .findFirst()
-            .ifPresent(obj -> obj.setActive(false));
+            .filter(GameObject::isActive)
+            .forEach(obj -> obj.setActive(false));
             
-        int menuWidth = 300;
-        int menuHeight = 160;
+        int menuWidth = 320;
+        int menuHeight = 220;
         int menuX = (world.getWidth() - menuWidth) / 2;
         int menuY = (world.getHeight() - menuHeight) / 2;
+        
+        int throttle = settings != null ? settings.getThrottlePower() : 600;
+        int deceleration = settings != null ? settings.getDeceleration() : 92;
         
         MenuObject optionsMenu = new MenuObject(
             "options-menu",
@@ -234,7 +258,13 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             menuWidth,
             menuHeight,
             "Options",
-            List.of("Resolution: " + world.getWidth() + "x" + world.getHeight(), "FPS: 60", "Back")
+            List.of(
+                "Resolution: " + world.getWidth() + "x" + world.getHeight(), 
+                "FPS: " + (settings != null ? settings.getTargetFPS() : 60),
+                "Throttle: " + throttle,
+                "Deceleration: " + deceleration + "%",
+                "Back"
+            )
         );
         world.addObject(optionsMenu);
     }
@@ -247,14 +277,64 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             cycleResolution(context.getWorld(), settings, menu);
         } else if (isFPSOption(selected)) {
             cycleFPS(settings, menu);
+        } else if (isThrottleOption(selected)) {
+            cycleThrottle(settings, menu);
+        } else if (isDecelerationOption(selected)) {
+            cycleDeceleration(settings, menu);
         } else if (isBackOption(selected)) {
             context.getWorld().removeObject(menu);
-            // 显示主菜单
+            // 重新显示之前的菜单：优先暂停菜单，其次主菜单
             context.getWorld().getObjectsByType(GameObjectType.MENU).stream()
-                .filter(obj -> "main-menu".equals(obj.getName()))
+                .filter(obj -> "pause-menu".equals(obj.getName()) || "main-menu".equals(obj.getName()))
                 .findFirst()
                 .ifPresent(obj -> obj.setActive(true));
         }
+    }
+
+    private void cycleThrottle(GameSettings settings, MenuObject menu) {
+        if (settings == null) return;
+        int[] powers = {200, 400, 600, 800, 1000};
+        int current = settings.getThrottlePower();
+        int nextIdx = 0;
+        for (int i = 0; i < powers.length; i++) {
+            if (powers[i] >= current) {
+                nextIdx = (i + 1) % powers.length;
+                break;
+            }
+        }
+        int newPower = powers[nextIdx];
+        settings.setThrottlePower(newPower);
+        
+        List<String> options = new ArrayList<>(menu.getOptions());
+        for (int i = 0; i < options.size(); i++) {
+            if (isThrottleOption(options.get(i))) {
+                options.set(i, "Throttle: " + newPower);
+            }
+        }
+        menu.setOptions(options);
+    }
+
+    private void cycleDeceleration(GameSettings settings, MenuObject menu) {
+        if (settings == null) return;
+        int[] decelerations = {80, 85, 90, 92, 95, 98};
+        int current = settings.getDeceleration();
+        int nextIdx = 0;
+        for (int i = 0; i < decelerations.length; i++) {
+            if (decelerations[i] >= current) {
+                nextIdx = (i + 1) % decelerations.length;
+                break;
+            }
+        }
+        int newDeceleration = decelerations[nextIdx];
+        settings.setDeceleration(newDeceleration);
+        
+        List<String> options = new ArrayList<>(menu.getOptions());
+        for (int i = 0; i < options.size(); i++) {
+            if (isDecelerationOption(options.get(i))) {
+                options.set(i, "Deceleration: " + newDeceleration + "%");
+            }
+        }
+        menu.setOptions(options);
     }
 
     private void cycleResolution(GameWorld world, GameSettings settings, MenuObject menu) {
@@ -304,6 +384,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         }
         menu.setOptions(options);
     }
+
     private void processPlayingInput(GameStateContext context) {
         var inputController = context.getInputController();
         var keyboard = inputController.getKeyboardManager();
@@ -322,9 +403,29 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
 
-        // 处理玩家移动
-        inputController.applyPlayerMovement(
-            context.getWorld().findPlayer().orElse(null));
+        // 油门操控逻辑
+        PlayerObject player = context.getWorld().findPlayer().orElse(null);
+        if (player != null && player.isActive()) {
+            double ax = 0;
+            double ay = 0;
+            if (actionMapper.isActive(InputAction.MOVE_LEFT, keyboard, inputController.getMouseManager())) ax -= 1.0;
+            if (actionMapper.isActive(InputAction.MOVE_RIGHT, keyboard, inputController.getMouseManager())) ax += 1.0;
+            if (actionMapper.isActive(InputAction.MOVE_UP, keyboard, inputController.getMouseManager())) ay -= 1.0;
+            if (actionMapper.isActive(InputAction.MOVE_DOWN, keyboard, inputController.getMouseManager())) ay += 1.0;
+            if (actionMapper.isActive(InputAction.THROTTLE_LEFT, keyboard, inputController.getMouseManager())) ax -= 1.0;
+            if (actionMapper.isActive(InputAction.THROTTLE_RIGHT, keyboard, inputController.getMouseManager())) ax += 1.0;
+            if (actionMapper.isActive(InputAction.THROTTLE_UP, keyboard, inputController.getMouseManager())) ay -= 1.0;
+            if (actionMapper.isActive(InputAction.THROTTLE_DOWN, keyboard, inputController.getMouseManager())) ay += 1.0;
+            
+            // 归一化以保证对角线速度一致
+            if (ax != 0 && ay != 0) {
+                double mag = Math.sqrt(ax * ax + ay * ay);
+                ax /= mag;
+                ay /= mag;
+            }
+            
+            player.accelerate(ax, ay, 1.0/60.0);
+        }
     }
 
     private void processDialogInput(GameStateContext context) {
@@ -363,10 +464,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     private void clearPlayerMovement(GameStateContext context) {
-        PlayerObject player = context.getWorld().findPlayer().orElse(null);
-        if (player != null) {
-            player.setVelocity(0, 0);
-        }
+        // 油门模型下，由 friction 处理减速
     }
 
     private void syncActiveDialog(GameWorld world, String prefix, String selectedOption) {
@@ -398,7 +496,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         if (!isInsideMenu(menu, mouseX, mouseY)) {
             return -1;
         }
-        int optionStartY = menu.getY() + 34;
+        int optionStartY = menu.getY() + 42;
         int optionHeight = 18;
         int relativeY = mouseY - optionStartY;
         int hoveredIndex = relativeY / optionHeight;
@@ -446,6 +544,14 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
     private boolean isFPSOption(String selected) {
         return selected != null && (selected.startsWith("FPS:") || selected.startsWith("帧率:"));
+    }
+
+    private boolean isThrottleOption(String selected) {
+        return selected != null && (selected.startsWith("Throttle:") || selected.startsWith("油门:"));
+    }
+
+    private boolean isDecelerationOption(String selected) {
+        return selected != null && (selected.startsWith("Deceleration:") || selected.startsWith("减速度:"));
     }
 
     private boolean isBackOption(String selected) {

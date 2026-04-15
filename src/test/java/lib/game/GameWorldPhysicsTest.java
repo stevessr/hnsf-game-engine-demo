@@ -15,6 +15,7 @@ class GameWorldPhysicsTest {
     void playerShouldStopAtWallEdgeInsteadOfPassingThrough() {
         GameWorld world = new GameWorld(200, 120);
         PlayerObject player = new PlayerObject("hero", 10, 20);
+        player.setFriction(1.0);
         WallObject wall = new WallObject("wall", 60, 20, 20, 48);
 
         world.addObject(player);

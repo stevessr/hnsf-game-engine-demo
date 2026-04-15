@@ -1,7 +1,7 @@
 package lib.state;
 
 /**
- * 游戏设置接口，允许状态机动态调整游戏的分辨率和 FPS。
+ * 游戏设置接口，允许状态机动态调整游戏的分辨率和 FPS 以及油门。
  */
 public interface GameSettings {
     /**
@@ -17,6 +17,34 @@ public interface GameSettings {
      * @return 当前目标 FPS
      */
     int getTargetFPS();
+
+    /**
+     * 设置油门力度。
+     *
+     * @param power 力度数值
+     */
+    void setThrottlePower(int power);
+
+    /**
+     * 获取当前油门力度。
+     *
+     * @return 当前油门力度
+     */
+    int getThrottlePower();
+
+    /**
+     * 设置减速度（百分比）。
+     *
+     * @param percent 减速度百分比（0-100）
+     */
+    void setDeceleration(int percent);
+
+    /**
+     * 获取当前减速度（百分比）。
+     *
+     * @return 当前减速度百分比（0-100）
+     */
+    int getDeceleration();
 
     /**
      * 设置游戏分辨率。

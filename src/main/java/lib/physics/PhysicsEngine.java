@@ -14,32 +14,62 @@ public final class PhysicsEngine {
         int worldHeight,
         List<? extends GameObject> obstacles
     ) {
+        int originalX = movingObject.getX();
+        int originalY = movingObject.getY();
         int clampedTargetX = clamp(targetX, 0, Math.max(0, worldWidth - movingObject.getWidth()));
         int clampedTargetY = clamp(targetY, 0, Math.max(0, worldHeight - movingObject.getHeight()));
 
-        int resolvedX = movingObject.getX();
-        int resolvedY = movingObject.getY();
+        if (originalX == clampedTargetX && originalY == clampedTargetY) {
+            return new MovementResult(originalX, originalY, clampedTargetX != targetX, clampedTargetY != targetY);
+        }
+
+        // 优化：计算移动范围内的潜在障碍物
+        int minX = Math.min(originalX, clampedTargetX);
+        int minY = Math.min(originalY, clampedTargetY);
+        int maxX = Math.max(originalX, clampedTargetX) + movingObject.getWidth();
+        int maxY = Math.max(originalY, clampedTargetY) + movingObject.getHeight();
+        Aabb rangeBox = new Aabb(minX, minY, maxX - minX, maxY - minY);
+        
+        List<GameObject> nearbyObstacles = new ArrayList<>();
+        for (GameObject obs : obstacles) {
+            if (obs != movingObject && obs.isActive() && rangeBox.intersects(Aabb.from(obs))) {
+                nearbyObstacles.add(obs);
+            }
+        }
+
+        int resolvedX = originalX;
+        int resolvedY = originalY;
         boolean blockedX = clampedTargetX != targetX;
         boolean blockedY = clampedTargetY != targetY;
 
-        while (resolvedX != clampedTargetX) {
-            int stepX = Integer.compare(clampedTargetX, resolvedX);
-            int candidateX = resolvedX + stepX;
-            if (collidesAt(movingObject, candidateX, resolvedY, obstacles)) {
-                blockedX = true;
-                break;
+        // X 轴移动
+        if (clampedTargetX != originalX) {
+            int stepX = Integer.compare(clampedTargetX, originalX);
+            int currentX = originalX;
+            while (currentX != clampedTargetX) {
+                int nextX = currentX + stepX;
+                if (collidesAt(movingObject, nextX, resolvedY, nearbyObstacles)) {
+                    blockedX = true;
+                    break;
+                }
+                currentX = nextX;
             }
-            resolvedX = candidateX;
+            resolvedX = currentX;
         }
 
-        while (resolvedY != clampedTargetY) {
-            int stepY = Integer.compare(clampedTargetY, resolvedY);
-            int candidateY = resolvedY + stepY;
-            if (collidesAt(movingObject, resolvedX, candidateY, obstacles)) {
-                blockedY = true;
-                break;
+        // Y 轴移动
+        if (clampedTargetY != originalY) {
+            int stepY = Integer.compare(clampedTargetY, originalY);
+            int currentY = originalY;
+            while (currentY != clampedTargetY) {
+                int nextY = currentY + stepY;
+                if (collidesAt(movingObject, resolvedX, nextY, nearbyObstacles)) {
+                    blockedY = true;
+                    break;
+                }
+                currentY = nextY;
             }
-            resolvedY = candidateY;
+            resolvedY = currentY;
         }
 
         return new MovementResult(resolvedX, resolvedY, blockedX, blockedY);

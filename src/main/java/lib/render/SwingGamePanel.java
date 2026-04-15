@@ -60,6 +60,26 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         return targetFPS;
     }
 
+    @Override
+    public void setThrottlePower(int power) {
+        world.findPlayer().ifPresent(player -> player.setThrottlePower(power));
+    }
+
+    @Override
+    public int getThrottlePower() {
+        return world.findPlayer().map(p -> p.getThrottlePower()).orElse(600);
+    }
+
+    @Override
+    public void setDeceleration(int percent) {
+        world.findPlayer().ifPresent(player -> player.setDeceleration(percent / 100.0));
+    }
+
+    @Override
+    public int getDeceleration() {
+        return world.findPlayer().map(p -> p.getDecelerationPercent()).orElse(92);
+    }
+
     public void setResolution(int width, int height) {
         world.setSize(width, height);
         setPreferredSize(new Dimension(width, height));
@@ -230,12 +250,5 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         graphics2d.setColor(Color.BLACK);
         graphics2d.fillRect(0, 0, getWidth(), getHeight());
         graphics2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
-        graphics2d.setFont(new Font("SansSerif", Font.BOLD, 36));
-        String text = "PAUSED";
-        int textWidth = graphics2d.getFontMetrics().stringWidth(text);
-        int textX = (getWidth() - textWidth) / 2;
-        int textY = getHeight() / 2;
-        graphics2d.setColor(Color.WHITE);
-        graphics2d.drawString(text, textX, textY);
     }
 }
