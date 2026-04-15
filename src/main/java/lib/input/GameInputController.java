@@ -39,21 +39,31 @@ public final class GameInputController {
     }
 
     /**
+     * 处理输入和设置（推荐方法）。
+     * 优先由状态机处理，否则按默认行为处理。
+     *
+     * @param context 包含世界、控制器和设置的上下文
+     */
+    public void processInputs(GameStateContext context) {
+        if (context == null) {
+            return;
+        }
+        if (context.getWorld().getStateMachine() != null) {
+            context.getWorld().getStateMachine().processInput(context);
+            return;
+        }
+        applyPlayerMovement(context.getWorld().findPlayer().orElse(null));
+        applyMenuNavigation(context.getWorld());
+    }
+
+    /**
      * 应用输入到游戏世界（向后兼容方法）。
-     * 建议使用状态机处理输入，此方法保留用于兼容性。
+     * 建议使用 processInputs，此方法保留用于兼容性。
      *
      * @param world 游戏世界
      */
     public void applyInputs(GameWorld world) {
-        if (world == null) {
-            return;
-        }
-        if (world.getStateMachine() != null) {
-            world.getStateMachine().processInput(new GameStateContext(world, this));
-            return;
-        }
-        applyPlayerMovement(world.findPlayer().orElse(null));
-        applyMenuNavigation(world);
+        processInputs(new GameStateContext(world, this));
     }
 
     /**

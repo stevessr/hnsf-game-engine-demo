@@ -23,13 +23,16 @@ import javax.swing.Timer;
 import lib.game.GameWorld;
 import lib.input.GameInputController;
 import lib.state.DefaultGameStateMachine;
+import lib.state.GameSettings;
 import lib.state.GameState;
+import lib.state.GameStateContext;
 
-public final class SwingGamePanel extends JPanel {
+public final class SwingGamePanel extends JPanel implements GameSettings {
     private final GameWorld world;
     private final GameInputController inputController;
     private final Timer timer;
     private long lastUpdateNanos;
+    private int targetFPS = 60;
 
     public SwingGamePanel(GameWorld world) {
         this(world, GameInputController.createDefault());
@@ -38,13 +41,37 @@ public final class SwingGamePanel extends JPanel {
     public SwingGamePanel(GameWorld world, GameInputController inputController) {
         this.world = world;
         this.inputController = inputController;
-        this.timer = new Timer(16, event -> onFrame());
+        this.timer = new Timer(1000 / targetFPS, event -> onFrame());
         this.lastUpdateNanos = 0L;
         setPreferredSize(new Dimension(world.getWidth(), world.getHeight()));
         setDoubleBuffered(true);
         setFocusable(true);
         setFocusTraversalKeysEnabled(false); // 允许捕获 TAB 键等
         registerInputListeners();
+    }
+
+    public void setTargetFPS(int fps) {
+        if (fps <= 0) fps = 60;
+        this.targetFPS = fps;
+        timer.setDelay(1000 / targetFPS);
+    }
+
+    public int getTargetFPS() {
+        return targetFPS;
+    }
+
+    public void setResolution(int width, int height) {
+        world.setSize(width, height);
+        setPreferredSize(new Dimension(width, height));
+        
+        // 寻找父窗口并重调大小
+        java.awt.Window window = SwingUtilities.getWindowAncestor(this);
+        if (window instanceof javax.swing.JFrame frame) {
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+        }
+        revalidate();
+        repaint();
     }
 
     public GameInputController getInputController() {
@@ -96,7 +123,7 @@ public final class SwingGamePanel extends JPanel {
             : (now - lastUpdateNanos) / 1_000_000_000.0;
         lastUpdateNanos = now;
         world.setSize(getWidth(), getHeight());
-        inputController.applyInputs(world);
+        inputController.processInputs(new GameStateContext(world, inputController, this));
         world.update(deltaSeconds);
         inputController.finishFrame();
         repaint();

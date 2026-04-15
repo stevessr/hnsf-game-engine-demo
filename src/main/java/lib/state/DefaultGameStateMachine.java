@@ -1,5 +1,6 @@
 package lib.state;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -180,11 +181,17 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             handlePauseMenuSelection(menu, context);
             return;
         }
+        if ("options-menu".equals(menu.getName())) {
+            handleOptionsMenuSelection(menu, context);
+            return;
+        }
 
         if (isStartOption(selected)) {
             menu.setActive(false);
             DialogObject dialog = findActiveDialog(context.getWorld());
             transitionTo(dialog == null ? GameState.PLAYING : GameState.DIALOG);
+        } else if (isOptionsOption(selected)) {
+            showOptionsMenu(context.getWorld());
         } else if (isExitOption(selected)) {
             transitionTo(GameState.MENU);
         }
@@ -208,6 +215,95 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         clearPlayerMovement(context);
     }
 
+    private void showOptionsMenu(GameWorld world) {
+        // 隐藏主菜单
+        world.getObjectsByType(GameObjectType.MENU).stream()
+            .filter(obj -> "main-menu".equals(obj.getName()))
+            .findFirst()
+            .ifPresent(obj -> obj.setActive(false));
+            
+        int menuWidth = 300;
+        int menuHeight = 160;
+        int menuX = (world.getWidth() - menuWidth) / 2;
+        int menuY = (world.getHeight() - menuHeight) / 2;
+        
+        MenuObject optionsMenu = new MenuObject(
+            "options-menu",
+            menuX,
+            menuY,
+            menuWidth,
+            menuHeight,
+            "Options",
+            List.of("Resolution: " + world.getWidth() + "x" + world.getHeight(), "FPS: 60", "Back")
+        );
+        world.addObject(optionsMenu);
+    }
+
+    private void handleOptionsMenuSelection(MenuObject menu, GameStateContext context) {
+        String selected = menu.getSelectedOption();
+        GameSettings settings = context.getSettings();
+        
+        if (isResolutionOption(selected)) {
+            cycleResolution(context.getWorld(), settings, menu);
+        } else if (isFPSOption(selected)) {
+            cycleFPS(settings, menu);
+        } else if (isBackOption(selected)) {
+            context.getWorld().removeObject(menu);
+            // 显示主菜单
+            context.getWorld().getObjectsByType(GameObjectType.MENU).stream()
+                .filter(obj -> "main-menu".equals(obj.getName()))
+                .findFirst()
+                .ifPresent(obj -> obj.setActive(true));
+        }
+    }
+
+    private void cycleResolution(GameWorld world, GameSettings settings, MenuObject menu) {
+        if (settings == null) return;
+        int[][] resolutions = {{960, 540}, {1280, 720}, {1920, 1080}, {640, 480}};
+        int currentWidth = world.getWidth();
+        int nextIdx = 0;
+        for (int i = 0; i < resolutions.length; i++) {
+            if (resolutions[i][0] == currentWidth) {
+                nextIdx = (i + 1) % resolutions.length;
+                break;
+            }
+        }
+        int newW = resolutions[nextIdx][0];
+        int newH = resolutions[nextIdx][1];
+        settings.setResolution(newW, newH);
+        
+        // 更新菜单项文字
+        List<String> options = new ArrayList<>(menu.getOptions());
+        for (int i = 0; i < options.size(); i++) {
+            if (isResolutionOption(options.get(i))) {
+                options.set(i, "Resolution: " + newW + "x" + newH);
+            }
+        }
+        menu.setOptions(options);
+    }
+
+    private void cycleFPS(GameSettings settings, MenuObject menu) {
+        if (settings == null) return;
+        int[] fpsOptions = {30, 60, 120, 144};
+        int currentFPS = settings.getTargetFPS();
+        int nextIdx = 0;
+        for (int i = 0; i < fpsOptions.length; i++) {
+            if (fpsOptions[i] == currentFPS) {
+                nextIdx = (i + 1) % fpsOptions.length;
+                break;
+            }
+        }
+        int newFPS = fpsOptions[nextIdx];
+        settings.setTargetFPS(newFPS);
+        
+        List<String> options = new ArrayList<>(menu.getOptions());
+        for (int i = 0; i < options.size(); i++) {
+            if (isFPSOption(options.get(i))) {
+                options.set(i, "FPS: " + newFPS);
+            }
+        }
+        menu.setOptions(options);
+    }
     private void processPlayingInput(GameStateContext context) {
         var inputController = context.getInputController();
         var keyboard = inputController.getKeyboardManager();
@@ -336,6 +432,24 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
     private boolean isExitToMenuOption(String selected) {
         List<String> options = List.of("Exit to Menu", "返回主菜单", "退出到菜单");
+        return options.contains(selected);
+    }
+
+    private boolean isOptionsOption(String selected) {
+        List<String> options = List.of("Options", "options", "选项", "设置");
+        return options.contains(selected);
+    }
+
+    private boolean isResolutionOption(String selected) {
+        return selected != null && selected.startsWith("Resolution:");
+    }
+
+    private boolean isFPSOption(String selected) {
+        return selected != null && (selected.startsWith("FPS:") || selected.startsWith("帧率:"));
+    }
+
+    private boolean isBackOption(String selected) {
+        List<String> options = List.of("Back", "back", "返回");
         return options.contains(selected);
     }
 }
