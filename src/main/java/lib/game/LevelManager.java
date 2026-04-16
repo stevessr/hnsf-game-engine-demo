@@ -7,6 +7,7 @@ import java.util.List;
 
 import lib.object.BoundaryObject;
 import lib.object.DialogObject;
+import lib.object.GoalObject;
 import lib.object.ItemObject;
 import lib.object.MonsterObject;
 import lib.object.PlayerObject;
@@ -134,6 +135,7 @@ public final class LevelManager {
         levelWorld.addObject(new VoxelObject("demo-voxel-c", 608, 310, 24, 24, new Color(255, 168, 72)));
         levelWorld.addObject(new ItemObject("demo-coin", 200, 360, 28, 28, "coin", 15, "Demo coin"));
         levelWorld.addObject(new ItemObject("demo-heart", 540, 360, 28, 28, "health", 20, "Small heal"));
+        levelWorld.addObject(new GoalObject("demo-exit", 860, 350, 60, 70));
         levelWorld.addObject(new DialogObject(
             "demo-guide",
             150,
@@ -160,6 +162,7 @@ public final class LevelManager {
         levelWorld.addObject(new ItemObject("forest-coin-1", 330, 520, 28, 28, "coin", 20, "Forest coin"));
         levelWorld.addObject(new ItemObject("forest-coin-2", 620, 350, 28, 28, "coin", 20, "Forest coin"));
         levelWorld.addObject(new ItemObject("forest-heart", 1040, 510, 28, 28, "health", 25, "Healing herb"));
+        levelWorld.addObject(new GoalObject("forest-exit", 1150, 510, 64, 72));
         levelWorld.addObject(new DialogObject(
             "forest-note",
             160,
@@ -189,6 +192,7 @@ public final class LevelManager {
         levelWorld.addObject(new ItemObject("ruins-gem", 540, 470, 28, 28, "gem", 30, "Ancient gem"));
         levelWorld.addObject(new ItemObject("ruins-key", 840, 290, 28, 28, "shield", 20, "Runic shield"));
         levelWorld.addObject(new ItemObject("ruins-heart", 1060, 500, 28, 28, "health", 30, "Restoration"));
+        levelWorld.addObject(new GoalObject("ruins-exit", 1080, 250, 64, 72));
         return levelWorld;
     }
 
@@ -207,6 +211,7 @@ public final class LevelManager {
         levelWorld.addObject(new ItemObject("cave-speed", 500, 250, 28, 28, "speed", 40, "Speed crystal"));
         levelWorld.addObject(new ItemObject("cave-xp", 760, 240, 28, 28, "xp", 35, "Deep cavern XP"));
         levelWorld.addObject(new ItemObject("cave-heart", 920, 460, 28, 28, "health", 20, "Warm spring"));
+        levelWorld.addObject(new GoalObject("cave-exit", 920, 230, 64, 72));
         return levelWorld;
     }
 
@@ -231,6 +236,7 @@ public final class LevelManager {
         levelWorld.addObject(new ItemObject("arena-shield", 420, 360, 28, 28, "shield", 40, "Battle shield"));
         levelWorld.addObject(new ItemObject("arena-heart", 1120, 560, 28, 28, "health", 40, "Emergency heal"));
         levelWorld.addObject(new ItemObject("arena-gem", 1240, 260, 28, 28, "gem", 80, "Boss trophy"));
+        levelWorld.addObject(new GoalObject("boss-exit", 1250, 550, 80, 80));
         return levelWorld;
     }
 
