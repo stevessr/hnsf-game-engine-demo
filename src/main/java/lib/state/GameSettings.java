@@ -123,4 +123,24 @@ public interface GameSettings {
      * 设置光照系统状态。
      */
     void setLightingEnabled(boolean enabled);
+
+    /**
+     * 获取环境光亮度 (0.0 - 1.0)。
+     */
+    float getAmbientLight();
+
+    /**
+     * 设置环境光亮度。
+     */
+    void setAmbientLight(float intensity);
+
+    /**
+     * 获取光照强度倍率 (0.0 - 2.0)。
+     */
+    float getLightingIntensity();
+
+    /**
+     * 设置光照强度倍率。
+     */
+    void setLightingIntensity(float intensity);
 }

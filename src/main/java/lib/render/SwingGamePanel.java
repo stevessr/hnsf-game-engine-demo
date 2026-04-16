@@ -23,6 +23,7 @@ import org.json.JSONObject;
 import lib.game.GameWorld;
 import lib.input.GameInputController;
 import lib.input.InputAction;
+import lib.input.InputActionMapper;
 import lib.object.DialogObject;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
@@ -87,6 +88,13 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             setLightingEnabled(json.getBoolean("lightingEnabled"));
         }
 
+        if (json.has("ambientLight")) {
+            setAmbientLight((float)json.getDouble("ambientLight"));
+        }
+        if (json.has("lightingIntensity")) {
+            setLightingIntensity((float)json.getDouble("lightingIntensity"));
+        }
+
         if (json.has("keyBindings")) {
             deserializeKeyBindings(json.getJSONObject("keyBindings"));
         }
@@ -108,6 +116,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             getDeceleration(),
             isGravityEnabled(),
             isLightingEnabled(),
+            getAmbientLight(),
+            getLightingIntensity(),
             serializeKeyBindings()
         );
     }
@@ -253,6 +263,34 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     public void setLightingEnabled(boolean enabled) {
         if (world != null) {
             world.getLightingManager().setEnabled(enabled);
+            savePersistentSettings();
+            repaint();
+        }
+    }
+
+    @Override
+    public float getAmbientLight() {
+        return world != null ? world.getLightingManager().getAmbientLight() : 0.0f;
+    }
+
+    @Override
+    public void setAmbientLight(float intensity) {
+        if (world != null) {
+            world.getLightingManager().setAmbientLight(intensity);
+            savePersistentSettings();
+            repaint();
+        }
+    }
+
+    @Override
+    public float getLightingIntensity() {
+        return world != null ? world.getLightingManager().getIntensityMultiplier() : 1.0f;
+    }
+
+    @Override
+    public void setLightingIntensity(float intensity) {
+        if (world != null) {
+            world.getLightingManager().setIntensityMultiplier(intensity);
             savePersistentSettings();
             repaint();
         }

@@ -17,6 +17,7 @@ import lib.game.GameWorld;
 public final class LightingManager {
     private boolean enabled = false;
     private float ambientLight = 0.0f;
+    private float intensityMultiplier = 1.0f;
     private final List<LightSource> lights = new ArrayList<>();
     private BufferedImage overlayBuffer;
 
@@ -28,6 +29,22 @@ public final class LightingManager {
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public float getAmbientLight() {
+        return ambientLight;
+    }
+
+    public void setAmbientLight(float ambientLight) {
+        this.ambientLight = Math.max(0.0f, Math.min(1.0f, ambientLight));
+    }
+
+    public float getIntensityMultiplier() {
+        return intensityMultiplier;
+    }
+
+    public void setIntensityMultiplier(float intensityMultiplier) {
+        this.intensityMultiplier = Math.max(0.0f, Math.min(2.0f, intensityMultiplier));
     }
 
     public void addLight(int x, int y, int radius, float intensity) {
@@ -58,7 +75,6 @@ public final class LightingManager {
         Graphics2D g2d = overlayBuffer.createGraphics();
         
         // 1. 绘制环境光（暗色蒙版）
-        // 强制使用 SRC 模式清除上一帧
         g2d.setComposite(AlphaComposite.Src);
         g2d.setColor(new Color(0, 0, 0, (int)(255 * (1.0f - ambientLight))));
         g2d.fillRect(0, 0, width, height);
@@ -68,16 +84,15 @@ public final class LightingManager {
         
         // 自动为玩家添加光源
         world.findPlayer().ifPresent(player -> {
-            drawLight(g2d, player.getX() + player.getWidth() / 2, player.getY() + player.getHeight() / 2, 200, 1.0f);
+            drawLight(g2d, player.getX() + player.getWidth() / 2, player.getY() + player.getHeight() / 2, 200, 1.0f * intensityMultiplier);
         });
         
         for (LightSource light : lights) {
-            drawLight(g2d, light.x, light.y, light.radius, light.intensity);
+            drawLight(g2d, light.x, light.y, light.radius, light.intensity * intensityMultiplier);
         }
         
         g2d.dispose();
         
-        // 绘制到主屏幕，drawImage 会自动处理当前的 Graphics2D 变换（如缩放）
         graphics.drawImage(overlayBuffer, 0, 0, null);
     }
 
@@ -86,7 +101,9 @@ public final class LightingManager {
             return;
         }
         float[] dist = {0.0f, 1.0f};
-        Color[] colors = {new Color(0, 0, 0, (int)(255 * intensity)), new Color(0, 0, 0, 0)};
+        // intensity 控制光洞的“深度”，即透明度
+        int alpha = (int)(255 * Math.max(0.0f, Math.min(1.0f, intensity)));
+        Color[] colors = {new Color(0, 0, 0, alpha), new Color(0, 0, 0, 0)};
         RadialGradientPaint p = new RadialGradientPaint(
             new Point2D.Float(x, y),
             radius,
