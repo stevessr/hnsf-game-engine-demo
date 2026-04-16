@@ -122,8 +122,23 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         return uiFontSize;
     }
 
+    @Override
+    public void setLogicalResolution(int width, int height) {
+        if (world != null) {
+            world.setSize(width, height);
+            applyUIFontSizeToWorld();
+            repaint();
+        }
+    }
+
+    @Override
+    public void forceRepaint() {
+        repaint();
+    }
+
     public void setResolution(int width, int height) {
-        world.setSize(width, height);
+        // 仅修改显示分辨率（面板首选大小），而不修改逻辑世界大小
+        // 这样 paintComponent 中的缩放逻辑就会自动将逻辑世界拟合到新窗口中
         setPreferredSize(new Dimension(width, height));
         
         // 寻找父窗口并重调大小

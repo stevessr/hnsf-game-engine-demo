@@ -501,6 +501,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         }
         int newW = resolutions[nextIdx][0];
         int newH = resolutions[nextIdx][1];
+        
+        // 同时修改逻辑分辨率和物理窗口分辨率，实现真正的“适应”
+        settings.setLogicalResolution(newW, newH);
         settings.setResolution(newW, newH);
         recenterUI(world);
 

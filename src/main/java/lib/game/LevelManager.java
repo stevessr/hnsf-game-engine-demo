@@ -83,6 +83,8 @@ public final class LevelManager {
             currentLevelIndex = index;
         }
         MapDataMapper.applyToWorld(world, mapData);
+        
+        // 某些情况下需要同步面板大小，这里尝试通过状态机上下文或直接操作
         if (world.getStateMachine() instanceof lib.state.DefaultGameStateMachine dsm) {
             dsm.recenterUI(world);
         }

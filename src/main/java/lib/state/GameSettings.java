@@ -95,4 +95,17 @@ public interface GameSettings {
      * @param height 高度（像素）
      */
     void setResolution(int width, int height);
+
+    /**
+     * 设置逻辑坐标系的分辨率（世界大小）。
+     *
+     * @param width 宽度（像素）
+     * @param height 高度（像素）
+     */
+    void setLogicalResolution(int width, int height);
+
+    /**
+     * 强制重绘界面。
+     */
+    void forceRepaint();
 }
