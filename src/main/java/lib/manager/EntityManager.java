@@ -85,6 +85,11 @@ public final class EntityManager {
     }
 
     public void renderAll(Graphics2D graphics) {
+        renderWorld(graphics);
+        renderUI(graphics);
+    }
+
+    public void renderWorld(Graphics2D graphics) {
         List<GameObject> all = List.copyOf(objects);
         
         // 层级 1: 静态场景与体素
@@ -108,7 +113,11 @@ public final class EntityManager {
                 object.render(graphics);
             }
         }
+    }
 
+    public void renderUI(Graphics2D graphics) {
+        List<GameObject> all = List.copyOf(objects);
+        
         // 层级 3: UI 元素 (菜单, 对话框)
         for (GameObject object : all) {
             if (!object.isActive()) {

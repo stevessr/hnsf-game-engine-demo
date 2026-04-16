@@ -189,7 +189,8 @@ public final class GameWorld {
     public void render(Graphics2D graphics) {
         graphics.setColor(backgroundColor);
         graphics.fillRect(0, 0, width, height);
-        entityManager.renderAll(graphics);
+        entityManager.renderWorld(graphics);
         lightingManager.render(graphics, this);
+        entityManager.renderUI(graphics);
     }
 }
