@@ -134,12 +134,16 @@ public final class MapRepository {
                 + "color INTEGER NOT NULL,"
                 + "solid INTEGER NOT NULL,"
                 + "background INTEGER NOT NULL,"
+                + "texture_path TEXT,"
+                + "material TEXT,"
                 + "extra_json TEXT NOT NULL,"
                 + "FOREIGN KEY(map_id) REFERENCES maps(id) ON DELETE CASCADE"
                 + ")"
             );
             ensureMapColumn(connection, "gravity_enabled", "INTEGER NOT NULL DEFAULT 0");
             ensureMapColumn(connection, "gravity_strength", "INTEGER NOT NULL DEFAULT 900");
+            ensureObjectColumn(connection, "texture_path", "TEXT");
+            ensureObjectColumn(connection, "material", "TEXT");
         } catch (SQLException ex) {
             throw new IllegalStateException("初始化数据库失败：" + ex.getMessage(), ex);
         }
@@ -207,8 +211,8 @@ public final class MapRepository {
             return;
         }
         try (PreparedStatement statement = connection.prepareStatement(
-            "INSERT INTO map_objects (map_id, type, name, x, y, width, height, color, solid, background, extra_json)"
-                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO map_objects (map_id, type, name, x, y, width, height, color, solid, background, texture_path, material, extra_json)"
+                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             for (ObjectData object : objects) {
                 statement.setLong(1, mapId);
@@ -221,7 +225,9 @@ public final class MapRepository {
                 statement.setInt(8, object.getColor().getRGB());
                 statement.setInt(9, object.isSolid() ? 1 : 0);
                 statement.setInt(10, object.isBackground() ? 1 : 0);
-                statement.setString(11, object.getExtraJson());
+                statement.setString(11, object.getTexturePath());
+                statement.setString(12, object.getMaterial());
+                statement.setString(13, object.getExtraJson());
                 statement.addBatch();
             }
             statement.executeBatch();
@@ -271,7 +277,7 @@ public final class MapRepository {
     private List<ObjectData> fetchObjects(Connection connection, long mapId) throws SQLException {
         List<ObjectData> objects = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(
-            "SELECT id, map_id, type, name, x, y, width, height, color, solid, background, extra_json"
+            "SELECT id, map_id, type, name, x, y, width, height, color, solid, background, texture_path, material, extra_json"
                 + " FROM map_objects WHERE map_id = ? ORDER BY id"
         )) {
             statement.setLong(1, mapId);
@@ -289,6 +295,8 @@ public final class MapRepository {
                     data.setColor(new java.awt.Color(resultSet.getInt("color"), true));
                     data.setSolid(resultSet.getInt("solid") == 1);
                     data.setBackground(resultSet.getInt("background") == 1);
+                    data.setTexturePath(resultSet.getString("texture_path"));
+                    data.setMaterial(resultSet.getString("material"));
                     data.setExtraJson(resultSet.getString("extra_json"));
                     objects.add(data);
                 }
@@ -321,6 +329,21 @@ public final class MapRepository {
         }
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("ALTER TABLE maps ADD COLUMN " + columnName + " " + columnDefinition);
+        }
+    }
+
+    private void ensureObjectColumn(Connection connection, String columnName, String columnDefinition) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("PRAGMA table_info(map_objects)");
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                String existingName = resultSet.getString("name");
+                if (columnName.equalsIgnoreCase(existingName)) {
+                    return;
+                }
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("ALTER TABLE map_objects ADD COLUMN " + columnName + " " + columnDefinition);
         }
     }
 

@@ -12,6 +12,7 @@ import lib.object.PlayerObject;
 import lib.object.SceneObject;
 import lib.physics.MovementResult;
 import lib.physics.PhysicsEngine;
+import lib.render.LightingManager;
 import lib.state.DefaultGameStateMachine;
 import lib.state.GameState;
 import lib.state.GameStateMachine;
@@ -19,6 +20,7 @@ import lib.state.GameStateMachine;
 public final class GameWorld {
     private final EntityManager entityManager;
     private final PhysicsEngine physicsEngine;
+    private final LightingManager lightingManager;
     private GameStateMachine stateMachine;
     private int width;
     private int height;
@@ -33,6 +35,7 @@ public final class GameWorld {
     public GameWorld(int width, int height, Color backgroundColor) {
         this.entityManager = new EntityManager();
         this.physicsEngine = new PhysicsEngine();
+        this.lightingManager = new LightingManager();
         this.width = Math.max(0, width);
         this.height = Math.max(0, height);
         this.backgroundColor = backgroundColor == null ? new Color(32, 36, 48) : backgroundColor;
@@ -42,6 +45,10 @@ public final class GameWorld {
 
     public EntityManager getEntityManager() {
         return entityManager;
+    }
+
+    public LightingManager getLightingManager() {
+        return lightingManager;
     }
 
     public int getWidth() {
@@ -183,5 +190,6 @@ public final class GameWorld {
         graphics.setColor(backgroundColor);
         graphics.fillRect(0, 0, width, height);
         entityManager.renderAll(graphics);
+        lightingManager.render(graphics, this);
     }
 }

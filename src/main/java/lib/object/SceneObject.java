@@ -8,11 +8,11 @@ public class SceneObject extends BaseObject {
     private boolean background;
 
     public SceneObject(String name) {
-        this(GameObjectType.SCENE, name, 0, 0, 128, 128, true, false);
+        this(GameObjectType.SCENE, name, 0, 0, 128, 128, new Color(120, 180, 120), true, false);
     }
 
     public SceneObject(String name, int x, int y, int width, int height, boolean solid, boolean background) {
-        this(GameObjectType.SCENE, name, x, y, width, height, solid, background);
+        this(GameObjectType.SCENE, name, x, y, width, height, new Color(120, 180, 120), solid, background);
     }
 
     protected SceneObject(
@@ -22,10 +22,11 @@ public class SceneObject extends BaseObject {
         int y,
         int width,
         int height,
+        Color color,
         boolean solid,
         boolean background
     ) {
-        super(type, name, x, y, width, height, new Color(120, 180, 120), true);
+        super(type, name, x, y, width, height, color, true);
         this.solid = solid;
         this.background = background;
     }

@@ -17,12 +17,15 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import org.json.JSONObject;
+
 import lib.game.GameWorld;
 import lib.input.GameInputController;
 import lib.object.DialogObject;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
 import lib.object.MenuObject;
+import lib.persistence.SettingsRepository;
 import lib.state.DefaultGameStateMachine;
 import lib.state.GameRuntimeActions;
 import lib.state.GameSettings;
@@ -33,6 +36,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     private final GameWorld world;
     private final GameInputController inputController;
     private final Timer timer;
+    private final SettingsRepository settingsRepository;
     private GameRuntimeActions runtimeActions = GameRuntimeActions.noOp();
     private long lastUpdateNanos;
     private int targetFPS = 60;
@@ -45,23 +49,73 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     public SwingGamePanel(GameWorld world, GameInputController inputController) {
         this.world = world;
         this.inputController = inputController;
+        this.settingsRepository = new SettingsRepository();
         this.timer = new Timer(1000 / targetFPS, event -> onFrame());
         this.lastUpdateNanos = 0L;
+        
+        loadPersistentSettings();
+        
         setPreferredSize(new Dimension(world.getWidth(), world.getHeight()));
         setDoubleBuffered(true);
         setFocusable(true);
-        setFocusTraversalKeysEnabled(false); // 允许捕获 TAB 键等
+        setFocusTraversalKeysEnabled(false);
         registerInputListeners();
     }
 
+    private void loadPersistentSettings() {
+        JSONObject json = settingsRepository.loadSettings();
+        if (json.isEmpty()) {
+            return;
+        }
+        
+        this.targetFPS = json.optInt("targetFPS", 60);
+        this.uiFontSize = json.optInt("uiFontSize", 18);
+        int w = json.optInt("width", world.getWidth());
+        int h = json.optInt("height", world.getHeight());
+        
+        setTargetFPS(targetFPS);
+        setUIFontSize(uiFontSize);
+        setResolution(w, h);
+        
+        if (json.has("gravityEnabled")) {
+            setGravityEnabled(json.getBoolean("gravityEnabled"));
+        }
+        
+        if (json.has("lightingEnabled")) {
+            setLightingEnabled(json.getBoolean("lightingEnabled"));
+        }
+        
+        // Apply player settings if available
+        world.findPlayer().ifPresent(player -> {
+            player.setThrottlePower(json.optInt("throttlePower", 600));
+            player.setDeceleration(json.optInt("deceleration", 92) / 100.0);
+        });
+    }
+
+    private void savePersistentSettings() {
+        settingsRepository.saveSettings(
+            targetFPS,
+            uiFontSize,
+            getWidth(),
+            getHeight(),
+            getThrottlePower(),
+            getDeceleration(),
+            isGravityEnabled(),
+            isLightingEnabled()
+        );
+    }
+
+    @Override
     public void setTargetFPS(int fps) {
         if (fps <= 0) {
             fps = 60;
         }
         this.targetFPS = fps;
         timer.setDelay(1000 / targetFPS);
+        savePersistentSettings();
     }
 
+    @Override
     public int getTargetFPS() {
         return targetFPS;
     }
@@ -69,6 +123,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     @Override
     public void setThrottlePower(int power) {
         world.findPlayer().ifPresent(player -> player.setThrottlePower(power));
+        savePersistentSettings();
     }
 
     @Override
@@ -79,6 +134,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     @Override
     public void setDeceleration(int percent) {
         world.findPlayer().ifPresent(player -> player.setDeceleration(percent / 100.0));
+        savePersistentSettings();
     }
 
     @Override
@@ -90,6 +146,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     public void setGravityEnabled(boolean enabled) {
         if (world != null) {
             world.setGravityEnabled(enabled);
+            savePersistentSettings();
         }
     }
 
@@ -114,6 +171,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     public void setUIFontSize(int fontSize) {
         this.uiFontSize = Math.max(10, Math.min(64, fontSize));
         applyUIFontSizeToWorld();
+        savePersistentSettings();
         repaint();
     }
 
@@ -136,17 +194,29 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         repaint();
     }
 
+    @Override
+    public boolean isLightingEnabled() {
+        return world != null && world.getLightingManager().isEnabled();
+    }
+
+    @Override
+    public void setLightingEnabled(boolean enabled) {
+        if (world != null) {
+            world.getLightingManager().setEnabled(enabled);
+            savePersistentSettings();
+            repaint();
+        }
+    }
+
     public void setResolution(int width, int height) {
-        // 仅修改显示分辨率（面板首选大小），而不修改逻辑世界大小
-        // 这样 paintComponent 中的缩放逻辑就会自动将逻辑世界拟合到新窗口中
         setPreferredSize(new Dimension(width, height));
         
-        // 寻找父窗口并重调大小
         java.awt.Window window = SwingUtilities.getWindowAncestor(this);
         if (window instanceof javax.swing.JFrame frame) {
             frame.pack();
             frame.setLocationRelativeTo(null);
         }
+        savePersistentSettings();
         revalidate();
         repaint();
     }
@@ -174,11 +244,13 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
                 dialog.setFontSize(uiFontSize);
             }
         }
+        if (world.getStateMachine() instanceof DefaultGameStateMachine dsm) {
+            dsm.recenterUI(world);
+        }
     }
 
     public void start() {
         timer.start();
-        // 尝试多次请求焦点，确保在窗口显示后能获得焦点
         SwingUtilities.invokeLater(() -> {
             requestFocusInWindow();
             if (!isFocusOwner()) {
@@ -227,7 +299,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     }
 
     private void registerInputListeners() {
-        // 当失去焦点时重置所有按键状态，防止按键“卡死”
         addFocusListener(new java.awt.event.FocusAdapter() {
             @Override
             public void focusLost(java.awt.event.FocusEvent e) {
@@ -235,7 +306,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             }
         });
 
-        // Key listener
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent event) {
@@ -248,14 +318,13 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             }
         });
 
-        // Key bindings as a fallback and to handle focus more reliably
         int[] keys = new int[] {
             KeyEvent.VK_W, KeyEvent.VK_UP, KeyEvent.VK_I,
             KeyEvent.VK_S, KeyEvent.VK_DOWN, KeyEvent.VK_K,
             KeyEvent.VK_A, KeyEvent.VK_LEFT, KeyEvent.VK_J,
             KeyEvent.VK_D, KeyEvent.VK_RIGHT, KeyEvent.VK_L,
             KeyEvent.VK_Q, KeyEvent.VK_E, KeyEvent.VK_ENTER, KeyEvent.VK_SPACE,
-            KeyEvent.VK_ESCAPE, KeyEvent.VK_P
+            KeyEvent.VK_ESCAPE, KeyEvent.VK_P, KeyEvent.VK_C
         };
         InputMap inputMap = getInputMap(WHEN_IN_FOCUSED_WINDOW);
         ActionMap actionMap = getActionMap();
@@ -264,7 +333,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             String pressAction = "press_" + k;
             String releaseAction = "release_" + k;
             
-            // 使用 KeyStroke.getKeyStroke(k, 0) 这种更通用的形式
             inputMap.put(KeyStroke.getKeyStroke(k, 0, false), pressAction);
             inputMap.put(KeyStroke.getKeyStroke(k, 0, true), releaseAction);
             
@@ -327,8 +395,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
 
             graphics2d.translate(offsetX, offsetY);
             graphics2d.scale(scale, scale);
-
-            // 限制裁剪区域以防溢出
             graphics2d.setClip(0, 0, worldWidth, worldHeight);
 
             world.render(graphics2d);

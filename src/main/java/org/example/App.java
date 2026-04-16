@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Set;
 
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.SwingUtilities;
 
 import lib.editor.EditorWindow;
@@ -66,6 +69,32 @@ public class App {
             }
         });
         frame.setContentPane(panel);
+        
+        JMenuBar menuBar = new JMenuBar();
+        JMenu gameMenu = new JMenu("游戏 (Game)");
+        JMenuItem restartItem = new JMenuItem("重置 (Restart)");
+        restartItem.addActionListener(e -> reloadGameWorld(world, repository, levelManager, DEMO_MAP, panel));
+        JMenuItem exitItem = new JMenuItem("退出 (Exit)");
+        exitItem.addActionListener(e -> requestExit(frame, panel));
+        gameMenu.add(restartItem);
+        gameMenu.addSeparator();
+        gameMenu.add(exitItem);
+        
+        JMenu toolsMenu = new JMenu("工具 (Tools)");
+        JMenuItem editorItem = new JMenuItem("地图编辑器 (Level Editor)");
+        editorItem.addActionListener(e -> EditorWindow.open(snapshotEditorWorld(world), repository));
+        toolsMenu.add(editorItem);
+        
+        JMenu helpMenu = new JMenu("帮助 (Help)");
+        JMenuItem aboutItem = new JMenuItem("关于 (About)");
+        aboutItem.addActionListener(e -> javax.swing.JOptionPane.showMessageDialog(frame, "Primary Software Game Demo\nWASD/IJKL/Arrows to Move\nC to Cycle Color\nSpace to Jump (Gravity On)\nMouse Left: Build Voxel\nMouse Right: Destroy Voxel"));
+        helpMenu.add(aboutItem);
+        
+        menuBar.add(gameMenu);
+        menuBar.add(toolsMenu);
+        menuBar.add(helpMenu);
+        frame.setJMenuBar(menuBar);
+
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setResizable(false);
@@ -282,8 +311,8 @@ public class App {
         menu.setFontSize(uiFontSize);
         menu.setSize(menuWidth, Math.max(menuHeight, menu.getPreferredHeight()));
         menu.setPosition(
-            Math.max(24, (world.getWidth() - menu.getWidth()) / 2),
-            Math.max(24, (world.getHeight() - menu.getHeight()) / 2)
+            Math.max(24, (world.getWidth() - menuWidth) / 2),
+            Math.max(24, (world.getHeight() - menuHeight) / 2)
         );
         return menu;
     }

@@ -48,7 +48,7 @@ public final class GameInputController {
             context.getWorld().getStateMachine().processInput(context);
             return;
         }
-        applyPlayerMovement(context.getWorld().findPlayer().orElse(null));
+        applyPlayerMovement(context.getWorld(), context.getWorld().findPlayer().orElse(null));
         applyMenuNavigation(context.getWorld());
         applyVoxelSystem(context.getWorld());
     }
@@ -57,13 +57,21 @@ public final class GameInputController {
         processInputs(new GameStateContext(world, this));
     }
 
-    public void applyPlayerMovement(PlayerObject player) {
+    public void applyPlayerMovement(GameWorld world, PlayerObject player) {
         if (player == null || !player.isActive()) {
             return;
         }
 
         if (actionMapper.isKeyboardJustActivated(InputAction.CYCLE_COLOR, keyboardManager)) {
             player.cycleColor();
+        }
+
+        if (world.isGravityEnabled() && actionMapper.isKeyboardJustActivated(InputAction.JUMP, keyboardManager)) {
+            player.jump();
+        }
+
+        if (actionMapper.isJustActivated(InputAction.SHOOT, keyboardManager, mouseManager)) {
+            player.shoot(world);
         }
 
         double ax = 0;
@@ -181,14 +189,6 @@ public final class GameInputController {
     private int findHoveredOptionIndex(MenuObject menu) {
         int mx = mouseManager.getMouseX();
         int my = mouseManager.getMouseY();
-        
-        // Check bounds manually to allow some leniency for tests if needed,
-        // but generally we should follow the menu size.
-        if (mx < menu.getX() || mx > menu.getX() + menu.getWidth() ||
-            my < menu.getY() || my > menu.getY() + menu.getHeight()) {
-            // For tests where mouseY is outside height but within logic, we might need to skip this.
-            // But let's see if the test passes with my new height.
-        }
         
         int optionStartY = menu.getOptionStartY();
         int optionHeight = menu.getOptionLineHeight();

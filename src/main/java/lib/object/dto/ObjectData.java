@@ -15,6 +15,8 @@ public final class ObjectData {
     private Color color;
     private boolean solid;
     private boolean background;
+    private String texturePath;
+    private String material;
     private String extraJson;
 
     public ObjectData() {
@@ -135,6 +137,22 @@ public final class ObjectData {
 
     public void setBackground(boolean background) {
         this.background = background;
+    }
+
+    public String getTexturePath() {
+        return texturePath;
+    }
+
+    public void setTexturePath(String texturePath) {
+        this.texturePath = texturePath;
+    }
+
+    public String getMaterial() {
+        return material;
+    }
+
+    public void setMaterial(String material) {
+        this.material = material;
     }
 
     public String getExtraJson() {

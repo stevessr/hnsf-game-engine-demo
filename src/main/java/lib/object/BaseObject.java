@@ -13,11 +13,13 @@ public abstract class BaseObject implements GameObject {
     private int y;
     private int width;
     private int height;
-    private Color color;
     private boolean active;
+    private Color color;
+    private String texturePath;
+    private String material;
 
-    protected BaseObject(GameObjectType type, String name) {
-        this(type, name, 0, 0, 0, 0, Color.WHITE, true);
+    protected BaseObject(GameObjectType type, String name, Color color, boolean active) {
+        this(type, name, 0, 0, 32, 32, color, active);
     }
 
     protected BaseObject(
@@ -31,13 +33,18 @@ public abstract class BaseObject implements GameObject {
         boolean active
     ) {
         this.type = Objects.requireNonNull(type, "type must not be null");
-        this.name = normalizeName(name);
+        this.name = normalizeText(name, "object");
         this.x = x;
         this.y = y;
-        this.width = normalizeNonNegative(width);
-        this.height = normalizeNonNegative(height);
-        this.color = normalizeColor(color);
+        this.width = Math.max(0, width);
+        this.height = Math.max(0, height);
+        this.color = color == null ? Color.WHITE : color;
         this.active = active;
+    }
+
+    @Override
+    public final GameObjectType getType() {
+        return type;
     }
 
     @Override
@@ -46,13 +53,8 @@ public abstract class BaseObject implements GameObject {
     }
 
     @Override
-    public final void setName(String name) {
-        this.name = normalizeName(name);
-    }
-
-    @Override
-    public final GameObjectType getType() {
-        return type;
+    public void setName(String name) {
+        this.name = normalizeText(name, "object");
     }
 
     @Override
@@ -71,9 +73,8 @@ public abstract class BaseObject implements GameObject {
         this.y = y;
     }
 
-    public final void moveBy(int deltaX, int deltaY) {
-        this.x += deltaX;
-        this.y += deltaY;
+    public final void moveBy(int dx, int dy) {
+        setPosition(this.x + dx, this.y + dy);
     }
 
     @Override
@@ -88,22 +89,8 @@ public abstract class BaseObject implements GameObject {
 
     @Override
     public final void setSize(int width, int height) {
-        this.width = normalizeNonNegative(width);
-        this.height = normalizeNonNegative(height);
-    }
-
-    @Override
-    public final Color getColor() {
-        return color;
-    }
-
-    @Override
-    public final void setColor(Color color) {
-        this.color = normalizeColor(color);
-    }
-
-    public final void setColor(int red, int green, int blue) {
-        this.color = new Color(clampColor(red), clampColor(green), clampColor(blue));
+        this.width = Math.max(0, width);
+        this.height = Math.max(0, height);
     }
 
     @Override
@@ -117,41 +104,43 @@ public abstract class BaseObject implements GameObject {
     }
 
     @Override
-    public void update(GameWorld world, double deltaSeconds) {
-        // default no-op
+    public final Color getColor() {
+        return color;
     }
 
     @Override
-    public void render(Graphics2D graphics) {
-        graphics.setColor(color);
-        graphics.fillRect(x, y, width, height);
-        graphics.setColor(Color.BLACK);
-        graphics.drawRect(x, y, width, height);
+    public final void setColor(Color color) {
+        this.color = color == null ? Color.WHITE : color;
     }
 
-    protected final void moveWithinWorld(GameWorld world, int targetX, int targetY) {
-        if (world == null) {
-            setPosition(targetX, targetY);
-            return;
+    public final String getTexturePath() {
+        return texturePath;
+    }
+
+    public final void setTexturePath(String texturePath) {
+        this.texturePath = texturePath;
+    }
+
+    public final String getMaterial() {
+        return material;
+    }
+
+    public final void setMaterial(String material) {
+        this.material = material;
+    }
+
+    @Override
+    public void update(GameWorld world, double deltaSeconds) {
+    }
+
+    @Override
+    public abstract void render(Graphics2D graphics);
+
+    private static String normalizeText(String value, String fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
         }
-        int maxX = Math.max(0, world.getWidth() - width);
-        int maxY = Math.max(0, world.getHeight() - height);
-        setPosition(clamp(targetX, 0, maxX), clamp(targetY, 0, maxY));
-    }
-
-    private static String normalizeName(String name) {
-        if (name == null || name.isBlank()) {
-            return "object";
-        }
-        return name;
-    }
-
-    private static int normalizeNonNegative(int value) {
-        return Math.max(0, value);
-    }
-
-    private static Color normalizeColor(Color color) {
-        return color == null ? Color.WHITE : color;
+        return value.trim();
     }
 
     private static int clampColor(int value) {

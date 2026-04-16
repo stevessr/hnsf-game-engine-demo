@@ -401,11 +401,12 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
         int menuWidth = 320;
         int fontSize = settings != null ? settings.getUIFontSize() : 18;
-        int menuHeight = Math.max(220, 56 + (6 * Math.max(20, fontSize + 8)) + 12);
+        int menuHeight = Math.max(220, 56 + (7 * Math.max(20, fontSize + 8)) + 12);
 
         int throttle = settings != null ? settings.getThrottlePower() : 600;
         int deceleration = settings != null ? settings.getDeceleration() : 92;
         boolean gravityEnabled = settings != null && settings.isGravityEnabled();
+        boolean lightingEnabled = settings != null && settings.isLightingEnabled();
 
         MenuObject optionsMenu = new MenuObject(
             OPTIONS_MENU_NAME,
@@ -419,6 +420,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
                 "Throttle: " + throttle,
                 "Deceleration: " + deceleration + "%",
                 "Gravity: " + (gravityEnabled ? "On" : "Off"),
+                "Lighting: " + (lightingEnabled ? "On" : "Off"),
                 "UI Font: " + fontSize,
                 "Back"
             )
@@ -442,6 +444,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             cycleDeceleration(settings, menu);
         } else if (isGravityOption(selected)) {
             cycleGravity(context.getWorld(), settings, menu);
+        } else if (isLightingOption(selected)) {
+            cycleLighting(settings, menu);
         } else if (isUIFontSizeOption(selected)) {
             cycleUIFontSize(context.getWorld(), settings, menu);
         } else if (isBackOption(selected)) {
@@ -518,6 +522,22 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         for (int i = 0; i < options.size(); i++) {
             if (isGravityOption(options.get(i))) {
                 options.set(i, "Gravity: " + (enabled ? "On" : "Off"));
+            }
+        }
+        menu.setOptions(options);
+    }
+
+    private void cycleLighting(GameSettings settings, MenuObject menu) {
+        if (settings == null) {
+            return;
+        }
+        boolean enabled = !settings.isLightingEnabled();
+        settings.setLightingEnabled(enabled);
+
+        List<String> options = new ArrayList<>(menu.getOptions());
+        for (int i = 0; i < options.size(); i++) {
+            if (isLightingOption(options.get(i))) {
+                options.set(i, "Lighting: " + (enabled ? "On" : "Off"));
             }
         }
         menu.setOptions(options);
@@ -928,6 +948,10 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
     private boolean isGravityOption(String selected) {
         return selected != null && (selected.startsWith("Gravity:") || selected.startsWith("重力:"));
+    }
+
+    private boolean isLightingOption(String selected) {
+        return selected != null && (selected.startsWith("Lighting:") || selected.startsWith("光照:"));
     }
 
     private boolean isUIFontSizeOption(String selected) {

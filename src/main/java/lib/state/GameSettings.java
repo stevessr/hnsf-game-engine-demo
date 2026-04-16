@@ -108,4 +108,14 @@ public interface GameSettings {
      * 强制重绘界面。
      */
     void forceRepaint();
+
+    /**
+     * 光照系统是否开启。
+     */
+    boolean isLightingEnabled();
+
+    /**
+     * 设置光照系统状态。
+     */
+    void setLightingEnabled(boolean enabled);
 }

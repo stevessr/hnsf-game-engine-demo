@@ -28,6 +28,7 @@ import javax.swing.SwingUtilities;
 
 import lib.game.GameWorld;
 import lib.object.ActorObject;
+import lib.object.BaseObject;
 import lib.object.DialogObject;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
@@ -62,6 +63,8 @@ public final class EditorWindow extends JFrame {
     private final JTextField itemKindField;
     private final JSpinner itemValueSpinner;
     private final JTextField itemMessageField;
+    private final JTextField texturePathField;
+    private final JTextField materialField;
     private final JSpinner healthSpinner;
     private final JSpinner attackSpinner;
     private final JSpinner speedSpinner;
@@ -98,6 +101,8 @@ public final class EditorWindow extends JFrame {
         this.itemKindField = new JTextField("coin");
         this.itemValueSpinner = new JSpinner(new SpinnerNumberModel(10, 0, 9999, 1));
         this.itemMessageField = new JTextField("");
+        this.texturePathField = new JTextField("");
+        this.materialField = new JTextField("");
         this.healthSpinner = new JSpinner(new SpinnerNumberModel(100, 0, 9999, 1));
         this.attackSpinner = new JSpinner(new SpinnerNumberModel(10, 0, 999, 1));
         this.speedSpinner = new JSpinner(new SpinnerNumberModel(5, 0, 999, 1));
@@ -191,6 +196,11 @@ public final class EditorWindow extends JFrame {
         form.add(colorButton);
         form.add(new JLabel("字号"));
         form.add(fontSizeSpinner);
+        
+        form.add(new JLabel("纹理路径"));
+        form.add(texturePathField);
+        form.add(new JLabel("材质"));
+        form.add(materialField);
         
         form.add(new JLabel("--- 战斗属性 ---"));
         form.add(new JLabel(""));
@@ -374,6 +384,8 @@ public final class EditorWindow extends JFrame {
                 selectionInfoLabel.setText("未选中对象");
                 disableSpecialPanels();
                 fontSizeSpinner.setValue(controller.getDefaultFontSize());
+                texturePathField.setText("");
+                materialField.setText("");
                 return;
             }
             selectionInfoLabel.setText(selected.getName() + " / " + selected.getType());
@@ -389,6 +401,14 @@ public final class EditorWindow extends JFrame {
                 controller.setBrushColor(color);
             }
             
+            if (selected instanceof BaseObject bo) {
+                texturePathField.setText(bo.getTexturePath() != null ? bo.getTexturePath() : "");
+                materialField.setText(bo.getMaterial() != null ? bo.getMaterial() : "");
+            } else {
+                texturePathField.setText("");
+                materialField.setText("");
+            }
+
             // Default font size
             if (selected instanceof MenuObject menu) {
                 fontSizeSpinner.setValue(menu.getFontSize());
@@ -485,6 +505,11 @@ public final class EditorWindow extends JFrame {
             controller.setBrushColor(color);
         }
         
+        if (selected instanceof BaseObject bo) {
+            bo.setTexturePath(texturePathField.getText().isBlank() ? null : texturePathField.getText());
+            bo.setMaterial(materialField.getText().isBlank() ? null : materialField.getText());
+        }
+
         if (selected instanceof MenuObject menu) {
             menu.setFontSize((int) fontSizeSpinner.getValue());
             menu.setSize(menu.getWidth(), Math.max(menu.getHeight(), menu.getPreferredHeight()));

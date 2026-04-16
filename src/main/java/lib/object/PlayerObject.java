@@ -17,6 +17,10 @@ public final class PlayerObject extends ActorObject {
     private boolean complementaryColorDamageEnabled;
     private int complementaryColorDamage;
     private int fontSize = 18;
+    private double lastShootTime;
+    private double shootCooldown = 0.3;
+    private double lastDirX = 1.0;
+    private double lastDirY = 0.0;
     private static final long INVULNERABILITY_DURATION_NANOS = 1_000_000_000L; // 1秒
 
     public PlayerObject(String name) {
@@ -102,6 +106,10 @@ public final class PlayerObject extends ActorObject {
     }
 
     public void accelerate(double ax, double ay, double deltaSeconds) {
+        if (ax != 0 || ay != 0) {
+            lastDirX = ax;
+            lastDirY = ay;
+        }
         velocityX += ax * throttlePower * deltaSeconds;
         setVelocityY(getVelocityYDouble() + ay * throttlePower * deltaSeconds);
     }
@@ -133,6 +141,26 @@ public final class PlayerObject extends ActorObject {
 
     public int getVelocityY() {
         return (int) Math.round(getVelocityYDouble());
+    }
+
+    public void jump() {
+        if (getVelocityYDouble() >= 0) {
+            setVelocityY(-500.0);
+        }
+    }
+
+    public void shoot(GameWorld world) {
+        double now = System.currentTimeMillis() / 1000.0;
+        if (now - lastShootTime < shootCooldown) {
+            return;
+        }
+        
+        lastShootTime = now;
+        double px = getX() + getWidth() / 2.0;
+        double py = getY() + getHeight() / 2.0;
+        
+        ProjectileObject p = new ProjectileObject("bullet", (int)px, (int)py, lastDirX * 600, lastDirY * 600, getAttack(), this);
+        world.addObject(p);
     }
 
     public void cycleColor() {

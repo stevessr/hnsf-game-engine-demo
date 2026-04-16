@@ -26,6 +26,11 @@ public final class GameObjectFactory {
         data.setHeight(object.getHeight());
         data.setColor(object.getColor());
 
+        if (object instanceof BaseObject bo) {
+            data.setTexturePath(bo.getTexturePath());
+            data.setMaterial(bo.getMaterial());
+        }
+
         if (object instanceof SceneObject sceneObject) {
             data.setSolid(sceneObject.isSolid());
             data.setBackground(sceneObject.isBackground());
@@ -94,6 +99,11 @@ public final class GameObjectFactory {
                 data.isBackground()
             );
             default -> object = new SceneObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight(), false, false);
+        }
+
+        if (object instanceof BaseObject bo) {
+            bo.setTexturePath(data.getTexturePath());
+            bo.setMaterial(data.getMaterial());
         }
 
         object.setPosition(data.getX(), data.getY());
