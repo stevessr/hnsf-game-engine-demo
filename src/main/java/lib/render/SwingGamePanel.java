@@ -105,7 +105,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         });
     }
 
-    private void savePersistentSettings() {
+    @Override
+    public void savePersistentSettings() {
         settingsRepository.saveSettings(
             targetFPS,
             uiFontSize,

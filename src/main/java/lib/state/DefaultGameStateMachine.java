@@ -1,7 +1,6 @@
 package lib.state;
 
 import java.awt.Color;
-import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -12,6 +11,7 @@ import java.util.Set;
 
 import lib.game.GameWorld;
 import lib.input.InputAction;
+import lib.input.KeyBindingsWindow;
 import lib.object.DialogObject;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
@@ -27,7 +27,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     private static final String LEVEL_SELECT_MENU_NAME = "level-select-menu";
     private static final String PAUSE_MENU_NAME = "pause-menu";
     private static final String OPTIONS_MENU_NAME = "options-menu";
-    private static final String KEYBINDINGS_MENU_NAME = "keybindings-menu";
     private static final String GAMEOVER_MENU_NAME = "gameover-menu";
     private static final String VICTORY_DIALOG_NAME = "victory-dialog";
 
@@ -35,7 +34,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     private GameState previousState;
     private final Map<GameState, Set<GameState>> allowedTransitions;
     private DialogObject hiddenDialog;
-    private InputAction keyToRebind = null;
 
     public DefaultGameStateMachine() {
         this(GameState.MENU);
@@ -90,7 +88,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         if (currentState == GameState.PAUSED) {
             removeMenu(world, PAUSE_MENU_NAME);
             removeMenu(world, OPTIONS_MENU_NAME);
-            removeMenu(world, KEYBINDINGS_MENU_NAME);
             restoreHiddenDialog(world);
             transitionTo(previousState == GameState.PAUSED ? GameState.PLAYING : previousState);
             return;
@@ -208,11 +205,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     public void processInput(GameStateContext context) {
         Objects.requireNonNull(context, "context must not be null");
         
-        if (keyToRebind != null) {
-            handleRebindInput(context);
-            return;
-        }
-
         switch (currentState) {
             case MENU:
                 processMenuInput(context);
@@ -237,30 +229,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         }
     }
 
-    private void handleRebindInput(GameStateContext context) {
-        var keyboard = context.getInputController().getKeyboardManager();
-        int lastKey = -1;
-        for (int i = 0; i < 512; i++) {
-            if (keyboard.isPressed(i)) {
-                lastKey = i;
-                break;
-            }
-        }
-        
-        if (lastKey != -1 && lastKey != KeyEvent.VK_P && lastKey != KeyEvent.VK_ESCAPE) {
-            var mapper = context.getInputController().getActionMapper();
-            mapper.clearBindings(keyToRebind);
-            mapper.bindKey(keyToRebind, lastKey);
-            
-            if (context.getSettings() instanceof SwingGamePanel panel) {
-                panel.syncInputMap();
-            }
-            
-            syncActiveDialog(context.getWorld(), "Rebound!", keyToRebind.name() + " to " + KeyEvent.getKeyText(lastKey));
-            keyToRebind = null;
-        }
-    }
-
     private void processMenuInput(GameStateContext context) {
         var inputController = context.getInputController();
         var keyboard = inputController.getKeyboardManager();
@@ -277,11 +245,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
                 world.removeObject(menu);
                 restoreMenuAfterOptions(world);
                 clearPlayerMovement(context);
-                return;
-            }
-            if (isKeyBindingsMenu(menu)) {
-                world.removeObject(menu);
-                showOptionsMenu(world, context.getSettings());
                 return;
             }
             if (isLevelSelectMenu(menu)) {
@@ -323,10 +286,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             handleOptionsMenuSelection(menu, context);
             return;
         }
-        if (isKeyBindingsMenu(menu)) {
-            handleKeyBindingsSelection(menu, context);
-            return;
-        }
         if (isLevelSelectMenu(menu)) {
             handleLevelSelectSelection(menu, context);
             return;
@@ -353,24 +312,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         } else if (isResumeOption(selected)) {
             transitionTo(previousState);
             clearPlayerMovement(context);
-        }
-    }
-
-    private void handleKeyBindingsSelection(MenuObject menu, GameStateContext context) {
-        String selected = menu.getSelectedOption();
-        if (selected.equals("Back")) {
-            context.getWorld().removeObject(menu);
-            showOptionsMenu(context.getWorld(), context.getSettings());
-            return;
-        }
-        if (selected.startsWith("Rebind ")) {
-            String actionName = selected.substring(7);
-            try {
-                keyToRebind = InputAction.valueOf(actionName);
-                syncActiveDialog(context.getWorld(), "Press any key for", actionName);
-            } catch (Exception e) {
-                // Ignore
-            }
         }
     }
 
@@ -450,23 +391,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         recenterUI(world);
     }
 
-    private void showKeyBindingsMenu(GameWorld world, GameSettings settings) {
-        if (world == null) {
-            return;
-        }
-        removeMenu(world, KEYBINDINGS_MENU_NAME);
-        List<String> options = new ArrayList<>();
-        for (InputAction action : InputAction.values()) {
-            options.add("Rebind " + action.name());
-        }
-        options.add("Back");
-        MenuObject menu = new MenuObject(KEYBINDINGS_MENU_NAME, 0, 0, 400, 400, "Rebind Keys", options);
-        menu.setFontSize(settings != null ? settings.getUIFontSize() : 18);
-        menu.setSize(400, Math.max(400, menu.getPreferredHeight()));
-        world.addObject(menu);
-        recenterUI(world);
-    }
-
     private void handleOptionsMenuSelection(MenuObject menu, GameStateContext context) {
         String selected = menu.getSelectedOption();
         GameSettings settings = context.getSettings();
@@ -487,7 +411,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         } else if (selected.startsWith("Intensity: ")) {
             cycleLightingIntensity(settings, menu);
         } else if (selected.equals("Key Bindings")) {
-            showKeyBindingsMenu(context.getWorld(), settings);
+            if (settings instanceof SwingGamePanel panel) {
+                KeyBindingsWindow.open(panel);
+            }
         } else if (isUIFontSizeOption(selected)) {
             cycleUIFontSize(context.getWorld(), settings, menu);
         } else if (isBackOption(selected)) {
@@ -1000,10 +926,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
     private boolean isOptionsMenu(MenuObject m) {
         return m != null && OPTIONS_MENU_NAME.equals(m.getName());
-    }
-
-    private boolean isKeyBindingsMenu(MenuObject m) {
-        return m != null && KEYBINDINGS_MENU_NAME.equals(m.getName());
     }
 
     private boolean isLevelSelectMenu(MenuObject m) {

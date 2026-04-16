@@ -143,4 +143,8 @@ public interface GameSettings {
      * 设置光照强度倍率。
      */
     void setLightingIntensity(float intensity);
+    /**
+     * 手动触发一次设置的持久化保存。
+     */
+    void savePersistentSettings();
 }
