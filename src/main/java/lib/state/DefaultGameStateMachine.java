@@ -27,6 +27,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     private static final String LEVEL_SELECT_MENU_NAME = "level-select-menu";
     private static final String PAUSE_MENU_NAME = "pause-menu";
     private static final String OPTIONS_MENU_NAME = "options-menu";
+    private static final String KEYBINDINGS_MENU_NAME = "keybindings-menu";
     private static final String GAMEOVER_MENU_NAME = "gameover-menu";
     private static final String VICTORY_DIALOG_NAME = "victory-dialog";
 
@@ -88,6 +89,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         if (currentState == GameState.PAUSED) {
             removeMenu(world, PAUSE_MENU_NAME);
             removeMenu(world, OPTIONS_MENU_NAME);
+            removeMenu(world, KEYBINDINGS_MENU_NAME);
             restoreHiddenDialog(world);
             transitionTo(previousState == GameState.PAUSED ? GameState.PLAYING : previousState);
             return;
@@ -157,7 +159,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
         removeDialog(world, VICTORY_DIALOG_NAME);
-        DialogObject victoryDialog = new DialogObject(VICTORY_DIALOG_NAME, 0, 0, (int) (world.getWidth() * 0.8), 100, "SYSTEM", "VICTORY! All enemies defeated. Press Confirm to continue.");
+        DialogObject victoryDialog = new DialogObject(VICTORY_DIALOG_NAME, 0, 0, (int) (world.getWidth() * 0.8), 100, "SYSTEM", "VICTORY! Press Confirm to continue.");
         victoryDialog.setColor(new Color(0, 80, 0, 220));
         victoryDialog.setFontSize(settings != null ? settings.getUIFontSize() : 20);
         world.addObject(victoryDialog);
@@ -665,8 +667,16 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
 
-        double ax = 0;
-        double ay = 0;
+        // Check for Goal contact
+        for (GameObject other : world.getCollisions(player)) {
+            if (other.getType() == GameObjectType.GOAL && other.isActive()) {
+                transitionTo(GameState.SETTLEMENT);
+                createVictoryDialog(world, context.getSettings());
+                return;
+            }
+        }
+
+        double ax = 0, ay = 0;
         var kb = inputController.getKeyboardManager();
         var ms = inputController.getMouseManager();
         if (actionMapper.isActive(InputAction.MOVE_LEFT, kb, ms)) {
@@ -926,6 +936,10 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
     private boolean isOptionsMenu(MenuObject m) {
         return m != null && OPTIONS_MENU_NAME.equals(m.getName());
+    }
+
+    private boolean isKeyBindingsMenu(MenuObject m) {
+        return m != null && KEYBINDINGS_MENU_NAME.equals(m.getName());
     }
 
     private boolean isLevelSelectMenu(MenuObject m) {
