@@ -17,10 +17,12 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import lib.game.GameWorld;
 import lib.input.GameInputController;
+import lib.input.InputAction;
 import lib.object.DialogObject;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
@@ -84,6 +86,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         if (json.has("lightingEnabled")) {
             setLightingEnabled(json.getBoolean("lightingEnabled"));
         }
+
+        if (json.has("keyBindings")) {
+            deserializeKeyBindings(json.getJSONObject("keyBindings"));
+        }
         
         // Apply player settings if available
         world.findPlayer().ifPresent(player -> {
@@ -101,8 +107,38 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             getThrottlePower(),
             getDeceleration(),
             isGravityEnabled(),
-            isLightingEnabled()
+            isLightingEnabled(),
+            serializeKeyBindings()
         );
+    }
+
+    private JSONObject serializeKeyBindings() {
+        JSONObject json = new JSONObject();
+        var mapper = inputController.getActionMapper();
+        for (InputAction action : InputAction.values()) {
+            JSONArray keys = new JSONArray();
+            var bindings = mapper.getKeyBindings().get(action);
+            if (bindings != null) {
+                for (int code : bindings) {
+                    keys.put(code);
+                }
+            }
+            json.put(action.name(), keys);
+        }
+        return json;
+    }
+
+    private void deserializeKeyBindings(JSONObject json) {
+        var mapper = inputController.getActionMapper();
+        for (InputAction action : InputAction.values()) {
+            if (json.has(action.name())) {
+                mapper.clearBindings(action);
+                JSONArray keys = json.getJSONArray(action.name());
+                for (int i = 0; i < keys.length(); i++) {
+                    mapper.bindKey(action, keys.getInt(i));
+                }
+            }
+        }
     }
 
     @Override
@@ -318,38 +354,9 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             }
         });
 
-        int[] keys = new int[] {
-            KeyEvent.VK_W, KeyEvent.VK_UP, KeyEvent.VK_I,
-            KeyEvent.VK_S, KeyEvent.VK_DOWN, KeyEvent.VK_K,
-            KeyEvent.VK_A, KeyEvent.VK_LEFT, KeyEvent.VK_J,
-            KeyEvent.VK_D, KeyEvent.VK_RIGHT, KeyEvent.VK_L,
-            KeyEvent.VK_Q, KeyEvent.VK_E, KeyEvent.VK_ENTER, KeyEvent.VK_SPACE,
-            KeyEvent.VK_ESCAPE, KeyEvent.VK_P, KeyEvent.VK_C
-        };
-        InputMap inputMap = getInputMap(WHEN_IN_FOCUSED_WINDOW);
-        ActionMap actionMap = getActionMap();
-        for (int key : keys) {
-            final int k = key;
-            String pressAction = "press_" + k;
-            String releaseAction = "release_" + k;
-            
-            inputMap.put(KeyStroke.getKeyStroke(k, 0, false), pressAction);
-            inputMap.put(KeyStroke.getKeyStroke(k, 0, true), releaseAction);
-            
-            actionMap.put(pressAction, new AbstractAction() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    inputController.getKeyboardManager().pressKey(k);
-                }
-            });
-            actionMap.put(releaseAction, new AbstractAction() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    inputController.getKeyboardManager().releaseKey(k);
-                }
-            });
-        }
-
+        // Use dynamic keys from mapper for InputMap
+        syncInputMap();
+        
         MouseAdapter mouseAdapter = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent event) {
@@ -374,6 +381,40 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         };
         addMouseListener(mouseAdapter);
         addMouseMotionListener(mouseAdapter);
+    }
+
+    public void syncInputMap() {
+        InputMap inputMap = getInputMap(WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = getActionMap();
+        inputMap.clear();
+        actionMap.clear();
+        
+        var mapper = inputController.getActionMapper();
+        for (InputAction action : InputAction.values()) {
+            var bindings = mapper.getKeyBindings().get(action);
+            if (bindings != null) {
+                for (int k : bindings) {
+                    String pressAction = "press_" + k;
+                    String releaseAction = "release_" + k;
+                    
+                    inputMap.put(KeyStroke.getKeyStroke(k, 0, false), pressAction);
+                    inputMap.put(KeyStroke.getKeyStroke(k, 0, true), releaseAction);
+                    
+                    actionMap.put(pressAction, new AbstractAction() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            inputController.getKeyboardManager().pressKey(k);
+                        }
+                    });
+                    actionMap.put(releaseAction, new AbstractAction() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            inputController.getKeyboardManager().releaseKey(k);
+                        }
+                    });
+                }
+            }
+        }
     }
 
     @Override

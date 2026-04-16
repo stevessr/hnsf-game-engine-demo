@@ -256,8 +256,12 @@ public final class EditorWindow extends JFrame {
         JButton applyButton = new JButton("应用属性");
         JButton undoButton = new JButton("撤销");
         JButton redoButton = new JButton("重做");
+        JButton importButton = new JButton("导入");
+        JButton exportButton = new JButton("导出");
         footer.add(saveButton);
         footer.add(loadButton);
+        footer.add(importButton);
+        footer.add(exportButton);
         footer.add(deleteButton);
         footer.add(applyButton);
         footer.add(undoButton);
@@ -265,6 +269,8 @@ public final class EditorWindow extends JFrame {
 
         saveButton.addActionListener(event -> saveMap());
         loadButton.addActionListener(event -> loadMap());
+        importButton.addActionListener(event -> importMap());
+        exportButton.addActionListener(event -> exportMap());
         deleteButton.addActionListener(event -> controller.deleteSelected());
         applyButton.addActionListener(event -> applyPropertyChanges());
         undoButton.addActionListener(event -> controller.undo());
@@ -535,6 +541,37 @@ public final class EditorWindow extends JFrame {
         }
 
         previewPanel.repaint();
+    }
+
+    private void importMap() {
+        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+        if (chooser.showOpenDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            try {
+                String content = java.nio.file.Files.readString(chooser.getSelectedFile().toPath());
+                var mapData = MapDataMapper.importFromJson(new org.json.JSONObject(content));
+                MapDataMapper.applyToWorld(world, mapData);
+                mapNameField.setText(mapData.getName());
+                updateWorldControlsFromWorld();
+                previewPanel.repaint();
+                JOptionPane.showMessageDialog(this, "导入成功");
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "导入失败: " + ex.getMessage());
+            }
+        }
+    }
+
+    private void exportMap() {
+        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+        if (chooser.showSaveDialog(this) == javax.swing.JFileChooser.APPROVE_OPTION) {
+            try {
+                var mapData = MapDataMapper.fromWorld(world, mapNameField.getText());
+                var json = MapDataMapper.exportToJson(mapData);
+                java.nio.file.Files.writeString(chooser.getSelectedFile().toPath(), json.toString(4));
+                JOptionPane.showMessageDialog(this, "导出成功");
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "导出失败: " + ex.getMessage());
+            }
+        }
     }
 
     private void saveMap() {

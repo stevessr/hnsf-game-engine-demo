@@ -74,9 +74,41 @@ public class App {
         JMenu gameMenu = new JMenu("游戏 (Game)");
         JMenuItem restartItem = new JMenuItem("重置 (Restart)");
         restartItem.addActionListener(e -> reloadGameWorld(world, repository, levelManager, DEMO_MAP, panel));
+        
+        JMenuItem importItem = new JMenuItem("导入地图 (Import Map)");
+        importItem.addActionListener(e -> {
+            javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+            if (chooser.showOpenDialog(frame) == javax.swing.JFileChooser.APPROVE_OPTION) {
+                try {
+                    String content = java.nio.file.Files.readString(chooser.getSelectedFile().toPath());
+                    var mapData = MapDataMapper.importFromJson(new org.json.JSONObject(content));
+                    repository.saveMap(mapData);
+                    reloadGameWorld(world, repository, levelManager, mapData.getName(), panel);
+                } catch (Exception ex) {
+                    javax.swing.JOptionPane.showMessageDialog(frame, "导入失败: " + ex.getMessage());
+                }
+            }
+        });
+
+        JMenuItem exportItem = new JMenuItem("导出当前地图 (Export Map)");
+        exportItem.addActionListener(e -> {
+            javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+            if (chooser.showSaveDialog(frame) == javax.swing.JFileChooser.APPROVE_OPTION) {
+                try {
+                    var mapData = MapDataMapper.fromWorld(world, "exported-map");
+                    var json = MapDataMapper.exportToJson(mapData);
+                    java.nio.file.Files.writeString(chooser.getSelectedFile().toPath(), json.toString(4));
+                } catch (Exception ex) {
+                    javax.swing.JOptionPane.showMessageDialog(frame, "导出失败: " + ex.getMessage());
+                }
+            }
+        });
+
         JMenuItem exitItem = new JMenuItem("退出 (Exit)");
         exitItem.addActionListener(e -> requestExit(frame, panel));
         gameMenu.add(restartItem);
+        gameMenu.add(importItem);
+        gameMenu.add(exportItem);
         gameMenu.addSeparator();
         gameMenu.add(exitItem);
         

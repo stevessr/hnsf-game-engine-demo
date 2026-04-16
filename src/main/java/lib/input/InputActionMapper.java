@@ -63,6 +63,19 @@ public final class InputActionMapper {
         mouseBindings.get(action).add(mouseButton);
     }
 
+    public void clearBindings(InputAction action) {
+        keyBindings.get(action).clear();
+        mouseBindings.get(action).clear();
+    }
+
+    public Map<InputAction, Set<Integer>> getKeyBindings() {
+        return keyBindings;
+    }
+
+    public Map<InputAction, Set<Integer>> getMouseBindings() {
+        return mouseBindings;
+    }
+
     public boolean isKeyboardActive(InputAction action, KeyboardManager keyboardManager) {
         for (int keyCode : keyBindings.get(action)) {
             if (keyboardManager.isPressed(keyCode)) {

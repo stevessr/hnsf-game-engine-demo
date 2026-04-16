@@ -34,6 +34,7 @@ public final class SettingsRepository {
      * @param deceleration 减速度 (0-100)
      * @param gravityEnabled 重力是否开启
      * @param lightingEnabled 光照系统是否开启
+     * @param keyBindings 按键映射
      */
     public void saveSettings(
         int targetFPS,
@@ -43,7 +44,8 @@ public final class SettingsRepository {
         int throttlePower,
         int deceleration,
         boolean gravityEnabled,
-        boolean lightingEnabled
+        boolean lightingEnabled,
+        JSONObject keyBindings
     ) {
         JSONObject json = new JSONObject();
         json.put("targetFPS", targetFPS);
@@ -54,6 +56,7 @@ public final class SettingsRepository {
         json.put("deceleration", deceleration);
         json.put("gravityEnabled", gravityEnabled);
         json.put("lightingEnabled", lightingEnabled);
+        json.put("keyBindings", keyBindings);
 
         try {
             Files.createDirectories(settingsPath.getParent());
