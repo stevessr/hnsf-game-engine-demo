@@ -18,6 +18,7 @@ public final class LightingManager {
     private boolean enabled = false;
     private float ambientLight = 0.0f;
     private final List<LightSource> lights = new ArrayList<>();
+    private BufferedImage overlayBuffer;
 
     public static record LightSource(int x, int y, int radius, float intensity) {}
 
@@ -45,10 +46,20 @@ public final class LightingManager {
         int width = world.getWidth();
         int height = world.getHeight();
         
-        BufferedImage overlay = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2d = overlay.createGraphics();
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+
+        // 复用缓冲区以提高性能
+        if (overlayBuffer == null || overlayBuffer.getWidth() != width || overlayBuffer.getHeight() != height) {
+            overlayBuffer = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        }
+        
+        Graphics2D g2d = overlayBuffer.createGraphics();
         
         // 1. 绘制环境光（暗色蒙版）
+        // 强制使用 SRC 模式清除上一帧
+        g2d.setComposite(AlphaComposite.Src);
         g2d.setColor(new Color(0, 0, 0, (int)(255 * (1.0f - ambientLight))));
         g2d.fillRect(0, 0, width, height);
         
@@ -66,10 +77,14 @@ public final class LightingManager {
         
         g2d.dispose();
         
-        graphics.drawImage(overlay, 0, 0, null);
+        // 绘制到主屏幕，drawImage 会自动处理当前的 Graphics2D 变换（如缩放）
+        graphics.drawImage(overlayBuffer, 0, 0, null);
     }
 
     private void drawLight(Graphics2D g, int x, int y, int radius, float intensity) {
+        if (radius <= 0) {
+            return;
+        }
         float[] dist = {0.0f, 1.0f};
         Color[] colors = {new Color(0, 0, 0, (int)(255 * intensity)), new Color(0, 0, 0, 0)};
         RadialGradientPaint p = new RadialGradientPaint(

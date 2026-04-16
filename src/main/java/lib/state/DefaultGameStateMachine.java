@@ -226,7 +226,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     private void handleRebindInput(GameStateContext context) {
         var keyboard = context.getInputController().getKeyboardManager();
         int lastKey = -1;
-        // Check all common keys
         for (int i = 0; i < 512; i++) {
             if (keyboard.isPressed(i)) {
                 lastKey = i;
@@ -602,19 +601,27 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
         int[][] resolutions = {{960, 540}, {1280, 720}, {1920, 1080}, {640, 480}};
-        int currentWidth = world.getWidth();
+        
+        int panelW = 0;
+        if (settings instanceof SwingGamePanel panel) {
+            panelW = panel.getWidth();
+        } else {
+            panelW = world.getWidth();
+        }
+
         int nextIdx = 0;
         for (int i = 0; i < resolutions.length; i++) {
-            if (resolutions[i][0] == currentWidth) {
+            if (resolutions[i][0] == panelW) {
                 nextIdx = (i + 1) % resolutions.length;
                 break;
             }
         }
         int newW = resolutions[nextIdx][0];
         int newH = resolutions[nextIdx][1];
-        settings.setLogicalResolution(newW, newH);
+        
         settings.setResolution(newW, newH);
         recenterUI(world);
+        
         List<String> options = new ArrayList<>(menu.getOptions());
         for (int i = 0; i < options.size(); i++) {
             if (isResolutionOption(options.get(i))) {
