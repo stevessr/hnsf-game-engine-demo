@@ -7,5 +7,7 @@ public enum GameObjectType {
     WALL,
     BOUNDARY,
     MENU,
-    DIALOG
+    DIALOG,
+    ITEM,
+    VOXEL
 }

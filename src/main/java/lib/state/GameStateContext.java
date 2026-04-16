@@ -14,6 +14,7 @@ public final class GameStateContext {
     private final GameWorld world;
     private final GameInputController inputController;
     private final GameSettings settings;
+    private final GameRuntimeActions runtimeActions;
 
     /**
      * 创建游戏状态上下文。
@@ -22,7 +23,18 @@ public final class GameStateContext {
      * @param inputController 输入控制器，不能为 null
      */
     public GameStateContext(GameWorld world, GameInputController inputController) {
-        this(world, inputController, null);
+        this(world, inputController, null, GameRuntimeActions.noOp());
+    }
+
+    /**
+     * 创建游戏状态上下文，包含运行时动作支持。
+     *
+     * @param world 游戏世界，不能为 null
+     * @param inputController 输入控制器，不能为 null
+     * @param runtimeActions 运行时动作接口，可以为 null
+     */
+    public GameStateContext(GameWorld world, GameInputController inputController, GameRuntimeActions runtimeActions) {
+        this(world, inputController, null, runtimeActions);
     }
 
     /**
@@ -33,9 +45,23 @@ public final class GameStateContext {
      * @param settings 游戏设置接口，可以为 null
      */
     public GameStateContext(GameWorld world, GameInputController inputController, GameSettings settings) {
+        this(world, inputController, settings, GameRuntimeActions.noOp());
+    }
+
+    /**
+     * 创建游戏状态上下文，包含设置与运行时动作支持。
+     *
+     * @param world 游戏世界，不能为 null
+     * @param inputController 输入控制器，不能为 null
+     * @param settings 游戏设置接口，可以为 null
+     * @param runtimeActions 运行时动作接口，可以为 null
+     */
+    public GameStateContext(GameWorld world, GameInputController inputController, GameSettings settings,
+                            GameRuntimeActions runtimeActions) {
         this.world = Objects.requireNonNull(world, "world must not be null");
         this.inputController = Objects.requireNonNull(inputController, "inputController must not be null");
         this.settings = settings;
+        this.runtimeActions = runtimeActions == null ? GameRuntimeActions.noOp() : runtimeActions;
     }
 
     /**
@@ -63,5 +89,14 @@ public final class GameStateContext {
      */
     public GameSettings getSettings() {
         return settings;
+    }
+
+    /**
+     * 获取运行时动作接口。
+     *
+     * @return 运行时动作接口，永不为 null
+     */
+    public GameRuntimeActions getRuntimeActions() {
+        return runtimeActions;
     }
 }

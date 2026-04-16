@@ -47,6 +47,9 @@ public final class InputActionMapper {
         mapper.bindKey(InputAction.PAUSE, KeyEvent.VK_P);
         mapper.bindKey(InputAction.DIALOG_NEXT, KeyEvent.VK_SPACE);
         mapper.bindKey(InputAction.DIALOG_NEXT, KeyEvent.VK_ENTER);
+        mapper.bindKey(InputAction.CYCLE_COLOR, KeyEvent.VK_C);
+        mapper.bindMouseButton(InputAction.VOXEL_BUILD, MouseEvent.BUTTON1);
+        mapper.bindMouseButton(InputAction.VOXEL_DESTROY, MouseEvent.BUTTON3);
         return mapper;
     }
 

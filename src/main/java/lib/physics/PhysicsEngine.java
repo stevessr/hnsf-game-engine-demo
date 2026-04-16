@@ -41,6 +41,8 @@ public final class PhysicsEngine {
         int resolvedY = originalY;
         boolean blockedX = clampedTargetX != targetX;
         boolean blockedY = clampedTargetY != targetY;
+        GameObject blockedByX = null;
+        GameObject blockedByY = null;
 
         // X 轴移动
         if (clampedTargetX != originalX) {
@@ -48,8 +50,10 @@ public final class PhysicsEngine {
             int currentX = originalX;
             while (currentX != clampedTargetX) {
                 int nextX = currentX + stepX;
-                if (collidesAt(movingObject, nextX, resolvedY, nearbyObstacles)) {
+                GameObject obstacle = findBlockingObstacle(movingObject, nextX, resolvedY, nearbyObstacles);
+                if (obstacle != null) {
                     blockedX = true;
+                    blockedByX = obstacle;
                     break;
                 }
                 currentX = nextX;
@@ -63,8 +67,10 @@ public final class PhysicsEngine {
             int currentY = originalY;
             while (currentY != clampedTargetY) {
                 int nextY = currentY + stepY;
-                if (collidesAt(movingObject, resolvedX, nextY, nearbyObstacles)) {
+                GameObject obstacle = findBlockingObstacle(movingObject, resolvedX, nextY, nearbyObstacles);
+                if (obstacle != null) {
                     blockedY = true;
+                    blockedByY = obstacle;
                     break;
                 }
                 currentY = nextY;
@@ -72,7 +78,7 @@ public final class PhysicsEngine {
             resolvedY = currentY;
         }
 
-        return new MovementResult(resolvedX, resolvedY, blockedX, blockedY);
+        return new MovementResult(resolvedX, resolvedY, blockedX, blockedY, blockedByX, blockedByY);
     }
 
     public boolean collidesAt(GameObject movingObject, int targetX, int targetY, List<? extends GameObject> obstacles) {
@@ -86,6 +92,24 @@ public final class PhysicsEngine {
             }
         }
         return false;
+    }
+
+    private GameObject findBlockingObstacle(
+        GameObject movingObject,
+        int targetX,
+        int targetY,
+        List<? extends GameObject> obstacles
+    ) {
+        Aabb movingBox = Aabb.at(movingObject, targetX, targetY);
+        for (GameObject obstacle : obstacles) {
+            if (obstacle == movingObject || !obstacle.isActive()) {
+                continue;
+            }
+            if (movingBox.intersects(Aabb.from(obstacle))) {
+                return obstacle;
+            }
+        }
+        return null;
     }
 
     public List<GameObject> findCollisions(GameObject gameObject, List<? extends GameObject> candidates) {

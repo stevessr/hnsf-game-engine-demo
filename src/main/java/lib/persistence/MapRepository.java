@@ -78,6 +78,25 @@ public final class MapRepository {
         }
     }
 
+    public List<String> listMapNames() {
+        List<String> names = new ArrayList<>();
+        try (Connection connection = openConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                 "SELECT name FROM maps ORDER BY name COLLATE NOCASE"
+             );
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                String name = resultSet.getString("name");
+                if (name != null && !name.isBlank()) {
+                    names.add(name);
+                }
+            }
+            return names;
+        } catch (SQLException ex) {
+            throw new IllegalStateException("加载地图列表失败：" + ex.getMessage(), ex);
+        }
+    }
+
     private Connection openConnection() throws SQLException {
         String url = "jdbc:sqlite:" + dbPath.toAbsolutePath();
         return DriverManager.getConnection(url);
@@ -97,7 +116,9 @@ public final class MapRepository {
                     + "name TEXT NOT NULL UNIQUE,"
                     + "width INTEGER NOT NULL,"
                     + "height INTEGER NOT NULL,"
-                    + "background_color INTEGER NOT NULL"
+                    + "background_color INTEGER NOT NULL,"
+                    + "gravity_enabled INTEGER NOT NULL DEFAULT 0,"
+                    + "gravity_strength INTEGER NOT NULL DEFAULT 900"
                     + ")"
             );
             statement.executeUpdate(
@@ -110,13 +131,15 @@ public final class MapRepository {
                     + "y INTEGER NOT NULL,"
                     + "width INTEGER NOT NULL,"
                     + "height INTEGER NOT NULL,"
-                    + "color INTEGER NOT NULL,"
-                    + "solid INTEGER NOT NULL,"
-                    + "background INTEGER NOT NULL,"
-                    + "extra_json TEXT NOT NULL,"
-                    + "FOREIGN KEY(map_id) REFERENCES maps(id) ON DELETE CASCADE"
-                    + ")"
+                + "color INTEGER NOT NULL,"
+                + "solid INTEGER NOT NULL,"
+                + "background INTEGER NOT NULL,"
+                + "extra_json TEXT NOT NULL,"
+                + "FOREIGN KEY(map_id) REFERENCES maps(id) ON DELETE CASCADE"
+                + ")"
             );
+            ensureMapColumn(connection, "gravity_enabled", "INTEGER NOT NULL DEFAULT 0");
+            ensureMapColumn(connection, "gravity_strength", "INTEGER NOT NULL DEFAULT 900");
         } catch (SQLException ex) {
             throw new IllegalStateException("初始化数据库失败：" + ex.getMessage(), ex);
         }
@@ -138,26 +161,30 @@ public final class MapRepository {
 
     private void updateMap(Connection connection, MapData mapData) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-            "UPDATE maps SET name = ?, width = ?, height = ?, background_color = ? WHERE id = ?"
+            "UPDATE maps SET name = ?, width = ?, height = ?, background_color = ?, gravity_enabled = ?, gravity_strength = ? WHERE id = ?"
         )) {
             statement.setString(1, mapData.getName());
             statement.setInt(2, mapData.getWidth());
             statement.setInt(3, mapData.getHeight());
             statement.setInt(4, mapData.getBackgroundColor().getRGB());
-            statement.setLong(5, mapData.getId());
+            statement.setInt(5, mapData.isGravityEnabled() ? 1 : 0);
+            statement.setInt(6, mapData.getGravityStrength());
+            statement.setLong(7, mapData.getId());
             statement.executeUpdate();
         }
     }
 
     private long insertMap(Connection connection, MapData mapData) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-            "INSERT INTO maps (name, width, height, background_color) VALUES (?, ?, ?, ?)",
+            "INSERT INTO maps (name, width, height, background_color, gravity_enabled, gravity_strength) VALUES (?, ?, ?, ?, ?, ?)",
             Statement.RETURN_GENERATED_KEYS
         )) {
             statement.setString(1, mapData.getName());
             statement.setInt(2, mapData.getWidth());
             statement.setInt(3, mapData.getHeight());
             statement.setInt(4, mapData.getBackgroundColor().getRGB());
+            statement.setInt(5, mapData.isGravityEnabled() ? 1 : 0);
+            statement.setInt(6, mapData.getGravityStrength());
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -203,7 +230,7 @@ public final class MapRepository {
 
     private MapData fetchMapById(Connection connection, long mapId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-            "SELECT id, name, width, height, background_color FROM maps WHERE id = ?"
+            "SELECT id, name, width, height, background_color, gravity_enabled, gravity_strength FROM maps WHERE id = ?"
         )) {
             statement.setLong(1, mapId);
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -217,7 +244,7 @@ public final class MapRepository {
 
     private MapData fetchMapByName(Connection connection, String name) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-            "SELECT id, name, width, height, background_color FROM maps WHERE name = ?"
+            "SELECT id, name, width, height, background_color, gravity_enabled, gravity_strength FROM maps WHERE name = ?"
         )) {
             statement.setString(1, name);
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -236,6 +263,8 @@ public final class MapRepository {
         mapData.setWidth(resultSet.getInt("width"));
         mapData.setHeight(resultSet.getInt("height"));
         mapData.setBackgroundColor(new java.awt.Color(resultSet.getInt("background_color"), true));
+        mapData.setGravityEnabled(resultSet.getInt("gravity_enabled") == 1);
+        mapData.setGravityStrength(resultSet.getInt("gravity_strength"));
         return mapData;
     }
 
@@ -278,6 +307,21 @@ public final class MapRepository {
             }
         }
         return null;
+    }
+
+    private void ensureMapColumn(Connection connection, String columnName, String columnDefinition) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("PRAGMA table_info(maps)");
+             ResultSet resultSet = statement.executeQuery()) {
+            while (resultSet.next()) {
+                String existingName = resultSet.getString("name");
+                if (columnName.equalsIgnoreCase(existingName)) {
+                    return;
+                }
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("ALTER TABLE maps ADD COLUMN " + columnName + " " + columnDefinition);
+        }
     }
 
     private static Path resolveDefaultPath() {

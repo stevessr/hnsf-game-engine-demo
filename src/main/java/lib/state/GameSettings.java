@@ -47,6 +47,48 @@ public interface GameSettings {
     int getDeceleration();
 
     /**
+     * 设置世界重力是否启用。
+     *
+     * @param enabled 是否启用重力
+     */
+    void setGravityEnabled(boolean enabled);
+
+    /**
+     * 判断当前世界是否启用了重力。
+     *
+     * @return 是否启用重力
+     */
+    boolean isGravityEnabled();
+
+    /**
+     * 设置重力强度。
+     *
+     * @param strength 重力强度
+     */
+    void setGravityStrength(int strength);
+
+    /**
+     * 获取重力强度。
+     *
+     * @return 重力强度
+     */
+    int getGravityStrength();
+
+    /**
+     * 设置 UI 字体大小。
+     *
+     * @param fontSize 字体大小
+     */
+    void setUIFontSize(int fontSize);
+
+    /**
+     * 获取 UI 字体大小。
+     *
+     * @return 字体大小
+     */
+    int getUIFontSize();
+
+    /**
      * 设置游戏分辨率。
      *
      * @param width 宽度（像素）

@@ -38,7 +38,6 @@ public final class EditorGamePanel extends JPanel {
         }
         Graphics2D graphics2d = (Graphics2D) graphics.create();
         try {
-            world.setSize(getWidth(), getHeight());
             world.render(graphics2d);
             overlay.render(graphics2d, getWidth(), getHeight());
         } finally {

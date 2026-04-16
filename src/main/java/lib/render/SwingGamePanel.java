@@ -1,9 +1,6 @@
 package lib.render;
 
-import java.awt.AlphaComposite;
-import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
@@ -22,7 +19,12 @@ import javax.swing.Timer;
 
 import lib.game.GameWorld;
 import lib.input.GameInputController;
+import lib.object.DialogObject;
+import lib.object.GameObject;
+import lib.object.GameObjectType;
+import lib.object.MenuObject;
 import lib.state.DefaultGameStateMachine;
+import lib.state.GameRuntimeActions;
 import lib.state.GameSettings;
 import lib.state.GameState;
 import lib.state.GameStateContext;
@@ -31,8 +33,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     private final GameWorld world;
     private final GameInputController inputController;
     private final Timer timer;
+    private GameRuntimeActions runtimeActions = GameRuntimeActions.noOp();
     private long lastUpdateNanos;
     private int targetFPS = 60;
+    private int uiFontSize = 18;
 
     public SwingGamePanel(GameWorld world) {
         this(world, GameInputController.createDefault());
@@ -51,7 +55,9 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     }
 
     public void setTargetFPS(int fps) {
-        if (fps <= 0) fps = 60;
+        if (fps <= 0) {
+            fps = 60;
+        }
         this.targetFPS = fps;
         timer.setDelay(1000 / targetFPS);
     }
@@ -80,6 +86,42 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         return world.findPlayer().map(p -> p.getDecelerationPercent()).orElse(92);
     }
 
+    @Override
+    public void setGravityEnabled(boolean enabled) {
+        if (world != null) {
+            world.setGravityEnabled(enabled);
+        }
+    }
+
+    @Override
+    public boolean isGravityEnabled() {
+        return world != null && world.isGravityEnabled();
+    }
+
+    @Override
+    public void setGravityStrength(int strength) {
+        if (world != null) {
+            world.setGravityStrength(strength);
+        }
+    }
+
+    @Override
+    public int getGravityStrength() {
+        return world != null ? world.getGravityStrength() : 900;
+    }
+
+    @Override
+    public void setUIFontSize(int fontSize) {
+        this.uiFontSize = Math.max(10, Math.min(64, fontSize));
+        applyUIFontSizeToWorld();
+        repaint();
+    }
+
+    @Override
+    public int getUIFontSize() {
+        return uiFontSize;
+    }
+
     public void setResolution(int width, int height) {
         world.setSize(width, height);
         setPreferredSize(new Dimension(width, height));
@@ -96,6 +138,27 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
 
     public GameInputController getInputController() {
         return inputController;
+    }
+
+    public void setRuntimeActions(GameRuntimeActions runtimeActions) {
+        this.runtimeActions = runtimeActions == null ? GameRuntimeActions.noOp() : runtimeActions;
+    }
+
+    public void applyUIFontSizeToWorld() {
+        if (world == null) {
+            return;
+        }
+        for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) {
+            if (object instanceof MenuObject menu) {
+                menu.setFontSize(uiFontSize);
+                menu.setSize(menu.getWidth(), Math.max(menu.getHeight(), menu.getPreferredHeight()));
+            }
+        }
+        for (GameObject object : world.getObjectsByType(GameObjectType.DIALOG)) {
+            if (object instanceof DialogObject dialog) {
+                dialog.setFontSize(uiFontSize);
+            }
+        }
     }
 
     public void start() {
@@ -121,7 +184,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     public void setPaused(boolean paused) {
         if (world.getStateMachine() instanceof DefaultGameStateMachine dsm) {
             if (isPaused() != paused) {
-                dsm.togglePause(world);
+                dsm.togglePause(world, this);
             }
         } else if (world.getStateMachine() != null) {
             GameState targetState = paused ? GameState.PAUSED : GameState.PLAYING;
@@ -142,8 +205,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             ? 1.0 / 60.0
             : (now - lastUpdateNanos) / 1_000_000_000.0;
         lastUpdateNanos = now;
-        world.setSize(getWidth(), getHeight());
-        inputController.processInputs(new GameStateContext(world, inputController, this));
+        inputController.processInputs(new GameStateContext(world, inputController, this, runtimeActions));
         world.update(deltaSeconds);
         inputController.finishFrame();
         repaint();
@@ -237,18 +299,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         Graphics2D graphics2d = (Graphics2D) graphics.create();
         try {
             world.render(graphics2d);
-            if (world.getCurrentState() == GameState.PAUSED) {
-                renderPausedOverlay(graphics2d);
-            }
         } finally {
             graphics2d.dispose();
         }
-    }
-
-    private void renderPausedOverlay(Graphics2D graphics2d) {
-        graphics2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f));
-        graphics2d.setColor(Color.BLACK);
-        graphics2d.fillRect(0, 0, getWidth(), getHeight());
-        graphics2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
     }
 }

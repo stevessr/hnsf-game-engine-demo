@@ -2,6 +2,8 @@ package lib.state;
 
 import java.awt.event.KeyEvent;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 
@@ -59,6 +61,28 @@ class DefaultGameStateMachineTest {
     }
 
     @Test
+    void menuExitShouldRequestRuntimeExitInsteadOfStayingInMenu() {
+        GameWorld world = new GameWorld(240, 180);
+        MenuObject menu = new MenuObject("main-menu", 10, 10, 120, 80, "Main", List.of("Start", "Options", "Exit"));
+        menu.setSelectedIndex(2);
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine();
+        GameInputController inputController = GameInputController.createDefault();
+        AtomicBoolean exitRequested = new AtomicBoolean(false);
+        GameStateContext context = new GameStateContext(world, inputController, () -> exitRequested.set(true));
+
+        world.addObject(menu);
+        world.setStateMachine(stateMachine);
+
+        tapKey(inputController, KeyEvent.VK_ENTER);
+        stateMachine.processInput(context);
+        inputController.finishFrame();
+
+        assertTrue(exitRequested.get(), "主菜单 Exit 应触发运行时退出请求");
+        assertEquals(GameState.MENU, stateMachine.getCurrentState(), "退出请求不应伪造状态切换");
+        assertTrue(menu.isActive(), "退出请求前不应先破坏主菜单对象状态");
+    }
+
+    @Test
     void playingPauseShouldStopWorldUpdateUntilResumed() {
         GameWorld world = new GameWorld(240, 180);
         PlayerObject player = new PlayerObject("hero", 10, 20);
@@ -70,7 +94,7 @@ class DefaultGameStateMachineTest {
         world.setStateMachine(stateMachine);
 
         inputController.getKeyboardManager().pressKey(KeyEvent.VK_D);
-        
+
         // Apply throttle for multiple frames to build up velocity
         for (int i = 0; i < 5; i++) {
             stateMachine.processInput(context);
@@ -103,6 +127,68 @@ class DefaultGameStateMachineTest {
 
         assertFalse(stateMachine.canTransitionTo(GameState.PAUSED));
         assertThrows(IllegalStateException.class, () -> stateMachine.transitionTo(GameState.PAUSED));
+    }
+
+    @Test
+    void levelSelectMenuShouldLoadChosenLevelAndReturnToPlaying() {
+        GameWorld world = new GameWorld(320, 200);
+        MenuObject mainMenu = new MenuObject(
+            "main-menu",
+            10,
+            10,
+            160,
+            120,
+            "Main",
+            List.of("Start", "Levels", "Editor", "Exit")
+        );
+        MenuObject levelMenu = new MenuObject(
+            "level-select-menu",
+            10,
+            10,
+            180,
+            120,
+            "Select Level",
+            List.of("level-1", "level-2", "Back")
+        );
+        levelMenu.setActive(false);
+
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine();
+        GameInputController inputController = GameInputController.createDefault();
+        AtomicReference<String> requestedLevel = new AtomicReference<>();
+
+        GameRuntimeActions actions = new GameRuntimeActions() {
+            @Override
+            public void requestExit() {
+            }
+
+            @Override
+            public void requestLoadLevel(String levelName) {
+                requestedLevel.set(levelName);
+            }
+        };
+        GameStateContext selectionContext = new GameStateContext(world, inputController, actions);
+
+        world.addObject(mainMenu);
+        world.addObject(levelMenu);
+        world.setStateMachine(stateMachine);
+
+        mainMenu.setSelectedIndex(1);
+        tapKey(inputController, KeyEvent.VK_ENTER);
+        stateMachine.processInput(selectionContext);
+        inputController.finishFrame();
+
+        assertFalse(mainMenu.isActive(), "主菜单应在进入关卡选择后隐藏");
+        assertTrue(levelMenu.isActive(), "关卡选择菜单应在进入后显示");
+        assertEquals(GameState.MENU, stateMachine.getCurrentState());
+
+        levelMenu.setSelectedIndex(0);
+        tapKey(inputController, KeyEvent.VK_ENTER);
+        stateMachine.processInput(selectionContext);
+        inputController.finishFrame();
+
+        assertEquals("level-1", requestedLevel.get());
+        assertEquals(GameState.PLAYING, stateMachine.getCurrentState());
+        assertFalse(levelMenu.isActive(), "选中关卡后关卡选择菜单应隐藏");
     }
 
     private static void tapKey(GameInputController inputController, int keyCode) {

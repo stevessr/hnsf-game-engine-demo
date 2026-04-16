@@ -6,6 +6,7 @@ public abstract class ActorObject extends BaseObject {
     private int health;
     private int attack;
     private int speed;
+    private double velocityY;
 
     protected ActorObject(GameObjectType type, String name, Color color) {
         this(type, name, 0, 0, 48, 48, color, 100, 10, 5);
@@ -27,6 +28,7 @@ public abstract class ActorObject extends BaseObject {
         this.health = normalizeNonNegative(health);
         this.attack = normalizeNonNegative(attack);
         this.speed = normalizeNonNegative(speed);
+        this.velocityY = 0.0;
     }
 
     public final int getHealth() {
@@ -52,6 +54,14 @@ public abstract class ActorObject extends BaseObject {
 
     public final void setSpeed(int speed) {
         this.speed = normalizeNonNegative(speed);
+    }
+
+    public final double getVelocityYDouble() {
+        return velocityY;
+    }
+
+    public final void setVelocityY(double velocityY) {
+        this.velocityY = velocityY;
     }
 
     public final void takeDamage(int damage) {

@@ -11,10 +11,12 @@ public final class PlayerObject extends ActorObject {
     private int level;
     private int experience;
     private double velocityX;
-    private double velocityY;
     private double throttlePower = 600.0;
     private double deceleration = DEFAULT_DECELERATION;
     private long lastDamageTimeNanos;
+    private boolean complementaryColorDamageEnabled;
+    private int complementaryColorDamage;
+    private int fontSize = 18;
     private static final long INVULNERABILITY_DURATION_NANOS = 1_000_000_000L; // 1秒
 
     public PlayerObject(String name) {
@@ -26,8 +28,18 @@ public final class PlayerObject extends ActorObject {
         this.level = 1;
         this.experience = 0;
         this.velocityX = 0.0;
-        this.velocityY = 0.0;
+        setVelocityY(0.0);
         this.lastDamageTimeNanos = 0L;
+        this.complementaryColorDamageEnabled = true;
+        this.complementaryColorDamage = 14;
+    }
+
+    public int getFontSize() {
+        return fontSize;
+    }
+
+    public void setFontSize(int fontSize) {
+        this.fontSize = Math.max(8, fontSize);
     }
 
     public int getLevel() {
@@ -91,12 +103,28 @@ public final class PlayerObject extends ActorObject {
 
     public void accelerate(double ax, double ay, double deltaSeconds) {
         velocityX += ax * throttlePower * deltaSeconds;
-        velocityY += ay * throttlePower * deltaSeconds;
+        setVelocityY(getVelocityYDouble() + ay * throttlePower * deltaSeconds);
     }
 
     public void setVelocity(double vx, double vy) {
         this.velocityX = vx;
-        this.velocityY = vy;
+        setVelocityY(vy);
+    }
+
+    public boolean isComplementaryColorDamageEnabled() {
+        return complementaryColorDamageEnabled;
+    }
+
+    public void setComplementaryColorDamageEnabled(boolean enabled) {
+        this.complementaryColorDamageEnabled = enabled;
+    }
+
+    public int getComplementaryColorDamage() {
+        return complementaryColorDamage;
+    }
+
+    public void setComplementaryColorDamage(int damage) {
+        this.complementaryColorDamage = Math.max(0, damage);
     }
 
     public int getVelocityX() {
@@ -104,29 +132,49 @@ public final class PlayerObject extends ActorObject {
     }
 
     public int getVelocityY() {
-        return (int) Math.round(velocityY);
+        return (int) Math.round(getVelocityYDouble());
+    }
+
+    public void cycleColor() {
+        float[] hsb = Color.RGBtoHSB(getColor().getRed(), getColor().getGreen(), getColor().getBlue(), null);
+        hsb[0] = (hsb[0] + 0.1f) % 1.0f;
+        setColor(Color.getHSBColor(hsb[0], hsb[1], hsb[2]));
     }
 
     @Override
     public void update(GameWorld world, double deltaSeconds) {
         if (world != null && isActive()) {
             checkMonsterCollisions(world);
+            checkColorConflicts(world);
+            if (world.isGravityEnabled()) {
+                setVelocityY(getVelocityYDouble() + world.getGravityStrength() * deltaSeconds);
+            }
         }
 
         // 应用阻尼（减速）
         velocityX *= Math.pow(deceleration, deltaSeconds * 60.0);
-        velocityY *= Math.pow(deceleration, deltaSeconds * 60.0);
+        double vY = getVelocityYDouble();
+        if (world != null && !world.isGravityEnabled()) {
+            vY *= Math.pow(deceleration, deltaSeconds * 60.0);
+        } else if (world == null) {
+            vY *= Math.pow(deceleration, deltaSeconds * 60.0);
+        }
+        setVelocityY(vY);
 
         // 如果速度极小则直接归零，防止漂移
-        if (Math.abs(velocityX) < 1.0) velocityX = 0.0;
-        if (Math.abs(velocityY) < 1.0) velocityY = 0.0;
+        if (Math.abs(velocityX) < 1.0) {
+            velocityX = 0.0;
+        }
+        if (Math.abs(getVelocityYDouble()) < 1.0) {
+            setVelocityY(0.0);
+        }
 
-        if (velocityX == 0 && velocityY == 0) {
+        if (velocityX == 0 && getVelocityYDouble() == 0) {
             return;
         }
 
         int deltaX = (int) Math.round(velocityX * deltaSeconds);
-        int deltaY = (int) Math.round(velocityY * deltaSeconds);
+        int deltaY = (int) Math.round(getVelocityYDouble() * deltaSeconds);
 
         int nextX = getX() + deltaX;
         int nextY = getY() + deltaY;
@@ -137,15 +185,19 @@ public final class PlayerObject extends ActorObject {
         }
 
         MovementResult movementResult = world.moveObject(this, nextX, nextY);
-        
+
         // 使用碰撞检测后的实际位置，防止卡墙
         setPosition(movementResult.getResolvedX(), movementResult.getResolvedY());
-        
+
         if (movementResult.isBlockedX()) {
             velocityX = 0.0;
         }
         if (movementResult.isBlockedY()) {
-            velocityY = 0.0;
+            setVelocityY(0.0);
+        }
+
+        if (world != null && isActive()) {
+            checkColorConflictWithBlocks(world, movementResult);
         }
     }
 
@@ -163,11 +215,60 @@ public final class PlayerObject extends ActorObject {
                 // 简单的击退效果
                 int pushDirectionX = Integer.compare(getX(), monster.getX());
                 int pushDirectionY = Integer.compare(getY(), monster.getY());
-                moveBy(pushDirectionX * 10, pushDirectionY * 10);
+                if (pushDirectionX == 0) {
+                    pushDirectionX = 1;
+                }
+                if (pushDirectionY == 0) {
+                    pushDirectionY = -1;
+                }
+                world.moveObject(this, getX() + (pushDirectionX * 10), getY() + (pushDirectionY * 10));
                 
                 break;
             }
         }
+    }
+
+    private void checkColorConflicts(GameWorld world) {
+        if (!complementaryColorDamageEnabled || world == null) {
+            return;
+        }
+        long now = System.nanoTime();
+        if (now - lastDamageTimeNanos < INVULNERABILITY_DURATION_NANOS) {
+            return;
+        }
+        for (GameObject other : world.getCollisions(this)) {
+            if (other == null || !other.isActive() || other == this) {
+                continue;
+            }
+            if (isColorConflict(other)) {
+                takeDamage(complementaryColorDamage);
+                lastDamageTimeNanos = now;
+                return;
+            }
+        }
+    }
+
+    private void checkColorConflictWithBlocks(GameWorld world, MovementResult movementResult) {
+        if (!complementaryColorDamageEnabled || world == null || movementResult == null) {
+            return;
+        }
+        long now = System.nanoTime();
+        if (now - lastDamageTimeNanos < INVULNERABILITY_DURATION_NANOS) {
+            return;
+        }
+        GameObject blockedX = movementResult.getBlockedByX();
+        GameObject blockedY = movementResult.getBlockedByY();
+        if (isColorConflict(blockedX) || isColorConflict(blockedY)) {
+            takeDamage(complementaryColorDamage);
+            lastDamageTimeNanos = now;
+        }
+    }
+
+    private boolean isColorConflict(GameObject other) {
+        if (other == null) {
+            return false;
+        }
+        return ColorUtils.isComplementary(getColor(), other.getColor());
     }
 
     @Override
@@ -180,6 +281,7 @@ public final class PlayerObject extends ActorObject {
         graphics.setColor(getColor());
         graphics.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 16, 16);
         graphics.setColor(Color.WHITE);
-        graphics.drawString(getName() + " HP: " + getHealth(), getX(), Math.max(12, getY() - 4));
+        graphics.setFont(graphics.getFont().deriveFont((float) fontSize));
+        graphics.drawString(getName() + " HP: " + getHealth(), getX(), Math.max(fontSize, getY() - 4));
     }
 }

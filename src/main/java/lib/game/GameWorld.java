@@ -22,6 +22,8 @@ public final class GameWorld {
     private int width;
     private int height;
     private Color backgroundColor;
+    private boolean gravityEnabled;
+    private int gravityStrength;
 
     public GameWorld(int width, int height) {
         this(width, height, new Color(32, 36, 48));
@@ -33,6 +35,8 @@ public final class GameWorld {
         this.width = Math.max(0, width);
         this.height = Math.max(0, height);
         this.backgroundColor = backgroundColor == null ? new Color(32, 36, 48) : backgroundColor;
+        this.gravityEnabled = false;
+        this.gravityStrength = 900;
     }
 
     public EntityManager getEntityManager() {
@@ -61,6 +65,22 @@ public final class GameWorld {
             return;
         }
         this.backgroundColor = backgroundColor;
+    }
+
+    public boolean isGravityEnabled() {
+        return gravityEnabled;
+    }
+
+    public void setGravityEnabled(boolean gravityEnabled) {
+        this.gravityEnabled = gravityEnabled;
+    }
+
+    public int getGravityStrength() {
+        return gravityStrength;
+    }
+
+    public void setGravityStrength(int gravityStrength) {
+        this.gravityStrength = Math.max(0, gravityStrength);
     }
 
     /**

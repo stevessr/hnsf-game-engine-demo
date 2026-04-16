@@ -10,6 +10,7 @@ public final class MonsterObject extends ActorObject {
     private int rewardExperience;
     private boolean aggressive;
     private int directionX;
+    private int fontSize = 12;
 
     public MonsterObject(String name) {
         this(name, 0, 0, 60);
@@ -38,6 +39,14 @@ public final class MonsterObject extends ActorObject {
         this.aggressive = aggressive;
     }
 
+    public int getFontSize() {
+        return fontSize;
+    }
+
+    public void setFontSize(int fontSize) {
+        this.fontSize = Math.max(8, fontSize);
+    }
+
     public boolean canAttack() {
         return isActive() && aggressive && getHealth() > 0;
     }
@@ -47,18 +56,34 @@ public final class MonsterObject extends ActorObject {
         if (!canAttack()) {
             return;
         }
+
+        if (world != null && world.isGravityEnabled()) {
+            setVelocityY(getVelocityYDouble() + world.getGravityStrength() * deltaSeconds);
+        }
+
         int deltaX = (int) Math.round(getSpeed() * directionX * deltaSeconds);
-        if (deltaX == 0) {
+        if (deltaX == 0 && getSpeed() > 0) {
             deltaX = directionX;
         }
+        
+        int deltaY = (int) Math.round(getVelocityYDouble() * deltaSeconds);
+
         int nextX = getX() + deltaX;
+        int nextY = getY() + deltaY;
+
         if (world == null) {
-            setPosition(nextX, getY());
+            setPosition(nextX, nextY);
             return;
         }
-        MovementResult movementResult = world.moveObject(this, nextX, getY());
+
+        MovementResult movementResult = world.moveObject(this, nextX, nextY);
+        setPosition(movementResult.getResolvedX(), movementResult.getResolvedY());
+
         if (movementResult.isBlockedX()) {
             directionX *= -1;
+        }
+        if (movementResult.isBlockedY()) {
+            setVelocityY(0.0);
         }
     }
 
@@ -67,6 +92,7 @@ public final class MonsterObject extends ActorObject {
         graphics.setColor(getColor());
         graphics.fillOval(getX(), getY(), getWidth(), getHeight());
         graphics.setColor(Color.BLACK);
-        graphics.drawString(getName(), getX(), Math.max(12, getY() - 4));
+        graphics.setFont(graphics.getFont().deriveFont((float) fontSize));
+        graphics.drawString(getName(), getX(), Math.max(fontSize, getY() - 4));
     }
 }

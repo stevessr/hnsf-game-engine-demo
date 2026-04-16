@@ -19,6 +19,8 @@ public final class MapDataMapper {
         mapData.setWidth(world.getWidth());
         mapData.setHeight(world.getHeight());
         mapData.setBackgroundColor(world.getBackgroundColor());
+        mapData.setGravityEnabled(world.isGravityEnabled());
+        mapData.setGravityStrength(world.getGravityStrength());
         for (GameObject object : world.getObjects()) {
             ObjectData data = GameObjectFactory.toObjectData(object);
             if (data != null) {
@@ -33,6 +35,8 @@ public final class MapDataMapper {
             return null;
         }
         GameWorld world = new GameWorld(mapData.getWidth(), mapData.getHeight(), mapData.getBackgroundColor());
+        world.setGravityEnabled(mapData.isGravityEnabled());
+        world.setGravityStrength(mapData.getGravityStrength());
         for (ObjectData objectData : mapData.getObjects()) {
             GameObject object = GameObjectFactory.fromObjectData(objectData);
             if (object != null) {
@@ -48,6 +52,8 @@ public final class MapDataMapper {
         }
         world.setSize(mapData.getWidth(), mapData.getHeight());
         world.setBackgroundColor(mapData.getBackgroundColor());
+        world.setGravityEnabled(mapData.isGravityEnabled());
+        world.setGravityStrength(mapData.getGravityStrength());
         world.getEntityManager().clear();
         for (ObjectData objectData : mapData.getObjects()) {
             GameObject object = GameObjectFactory.fromObjectData(objectData);

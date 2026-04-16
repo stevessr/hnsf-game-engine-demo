@@ -13,5 +13,8 @@ public enum InputAction {
     MENU_NEXT,
     MENU_CONFIRM,
     PAUSE,
-    DIALOG_NEXT
+    DIALOG_NEXT,
+    CYCLE_COLOR,
+    VOXEL_BUILD,
+    VOXEL_DESTROY
 }

@@ -38,15 +38,22 @@ public final class GameObjectFactory {
             extra.put("health", player.getHealth());
             extra.put("attack", player.getAttack());
             extra.put("speed", player.getSpeed());
+            extra.put("complementaryColorDamageEnabled", player.isComplementaryColorDamageEnabled());
+            extra.put("complementaryColorDamage", player.getComplementaryColorDamage());
         } else if (object instanceof MonsterObject monster) {
             extra.put("rewardExperience", monster.getRewardExperience());
             extra.put("aggressive", monster.isAggressive());
             extra.put("health", monster.getHealth());
             extra.put("attack", monster.getAttack());
             extra.put("speed", monster.getSpeed());
+        } else if (object instanceof ItemObject item) {
+            extra.put("kind", item.getKind());
+            extra.put("value", item.getValue());
+            extra.put("message", item.getMessage());
         } else if (object instanceof MenuObject menu) {
             extra.put("title", menu.getTitle());
             extra.put("selectedIndex", menu.getSelectedIndex());
+            extra.put("fontSize", menu.getFontSize());
             JSONArray options = new JSONArray();
             for (String option : menu.getOptions()) {
                 options.put(option);
@@ -55,6 +62,7 @@ public final class GameObjectFactory {
         } else if (object instanceof DialogObject dialog) {
             extra.put("speakerName", dialog.getSpeakerName());
             extra.put("message", dialog.getMessage());
+            extra.put("fontSize", dialog.getFontSize());
         }
 
         data.setExtraJson(extra.isEmpty() ? "{}" : extra.toString());
@@ -70,6 +78,8 @@ public final class GameObjectFactory {
         switch (type) {
             case PLAYER -> object = createPlayer(data);
             case MONSTER -> object = createMonster(data);
+            case ITEM -> object = createItem(data);
+            case VOXEL -> object = createVoxel(data);
             case WALL -> object = new WallObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
             case BOUNDARY -> object = new BoundaryObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
             case MENU -> object = createMenu(data);
@@ -110,6 +120,18 @@ public final class GameObjectFactory {
         if (extra.has("speed")) {
             player.setSpeed(extra.optInt("speed", player.getSpeed()));
         }
+        if (extra.has("complementaryColorDamageEnabled")) {
+            player.setComplementaryColorDamageEnabled(extra.optBoolean(
+                "complementaryColorDamageEnabled",
+                player.isComplementaryColorDamageEnabled()
+            ));
+        }
+        if (extra.has("complementaryColorDamage")) {
+            player.setComplementaryColorDamage(extra.optInt(
+                "complementaryColorDamage",
+                player.getComplementaryColorDamage()
+            ));
+        }
         return player;
     }
 
@@ -130,6 +152,34 @@ public final class GameObjectFactory {
             monster.setSpeed(extra.optInt("speed", monster.getSpeed()));
         }
         return monster;
+    }
+
+    private static GameObject createItem(ObjectData data) {
+        JSONObject extra = parseExtra(data.getExtraJson());
+        String kind = extra.optString("kind", "coin");
+        int value = extra.optInt("value", 10);
+        String message = extra.optString("message", null);
+        return new ItemObject(
+            data.getName(),
+            data.getX(),
+            data.getY(),
+            data.getWidth(),
+            data.getHeight(),
+            kind,
+            value,
+            message
+        );
+    }
+
+    private static GameObject createVoxel(ObjectData data) {
+        return new VoxelObject(
+            data.getName(),
+            data.getX(),
+            data.getY(),
+            data.getWidth(),
+            data.getHeight(),
+            resolveColor(data.getColor())
+        );
     }
 
     private static GameObject createMenu(ObjectData data) {
@@ -160,6 +210,9 @@ public final class GameObjectFactory {
         if (extra.has("selectedIndex")) {
             menu.setSelectedIndex(extra.optInt("selectedIndex", menu.getSelectedIndex()));
         }
+        if (extra.has("fontSize")) {
+            menu.setFontSize(extra.optInt("fontSize", menu.getFontSize()));
+        }
         return menu;
     }
 
@@ -167,7 +220,7 @@ public final class GameObjectFactory {
         JSONObject extra = parseExtra(data.getExtraJson());
         String speakerName = extra.optString("speakerName", "Narrator");
         String message = extra.optString("message", "...");
-        return new DialogObject(
+        DialogObject dialog = new DialogObject(
             data.getName(),
             data.getX(),
             data.getY(),
@@ -176,6 +229,10 @@ public final class GameObjectFactory {
             speakerName,
             message
         );
+        if (extra.has("fontSize")) {
+            dialog.setFontSize(extra.optInt("fontSize", dialog.getFontSize()));
+        }
+        return dialog;
     }
 
     private static Color resolveColor(Color color) {

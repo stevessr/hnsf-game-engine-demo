@@ -10,18 +10,31 @@ public final class MapData {
     private int width;
     private int height;
     private Color backgroundColor;
+    private boolean gravityEnabled;
+    private int gravityStrength;
     private final List<ObjectData> objects;
 
     public MapData() {
-        this(0L, "untitled", 960, 540, new Color(32, 36, 48), new ArrayList<>());
+        this(0L, "untitled", 960, 540, new Color(32, 36, 48), false, 900, new ArrayList<>());
     }
 
-    public MapData(long id, String name, int width, int height, Color backgroundColor, List<ObjectData> objects) {
+    public MapData(
+        long id,
+        String name,
+        int width,
+        int height,
+        Color backgroundColor,
+        boolean gravityEnabled,
+        int gravityStrength,
+        List<ObjectData> objects
+    ) {
         this.id = id;
         this.name = normalizeName(name);
         this.width = Math.max(0, width);
         this.height = Math.max(0, height);
         this.backgroundColor = backgroundColor == null ? new Color(32, 36, 48) : backgroundColor;
+        this.gravityEnabled = gravityEnabled;
+        this.gravityStrength = Math.max(0, gravityStrength);
         this.objects = new ArrayList<>();
         if (objects != null) {
             this.objects.addAll(objects);
@@ -69,6 +82,22 @@ public final class MapData {
             return;
         }
         this.backgroundColor = backgroundColor;
+    }
+
+    public boolean isGravityEnabled() {
+        return gravityEnabled;
+    }
+
+    public void setGravityEnabled(boolean gravityEnabled) {
+        this.gravityEnabled = gravityEnabled;
+    }
+
+    public int getGravityStrength() {
+        return gravityStrength;
+    }
+
+    public void setGravityStrength(int gravityStrength) {
+        this.gravityStrength = Math.max(0, gravityStrength);
     }
 
     public List<ObjectData> getObjects() {
