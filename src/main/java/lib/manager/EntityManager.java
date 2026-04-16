@@ -85,8 +85,37 @@ public final class EntityManager {
     }
 
     public void renderAll(Graphics2D graphics) {
-        for (GameObject object : List.copyOf(objects)) {
-            if (object.isActive()) {
+        List<GameObject> all = List.copyOf(objects);
+        
+        // 层级 1: 静态场景与体素
+        for (GameObject object : all) {
+            if (!object.isActive()) {
+                continue;
+            }
+            GameObjectType type = object.getType();
+            if (type == GameObjectType.SCENE || type == GameObjectType.WALL || type == GameObjectType.BOUNDARY || type == GameObjectType.VOXEL) {
+                object.render(graphics);
+            }
+        }
+
+        // 层级 2: 动态实体与物品
+        for (GameObject object : all) {
+            if (!object.isActive()) {
+                continue;
+            }
+            GameObjectType type = object.getType();
+            if (type == GameObjectType.PLAYER || type == GameObjectType.MONSTER || type == GameObjectType.ITEM) {
+                object.render(graphics);
+            }
+        }
+
+        // 层级 3: UI 元素 (菜单, 对话框)
+        for (GameObject object : all) {
+            if (!object.isActive()) {
+                continue;
+            }
+            GameObjectType type = object.getType();
+            if (type == GameObjectType.MENU || type == GameObjectType.DIALOG) {
                 object.render(graphics);
             }
         }
