@@ -48,11 +48,16 @@ public final class MonsterObject extends ActorObject {
     }
 
     public boolean canAttack() {
-        return isActive() && aggressive && getHealth() > 0;
+        return isActive() && aggressive && getHealth() > 0 && !isDying();
     }
 
     @Override
     public void update(GameWorld world, double deltaSeconds) {
+        if (isDying()) {
+            updateDeathAnimation(deltaSeconds);
+            return;
+        }
+
         if (!canAttack()) {
             return;
         }
@@ -89,6 +94,14 @@ public final class MonsterObject extends ActorObject {
 
     @Override
     public void render(Graphics2D graphics) {
+        if (isDying()) {
+            renderDeathAnimation(graphics, () -> renderBase(graphics));
+            return;
+        }
+        renderBase(graphics);
+    }
+
+    private void renderBase(Graphics2D graphics) {
         graphics.setColor(getColor());
         graphics.fillOval(getX(), getY(), getWidth(), getHeight());
         

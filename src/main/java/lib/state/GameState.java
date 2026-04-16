@@ -27,7 +27,17 @@ public enum GameState {
      * 暂停状态 - 游戏暂停中。
      * 此状态下只响应恢复游戏的输入，游戏世界不更新。
      */
-    PAUSED;
+    PAUSED,
+
+    /**
+     * 游戏结束状态 - 玩家死亡或任务失败。
+     */
+    GAMEOVER,
+
+    /**
+     * 结算状态 - 关卡完成或游戏胜利。
+     */
+    SETTLEMENT;
 
     /**
      * 判断当前状态是否允许玩家移动。
@@ -44,7 +54,7 @@ public enum GameState {
      * @return 如果允许世界更新返回 true
      */
     public boolean allowsWorldUpdate() {
-        return this == PLAYING;
+        return this == PLAYING || this == GAMEOVER || this == SETTLEMENT;
     }
 
     /**
@@ -53,7 +63,7 @@ public enum GameState {
      * @return 如果允许菜单导航返回 true
      */
     public boolean allowsMenuNavigation() {
-        return this == MENU || this == PAUSED;
+        return this == MENU || this == PAUSED || this == GAMEOVER || this == SETTLEMENT;
     }
 
     /**

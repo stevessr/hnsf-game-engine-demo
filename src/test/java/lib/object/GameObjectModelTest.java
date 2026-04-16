@@ -32,8 +32,14 @@ class GameObjectModelTest {
 
         monster.takeDamage(1000);
 
-        assertEquals(GameObjectType.MONSTER, monster.getType());
         assertEquals(0, monster.getHealth());
+        assertTrue(monster.isDying());
+        assertTrue(monster.isActive());
+
+        // 模拟动画完成
+        monster.update(null, 1.0);
+
+        assertFalse(monster.isDying());
         assertFalse(monster.isActive());
         assertFalse(monster.canAttack());
         assertEquals(25, monster.getRewardExperience());

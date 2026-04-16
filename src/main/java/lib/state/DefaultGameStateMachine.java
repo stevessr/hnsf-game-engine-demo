@@ -1,5 +1,6 @@
 package lib.state;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -25,6 +26,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     private static final String LEVEL_SELECT_MENU_NAME = "level-select-menu";
     private static final String PAUSE_MENU_NAME = "pause-menu";
     private static final String OPTIONS_MENU_NAME = "options-menu";
+    private static final String GAMEOVER_MENU_NAME = "gameover-menu";
+    private static final String VICTORY_DIALOG_NAME = "victory-dialog";
 
     private GameState currentState;
     private GameState previousState;
@@ -53,9 +56,11 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
     private void initializeTransitions() {
         allowedTransitions.put(GameState.MENU, EnumSet.of(GameState.DIALOG, GameState.PLAYING));
-        allowedTransitions.put(GameState.PLAYING, EnumSet.of(GameState.PAUSED, GameState.DIALOG, GameState.MENU));
-        allowedTransitions.put(GameState.DIALOG, EnumSet.of(GameState.PLAYING));
+        allowedTransitions.put(GameState.PLAYING, EnumSet.of(GameState.PAUSED, GameState.DIALOG, GameState.MENU, GameState.GAMEOVER, GameState.SETTLEMENT));
+        allowedTransitions.put(GameState.DIALOG, EnumSet.of(GameState.PLAYING, GameState.SETTLEMENT));
         allowedTransitions.put(GameState.PAUSED, EnumSet.of(GameState.PLAYING, GameState.MENU));
+        allowedTransitions.put(GameState.GAMEOVER, EnumSet.of(GameState.PLAYING, GameState.MENU));
+        allowedTransitions.put(GameState.SETTLEMENT, EnumSet.of(GameState.PLAYING, GameState.MENU));
     }
 
     @Override
@@ -103,6 +108,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             hideActiveDialog(world);
             transitionTo(GameState.PAUSED);
             createPauseMenu(world, settings);
+            clearPlayerMovement(world);
         }
     }
 
@@ -148,6 +154,49 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         recenterUI(world);
     }
 
+    private void createGameOverMenu(GameWorld world, GameSettings settings) {
+        if (world == null) {
+            return;
+        }
+        removeMenu(world, GAMEOVER_MENU_NAME);
+        int menuWidth = 320;
+        int fontSize = settings != null ? settings.getUIFontSize() : 24;
+        int menuHeight = 200;
+        
+        MenuObject gameOverMenu = new MenuObject(
+            GAMEOVER_MENU_NAME,
+            0, 0,
+            menuWidth,
+            menuHeight,
+            "GAME OVER",
+            List.of("Restart Level", "Back to Menu")
+        );
+        gameOverMenu.setColor(new Color(80, 0, 0, 200));
+        gameOverMenu.setFontSize(fontSize);
+        gameOverMenu.setSize(menuWidth, Math.max(menuHeight, gameOverMenu.getPreferredHeight()));
+        world.addObject(gameOverMenu);
+        recenterUI(world);
+    }
+
+    private void createVictoryDialog(GameWorld world, GameSettings settings) {
+        if (world == null) {
+            return;
+        }
+        removeDialog(world, VICTORY_DIALOG_NAME);
+        DialogObject victoryDialog = new DialogObject(
+            VICTORY_DIALOG_NAME,
+            0, 0,
+            (int) (world.getWidth() * 0.8),
+            100,
+            "SYSTEM",
+            "VICTORY! All enemies defeated. Press Confirm to continue."
+        );
+        victoryDialog.setColor(new Color(0, 80, 0, 220));
+        victoryDialog.setFontSize(settings != null ? settings.getUIFontSize() : 20);
+        world.addObject(victoryDialog);
+        recenterUI(world);
+    }
+
     public void recenterUI(GameWorld world) {
         if (world == null) {
             return;
@@ -186,6 +235,15 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             .forEach(world::removeObject);
     }
 
+    private void removeDialog(GameWorld world, String name) {
+        if (world == null) {
+            return;
+        }
+        world.getObjectsByType(GameObjectType.DIALOG).stream()
+            .filter(obj -> name.equals(obj.getName()))
+            .forEach(world::removeObject);
+    }
+
     @Override
     public void processInput(GameStateContext context) {
         Objects.requireNonNull(context, "context must not be null");
@@ -194,6 +252,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             case PLAYING -> processPlayingInput(context);
             case DIALOG -> processDialogInput(context);
             case PAUSED -> processPausedInput(context);
+            case GAMEOVER -> processGameOverInput(context);
+            case SETTLEMENT -> processSettlementInput(context);
         }
     }
 
@@ -259,6 +319,10 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             handleLevelSelectSelection(menu, context);
             return;
         }
+        if (isGameOverMenu(menu)) {
+            handleGameOverMenuSelection(menu, context);
+            return;
+        }
 
         if (isStartOption(selected)) {
             handleMainMenuSelectionForGameplay(menu, context);
@@ -311,6 +375,19 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             transitionTo(GameState.MENU);
         }
         clearPlayerMovement(context);
+    }
+
+    private void handleGameOverMenuSelection(MenuObject menu, GameStateContext context) {
+        String selected = menu.getSelectedOption();
+        if (selected.contains("Restart")) {
+            removeMenu(context.getWorld(), GAMEOVER_MENU_NAME);
+            context.getRuntimeActions().requestLoadLevel(null); // Reload current
+            transitionTo(GameState.PLAYING);
+        } else {
+            removeMenu(context.getWorld(), GAMEOVER_MENU_NAME);
+            activateMainMenu(context.getWorld());
+            transitionTo(GameState.MENU);
+        }
     }
 
     private void showOptionsMenu(GameWorld world, GameSettings settings) {
@@ -545,56 +622,78 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         var inputController = context.getInputController();
         var keyboard = inputController.getKeyboardManager();
         var actionMapper = inputController.getActionMapper();
+        GameWorld world = context.getWorld();
 
         if (actionMapper.isKeyboardJustActivated(InputAction.PAUSE, keyboard)) {
-            togglePause(context.getWorld(), context.getSettings());
+            togglePause(world, context.getSettings());
             clearPlayerMovement(context);
             return;
         }
 
-        if (findActiveDialog(context.getWorld()) != null) {
+        if (findActiveDialog(world) != null) {
             transitionTo(GameState.DIALOG);
             clearPlayerMovement(context);
             return;
         }
 
-        PlayerObject player = context.getWorld().findPlayer().orElse(null);
-        if (player != null && player.isActive()) {
-            double ax = 0;
-            double ay = 0;
-            if (actionMapper.isActive(InputAction.MOVE_LEFT, keyboard, inputController.getMouseManager())) {
-                ax -= 1.0;
-            }
-            if (actionMapper.isActive(InputAction.MOVE_RIGHT, keyboard, inputController.getMouseManager())) {
-                ax += 1.0;
-            }
-            if (actionMapper.isActive(InputAction.MOVE_UP, keyboard, inputController.getMouseManager())) {
-                ay -= 1.0;
-            }
-            if (actionMapper.isActive(InputAction.MOVE_DOWN, keyboard, inputController.getMouseManager())) {
-                ay += 1.0;
-            }
-            if (actionMapper.isActive(InputAction.THROTTLE_LEFT, keyboard, inputController.getMouseManager())) {
-                ax -= 1.0;
-            }
-            if (actionMapper.isActive(InputAction.THROTTLE_RIGHT, keyboard, inputController.getMouseManager())) {
-                ax += 1.0;
-            }
-            if (actionMapper.isActive(InputAction.THROTTLE_UP, keyboard, inputController.getMouseManager())) {
-                ay -= 1.0;
-            }
-            if (actionMapper.isActive(InputAction.THROTTLE_DOWN, keyboard, inputController.getMouseManager())) {
-                ay += 1.0;
-            }
-
-            if (ax != 0 && ay != 0) {
-                double mag = Math.sqrt(ax * ax + ay * ay);
-                ax /= mag;
-                ay /= mag;
-            }
-
-            player.accelerate(ax, ay, 1.0 / 60.0);
+        PlayerObject player = world.findPlayer().orElse(null);
+        if (player == null || (!player.isActive() && !player.isDying())) {
+            // Player dead and animation finished or player missing
+            transitionTo(GameState.GAMEOVER);
+            createGameOverMenu(world, context.getSettings());
+            return;
         }
+        
+        if (player.isDying()) {
+            // Wait for death animation
+            return;
+        }
+        
+        // Check victory
+        if (checkLevelComplete(world)) {
+            transitionTo(GameState.SETTLEMENT);
+            createVictoryDialog(world, context.getSettings());
+            return;
+        }
+
+        double ax = 0;
+        double ay = 0;
+        if (actionMapper.isActive(InputAction.MOVE_LEFT, keyboard, inputController.getMouseManager())) {
+            ax -= 1.0;
+        }
+        if (actionMapper.isActive(InputAction.MOVE_RIGHT, keyboard, inputController.getMouseManager())) {
+            ax += 1.0;
+        }
+        if (actionMapper.isActive(InputAction.MOVE_UP, keyboard, inputController.getMouseManager())) {
+            ay -= 1.0;
+        }
+        if (actionMapper.isActive(InputAction.MOVE_DOWN, keyboard, inputController.getMouseManager())) {
+            ay += 1.0;
+        }
+        if (actionMapper.isActive(InputAction.THROTTLE_LEFT, keyboard, inputController.getMouseManager())) {
+            ax -= 1.0;
+        }
+        if (actionMapper.isActive(InputAction.THROTTLE_RIGHT, keyboard, inputController.getMouseManager())) {
+            ax += 1.0;
+        }
+        if (actionMapper.isActive(InputAction.THROTTLE_UP, keyboard, inputController.getMouseManager())) {
+            ay -= 1.0;
+        }
+        if (actionMapper.isActive(InputAction.THROTTLE_DOWN, keyboard, inputController.getMouseManager())) {
+            ay += 1.0;
+        }
+
+        if (ax != 0 && ay != 0) {
+            double mag = Math.sqrt(ax * ax + ay * ay);
+            ax /= mag;
+            ay /= mag;
+        }
+
+        player.accelerate(ax, ay, 1.0 / 60.0);
+    }
+
+    private boolean checkLevelComplete(GameWorld world) {
+        return world.getObjectsByType(GameObjectType.MONSTER).stream().noneMatch(GameObject::isActive);
     }
 
     private void processDialogInput(GameStateContext context) {
@@ -612,7 +711,13 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             || actionMapper.isKeyboardJustActivated(InputAction.DIALOG_NEXT, keyboard)
             || actionMapper.isMouseJustActivated(InputAction.MENU_CONFIRM, inputController.getMouseManager())) {
             dialog.setActive(false);
-            transitionTo(GameState.PLAYING);
+            if (currentState == GameState.SETTLEMENT) {
+                // Victory dialog closed -> back to menu or next level
+                activateMainMenu(context.getWorld());
+                transitionTo(GameState.MENU);
+            } else {
+                transitionTo(GameState.PLAYING);
+            }
         }
         clearPlayerMovement(context);
     }
@@ -631,11 +736,26 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         clearPlayerMovement(context);
     }
 
-    private void clearPlayerMovement(GameStateContext context) {
-        if (context == null || context.getWorld() == null) {
+    private void processGameOverInput(GameStateContext context) {
+        processMenuInput(context);
+    }
+
+    private void processSettlementInput(GameStateContext context) {
+        processDialogInput(context);
+    }
+
+    private void clearPlayerMovement(GameWorld world) {
+        if (world == null) {
             return;
         }
-        context.getWorld().findPlayer().ifPresent(player -> player.setVelocity(0.0, 0.0));
+        world.findPlayer().ifPresent(player -> player.setVelocity(0.0, 0.0));
+    }
+
+    private void clearPlayerMovement(GameStateContext context) {
+        if (context == null) {
+            return;
+        }
+        clearPlayerMovement(context.getWorld());
     }
 
     private void syncActiveDialog(GameWorld world, String prefix, String selectedOption) {
@@ -829,5 +949,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
     private boolean isLevelSelectMenu(MenuObject menu) {
         return menu != null && LEVEL_SELECT_MENU_NAME.equals(menu.getName());
+    }
+
+    private boolean isGameOverMenu(MenuObject menu) {
+        return menu != null && GAMEOVER_MENU_NAME.equals(menu.getName());
     }
 }

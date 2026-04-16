@@ -1,12 +1,18 @@
 package lib.object;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
 
 public abstract class ActorObject extends BaseObject {
     private int health;
     private int attack;
     private int speed;
     private double velocityY;
+    private boolean dying;
+    private double deathAnimationTime;
+    private static final double DEATH_DURATION = 0.5;
 
     protected ActorObject(GameObjectType type, String name, Color color) {
         this(type, name, 0, 0, 48, 48, color, 100, 10, 5);
@@ -29,6 +35,8 @@ public abstract class ActorObject extends BaseObject {
         this.attack = normalizeNonNegative(attack);
         this.speed = normalizeNonNegative(speed);
         this.velocityY = 0.0;
+        this.dying = false;
+        this.deathAnimationTime = 0.0;
     }
 
     public final int getHealth() {
@@ -36,8 +44,13 @@ public abstract class ActorObject extends BaseObject {
     }
 
     public final void setHealth(int health) {
+        if (this.health > 0 && health <= 0 && !dying) {
+            startDeathAnimation();
+        }
         this.health = normalizeNonNegative(health);
-        setActive(this.health > 0);
+        if (!dying) {
+            setActive(this.health > 0);
+        }
     }
 
     public final int getAttack() {
@@ -64,15 +77,59 @@ public abstract class ActorObject extends BaseObject {
         this.velocityY = velocityY;
     }
 
+    public final boolean isDying() {
+        return dying;
+    }
+
+    protected final void startDeathAnimation() {
+        this.dying = true;
+        this.deathAnimationTime = 0.0;
+    }
+
+    protected final void updateDeathAnimation(double deltaSeconds) {
+        if (!dying) {
+            return;
+        }
+        deathAnimationTime += deltaSeconds;
+        if (deathAnimationTime >= DEATH_DURATION) {
+            setActive(false);
+            dying = false;
+        }
+    }
+
+    protected final void renderDeathAnimation(Graphics2D graphics, Runnable baseRender) {
+        double progress = Math.min(1.0, deathAnimationTime / DEATH_DURATION);
+        float alpha = (float) (1.0 - progress);
+        
+        Graphics2D g2d = (Graphics2D) graphics.create();
+        try {
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+            
+            // 旋转并缩小效果
+            double centerX = getX() + getWidth() / 2.0;
+            double centerY = getY() + getHeight() / 2.0;
+            AffineTransform transform = new AffineTransform();
+            transform.translate(centerX, centerY);
+            transform.rotate(progress * Math.PI * 2);
+            transform.scale(1.0 - progress, 1.0 - progress);
+            transform.translate(-centerX, -centerY);
+            g2d.transform(transform);
+            
+            baseRender.run();
+        } finally {
+            g2d.dispose();
+        }
+    }
+
     public final void takeDamage(int damage) {
-        if (damage <= 0) {
+        if (damage <= 0 || dying) {
             return;
         }
         setHealth(health - damage);
     }
 
     public final void heal(int amount) {
-        if (amount <= 0) {
+        if (amount <= 0 || dying) {
             return;
         }
         setHealth(health + amount);

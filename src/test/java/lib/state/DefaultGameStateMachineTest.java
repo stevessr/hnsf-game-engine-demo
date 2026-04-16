@@ -16,6 +16,7 @@ import lib.game.GameWorld;
 import lib.input.GameInputController;
 import lib.object.DialogObject;
 import lib.object.MenuObject;
+import lib.object.MonsterObject;
 import lib.object.PlayerObject;
 
 class DefaultGameStateMachineTest {
@@ -86,12 +87,19 @@ class DefaultGameStateMachineTest {
     void playingPauseShouldStopWorldUpdateUntilResumed() {
         GameWorld world = new GameWorld(240, 180);
         PlayerObject player = new PlayerObject("hero", 10, 20);
+        // Add a monster so we don't trigger automatic victory (SETTLEMENT)
+        MonsterObject monster = new MonsterObject("mob", 100, 100, 0);
+        
         DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(GameState.PLAYING);
         GameInputController inputController = GameInputController.createDefault();
         GameStateContext context = new GameStateContext(world, inputController);
 
         world.addObject(player);
+        world.addObject(monster);
         world.setStateMachine(stateMachine);
+
+        player.setDeceleration(1.0);
+        player.setThrottlePower(1000);
 
         inputController.getKeyboardManager().pressKey(KeyEvent.VK_D);
 
@@ -104,21 +112,41 @@ class DefaultGameStateMachineTest {
 
         assertEquals(GameState.PLAYING, stateMachine.getCurrentState());
         assertTrue(player.getX() > 10, "Player should have moved");
-        int xAfterMove = player.getX();
+
+        // Stop applying input
+        inputController.getKeyboardManager().releaseKey(KeyEvent.VK_D);
+        int xBeforePause = player.getX();
 
         tapKey(inputController, KeyEvent.VK_P);
-        stateMachine.processInput(context);
-        world.update(1.0);
-        inputController.finishFrame();
-
+        stateMachine.processInput(context); // Toggles pause and clears velocity
+        
         assertEquals(GameState.PAUSED, stateMachine.getCurrentState());
-        assertTrue(player.getX() >= xAfterMove, "Player position should not decrease");
+        int xAtPause = player.getX();
+        
+        world.update(1.0); 
+        inputController.finishFrame();
+        assertEquals(xAtPause, player.getX(), "Player position should not change while paused");
 
-        tapKey(inputController, KeyEvent.VK_P);
+        // Prepare movement input BEFORE unpausing
+        inputController.getKeyboardManager().pressKey(KeyEvent.VK_D);
+        
+        // Unpause
+        inputController.getKeyboardManager().releaseKey(KeyEvent.VK_P);
+        inputController.getKeyboardManager().pressKey(KeyEvent.VK_P);
         stateMachine.processInput(context);
         inputController.finishFrame();
-
-        assertEquals(GameState.PLAYING, stateMachine.getCurrentState());
+        
+        assertEquals(GameState.PLAYING, stateMachine.getCurrentState(), "Should return to PLAYING state after explicit unpause toggle");
+        
+        // Move
+        for (int i = 0; i < 5; i++) {
+            inputController.getKeyboardManager().pressKey(KeyEvent.VK_D);
+            stateMachine.processInput(context);
+            world.update(1.0); 
+            inputController.finishFrame();
+        }
+        
+        assertTrue(player.getX() > xAtPause, "Player should move to the right after unpause. currentX=" + player.getX() + ", xAtPause=" + xAtPause);
     }
 
     @Test

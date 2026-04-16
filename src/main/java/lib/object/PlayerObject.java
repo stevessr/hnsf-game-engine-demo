@@ -143,6 +143,11 @@ public final class PlayerObject extends ActorObject {
 
     @Override
     public void update(GameWorld world, double deltaSeconds) {
+        if (isDying()) {
+            updateDeathAnimation(deltaSeconds);
+            return;
+        }
+
         if (world != null && isActive()) {
             checkMonsterCollisions(world);
             checkColorConflicts(world);
@@ -273,6 +278,14 @@ public final class PlayerObject extends ActorObject {
 
     @Override
     public void render(Graphics2D graphics) {
+        if (isDying()) {
+            renderDeathAnimation(graphics, () -> renderBase(graphics));
+            return;
+        }
+        renderBase(graphics);
+    }
+
+    private void renderBase(Graphics2D graphics) {
         long now = System.nanoTime();
         // 受伤闪烁效果
         if (now - lastDamageTimeNanos < INVULNERABILITY_DURATION_NANOS && (now / 100_000_000L) % 2 == 0) {
