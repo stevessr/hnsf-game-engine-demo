@@ -54,7 +54,7 @@ public enum GameState {
      * @return 如果允许世界更新返回 true
      */
     public boolean allowsWorldUpdate() {
-        return this == PLAYING || this == GAMEOVER || this == SETTLEMENT;
+        return this == PLAYING || this == GAMEOVER;
     }
 
     /**

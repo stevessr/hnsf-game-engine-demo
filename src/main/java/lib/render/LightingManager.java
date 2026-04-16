@@ -87,6 +87,13 @@ public final class LightingManager {
             drawLight(g2d, player.getX() + player.getWidth() / 2, player.getY() + player.getHeight() / 2, 200, 1.0f * intensityMultiplier);
         });
         
+        // 为出口添加光源
+        for (lib.object.GameObject obj : world.getObjectsByType(lib.object.GameObjectType.GOAL)) {
+            if (obj.isActive()) {
+                drawLight(g2d, obj.getX() + obj.getWidth() / 2, obj.getY() + obj.getHeight() / 2, 250, 1.2f * intensityMultiplier);
+            }
+        }
+        
         for (LightSource light : lights) {
             drawLight(g2d, light.x, light.y, light.radius, light.intensity * intensityMultiplier);
         }

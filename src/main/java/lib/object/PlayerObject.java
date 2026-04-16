@@ -148,11 +148,12 @@ public final class PlayerObject extends ActorObject {
             return;
         }
         
-        // 检查脚下是否靠近地面 (往下探测 4 像素)
-        boolean nearGround = world.collidesWithSolid(this, getX(), getY() + 4);
+        // 更加鲁棒的地面检测：检查下方是否有碰撞
+        // 我们检查当前位置稍微往下一点点是否会碰撞
+        boolean onGround = world.collidesWithSolid(this, getX(), getY() + 1);
         
-        if (nearGround && getVelocityYDouble() >= 0) {
-            // 一次性向上加速度 (较大数值)
+        if (onGround && getVelocityYDouble() >= 0) {
+            // 一次性向上加速度
             setVelocityY(-650.0);
         }
     }

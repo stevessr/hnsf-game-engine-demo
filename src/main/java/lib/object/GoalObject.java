@@ -3,6 +3,8 @@ package lib.object;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.BasicStroke;
+import java.awt.RadialGradientPaint;
+import java.awt.geom.Point2D;
 import lib.game.GameWorld;
 
 /**
@@ -26,23 +28,40 @@ public final class GoalObject extends BaseObject {
         int y = getY();
         int w = getWidth();
         int h = getHeight();
+        int cx = x + w / 2;
+        int cy = y + h / 2;
 
-        // 绘制金色传送门效果
+        // 1. 绘制外部发光光环
+        float[] dist = {0.0f, 1.0f};
+        Color[] colors = {new Color(255, 215, 0, 100), new Color(255, 215, 0, 0)};
+        int glowRadius = (int)(w * 0.8 + Math.sin(animationTimer * 4) * 10);
+        RadialGradientPaint glow = new RadialGradientPaint(
+            new Point2D.Float(cx, cy),
+            glowRadius,
+            dist,
+            colors
+        );
+        graphics.setPaint(glow);
+        graphics.fillOval(cx - glowRadius, cy - glowRadius, glowRadius * 2, glowRadius * 2);
+
+        // 2. 绘制金色传送门外圈
         graphics.setColor(getColor());
-        graphics.setStroke(new BasicStroke(3));
+        graphics.setStroke(new BasicStroke(4));
         graphics.drawOval(x, y, w, h);
         
-        // 内部旋转核心
-        int padding = 10 + (int)(Math.sin(animationTimer * 5) * 5);
+        // 3. 内部旋转核心
+        int padding = 12 + (int)(Math.sin(animationTimer * 5) * 6);
         graphics.fillOval(x + padding, y + padding, w - padding * 2, h - padding * 2);
         
-        // 发光粒子效果 (简单绘制)
-        graphics.setColor(new Color(255, 255, 255, 150));
-        for (int i = 0; i < 4; i++) {
-            double angle = animationTimer * 3 + (i * Math.PI / 2);
-            int px = (int)(x + w/2 + Math.cos(angle) * (w/2 + 5));
-            int py = (int)(y + h/2 + Math.sin(angle) * (h/2 + 5));
-            graphics.fillOval(px - 2, py - 2, 4, 4);
+        // 4. 发光粒子效果
+        graphics.setColor(Color.WHITE);
+        for (int i = 0; i < 6; i++) {
+            double angle = animationTimer * 2.5 + (i * Math.PI / 3);
+            int orbitRadius = w / 2 + 8;
+            int px = (int)(cx + Math.cos(angle) * orbitRadius);
+            int py = (int)(cy + Math.sin(angle) * orbitRadius);
+            int size = 4 + (int)(Math.sin(animationTimer * 10 + i) * 2);
+            graphics.fillOval(px - size / 2, py - size / 2, size, size);
         }
     }
 }

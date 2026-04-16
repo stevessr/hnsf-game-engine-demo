@@ -98,7 +98,7 @@ public final class EntityManager {
                 continue;
             }
             GameObjectType type = object.getType();
-            if (type == GameObjectType.SCENE || type == GameObjectType.WALL || type == GameObjectType.BOUNDARY || type == GameObjectType.VOXEL) {
+            if (type == GameObjectType.SCENE || type == GameObjectType.WALL || type == GameObjectType.BOUNDARY || type == GameObjectType.VOXEL || type == GameObjectType.GOAL) {
                 object.render(graphics);
             }
         }
