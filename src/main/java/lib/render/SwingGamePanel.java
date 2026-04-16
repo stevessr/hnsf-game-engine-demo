@@ -298,6 +298,24 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         super.paintComponent(graphics);
         Graphics2D graphics2d = (Graphics2D) graphics.create();
         try {
+            int panelWidth = getWidth();
+            int panelHeight = getHeight();
+            int worldWidth = world.getWidth();
+            int worldHeight = world.getHeight();
+
+            double scaleX = (double) panelWidth / worldWidth;
+            double scaleY = (double) panelHeight / worldHeight;
+            double scale = Math.min(scaleX, scaleY);
+
+            int offsetX = (int) ((panelWidth - worldWidth * scale) / 2);
+            int offsetY = (int) ((panelHeight - worldHeight * scale) / 2);
+
+            graphics2d.translate(offsetX, offsetY);
+            graphics2d.scale(scale, scale);
+
+            // 限制裁剪区域以防溢出
+            graphics2d.setClip(0, 0, worldWidth, worldHeight);
+
             world.render(graphics2d);
         } finally {
             graphics2d.dispose();

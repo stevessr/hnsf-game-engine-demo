@@ -83,6 +83,9 @@ public final class LevelManager {
             currentLevelIndex = index;
         }
         MapDataMapper.applyToWorld(world, mapData);
+        if (world.getStateMachine() instanceof lib.state.DefaultGameStateMachine dsm) {
+            dsm.recenterUI(world);
+        }
     }
 
     /**

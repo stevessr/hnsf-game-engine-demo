@@ -130,15 +130,13 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
         removeMenu(world, PAUSE_MENU_NAME);
-        int menuWidth = 220;
+        int menuWidth = 320;
         int fontSize = settings != null ? settings.getUIFontSize() : 18;
         int menuHeight = Math.max(160, 48 + (3 * Math.max(20, fontSize + 8)) + 12);
-        int menuX = (world.getWidth() - menuWidth) / 2;
-        int menuY = (world.getHeight() - menuHeight) / 2;
+        
         MenuObject pauseMenu = new MenuObject(
             PAUSE_MENU_NAME,
-            menuX,
-            menuY,
+            0, 0,
             menuWidth,
             menuHeight,
             "Paused",
@@ -146,11 +144,37 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         );
         pauseMenu.setFontSize(fontSize);
         pauseMenu.setSize(menuWidth, Math.max(menuHeight, pauseMenu.getPreferredHeight()));
-        pauseMenu.setPosition(
-            Math.max(0, (world.getWidth() - pauseMenu.getWidth()) / 2),
-            Math.max(0, (world.getHeight() - pauseMenu.getHeight()) / 2)
-        );
         world.addObject(pauseMenu);
+        recenterUI(world);
+    }
+
+    public void recenterUI(GameWorld world) {
+        if (world == null) {
+            return;
+        }
+        int worldWidth = world.getWidth();
+        int worldHeight = world.getHeight();
+
+        for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) {
+            if (object instanceof MenuObject menu && menu.isActive()) {
+                menu.setPosition(
+                    Math.max(0, (worldWidth - menu.getWidth()) / 2),
+                    Math.max(0, (worldHeight - menu.getHeight()) / 2)
+                );
+            }
+        }
+
+        for (GameObject object : world.getObjectsByType(GameObjectType.DIALOG)) {
+            if (object instanceof DialogObject dialog && dialog.isActive()) {
+                int dialogWidth = (int) (worldWidth * 0.8);
+                int dialogHeight = Math.max(60, dialog.getFontSize() * 3 + 20);
+                dialog.setSize(dialogWidth, dialogHeight);
+                dialog.setPosition(
+                    (worldWidth - dialogWidth) / 2,
+                    worldHeight - dialogHeight - 40
+                );
+            }
+        }
     }
 
     private void removeMenu(GameWorld world, String name) {
@@ -301,8 +325,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         int menuWidth = 320;
         int fontSize = settings != null ? settings.getUIFontSize() : 18;
         int menuHeight = Math.max(220, 56 + (6 * Math.max(20, fontSize + 8)) + 12);
-        int menuX = (world.getWidth() - menuWidth) / 2;
-        int menuY = (world.getHeight() - menuHeight) / 2;
 
         int throttle = settings != null ? settings.getThrottlePower() : 600;
         int deceleration = settings != null ? settings.getDeceleration() : 92;
@@ -310,8 +332,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
         MenuObject optionsMenu = new MenuObject(
             OPTIONS_MENU_NAME,
-            menuX,
-            menuY,
+            0, 0,
             menuWidth,
             menuHeight,
             "Options",
@@ -327,11 +348,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         );
         optionsMenu.setFontSize(fontSize);
         optionsMenu.setSize(menuWidth, Math.max(menuHeight, optionsMenu.getPreferredHeight()));
-        optionsMenu.setPosition(
-            Math.max(0, (world.getWidth() - optionsMenu.getWidth()) / 2),
-            Math.max(0, (world.getHeight() - optionsMenu.getHeight()) / 2)
-        );
         world.addObject(optionsMenu);
+        recenterUI(world);
     }
 
     private void handleOptionsMenuSelection(MenuObject menu, GameStateContext context) {
@@ -444,15 +462,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         int newFontSize = fontSizes[nextIdx];
         settings.setUIFontSize(newFontSize);
 
-        menu.setFontSize(newFontSize);
-        menu.setSize(menu.getWidth(), Math.max(menu.getHeight(), menu.getPreferredHeight()));
-        if (world != null) {
-            menu.setPosition(
-                Math.max(0, (world.getWidth() - menu.getWidth()) / 2),
-                Math.max(0, (world.getHeight() - menu.getHeight()) / 2)
-            );
-        }
-
         if (world != null) {
             for (GameObject object : world.getObjectsByType(GameObjectType.DIALOG)) {
                 if (object instanceof DialogObject dialog) {
@@ -465,6 +474,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
                     otherMenu.setSize(otherMenu.getWidth(), Math.max(otherMenu.getHeight(), otherMenu.getPreferredHeight()));
                 }
             }
+            recenterUI(world);
         }
 
         List<String> options = new ArrayList<>(menu.getOptions());
@@ -492,7 +502,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         int newW = resolutions[nextIdx][0];
         int newH = resolutions[nextIdx][1];
         settings.setResolution(newW, newH);
-        menu.setPosition(Math.max(0, (newW - menu.getWidth()) / 2), Math.max(0, (newH - menu.getHeight()) / 2));
+        recenterUI(world);
 
         List<String> options = new ArrayList<>(menu.getOptions());
         for (int i = 0; i < options.size(); i++) {

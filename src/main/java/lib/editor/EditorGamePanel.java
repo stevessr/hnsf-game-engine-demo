@@ -38,8 +38,24 @@ public final class EditorGamePanel extends JPanel {
         }
         Graphics2D graphics2d = (Graphics2D) graphics.create();
         try {
+            int panelWidth = getWidth();
+            int panelHeight = getHeight();
+            int worldWidth = world.getWidth();
+            int worldHeight = world.getHeight();
+
+            double scaleX = (double) panelWidth / worldWidth;
+            double scaleY = (double) panelHeight / worldHeight;
+            double scale = Math.min(scaleX, scaleY);
+
+            int offsetX = (int) ((panelWidth - worldWidth * scale) / 2);
+            int offsetY = (int) ((panelHeight - worldHeight * scale) / 2);
+
+            graphics2d.translate(offsetX, offsetY);
+            graphics2d.scale(scale, scale);
+            graphics2d.setClip(0, 0, worldWidth, worldHeight);
+
             world.render(graphics2d);
-            overlay.render(graphics2d, getWidth(), getHeight());
+            overlay.render(graphics2d, worldWidth, worldHeight);
         } finally {
             graphics2d.dispose();
         }

@@ -12,6 +12,7 @@ import lib.object.PlayerObject;
 import lib.object.SceneObject;
 import lib.physics.MovementResult;
 import lib.physics.PhysicsEngine;
+import lib.state.DefaultGameStateMachine;
 import lib.state.GameState;
 import lib.state.GameStateMachine;
 
@@ -54,6 +55,9 @@ public final class GameWorld {
     public void setSize(int width, int height) {
         this.width = Math.max(0, width);
         this.height = Math.max(0, height);
+        if (stateMachine instanceof DefaultGameStateMachine dsm) {
+            dsm.recenterUI(this);
+        }
     }
 
     public Color getBackgroundColor() {

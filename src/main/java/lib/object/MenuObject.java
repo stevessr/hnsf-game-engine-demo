@@ -59,12 +59,16 @@ public final class MenuObject extends BaseObject {
     }
 
     public int getTitleAreaHeight() {
-        if (fontSize == 18) return 42;
+        if (fontSize == 18) {
+            return 42;
+        }
         return Math.max(30, fontSize + 14);
     }
 
     public int getOptionLineHeight() {
-        if (fontSize == 18) return 18;
+        if (fontSize == 18) {
+            return 18;
+        }
         return Math.max(20, fontSize + 8);
     }
 
