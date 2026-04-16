@@ -168,6 +168,20 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     }
 
     @Override
+    public void cycleThrottle() {
+        int current = getThrottlePower();
+        int[] powers = {200, 400, 600, 800, 1000};
+        int nextIdx = 0;
+        for (int i = 0; i < powers.length; i++) {
+            if (powers[i] >= current) {
+                nextIdx = (i + 1) % powers.length;
+                break;
+            }
+        }
+        setThrottlePower(powers[nextIdx]);
+    }
+
+    @Override
     public void setDeceleration(int percent) {
         world.findPlayer().ifPresent(player -> player.setDeceleration(percent / 100.0));
         savePersistentSettings();

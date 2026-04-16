@@ -11,6 +11,7 @@ import lib.object.GameObjectType;
 import lib.object.MenuObject;
 import lib.object.PlayerObject;
 import lib.object.VoxelObject;
+import lib.state.GameSettings;
 import lib.state.GameStateContext;
 
 public final class GameInputController {
@@ -48,7 +49,7 @@ public final class GameInputController {
             context.getWorld().getStateMachine().processInput(context);
             return;
         }
-        applyPlayerMovement(context.getWorld(), context.getWorld().findPlayer().orElse(null));
+        applyPlayerMovement(context.getWorld(), context.getSettings(), context.getWorld().findPlayer().orElse(null));
         applyMenuNavigation(context.getWorld());
         applyVoxelSystem(context.getWorld());
     }
@@ -57,7 +58,7 @@ public final class GameInputController {
         processInputs(new GameStateContext(world, this));
     }
 
-    public void applyPlayerMovement(GameWorld world, PlayerObject player) {
+    public void applyPlayerMovement(GameWorld world, GameSettings settings, PlayerObject player) {
         if (player == null || !player.isActive()) {
             return;
         }
@@ -72,6 +73,10 @@ public final class GameInputController {
 
         if (actionMapper.isJustActivated(InputAction.SHOOT, keyboardManager, mouseManager)) {
             player.shoot(world);
+        }
+
+        if (settings != null && actionMapper.isKeyboardJustActivated(InputAction.CYCLE_THROTTLE, keyboardManager)) {
+            settings.cycleThrottle();
         }
 
         double ax = 0;

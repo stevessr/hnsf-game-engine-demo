@@ -18,5 +18,6 @@ public enum InputAction {
     VOXEL_BUILD,
     VOXEL_DESTROY,
     JUMP,
-    SHOOT
+    SHOOT,
+    CYCLE_THROTTLE
 }

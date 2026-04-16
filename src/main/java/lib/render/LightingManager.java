@@ -16,7 +16,7 @@ import lib.game.GameWorld;
  */
 public final class LightingManager {
     private boolean enabled = false;
-    private float ambientLight = 0.3f;
+    private float ambientLight = 0.0f;
     private final List<LightSource> lights = new ArrayList<>();
 
     public static record LightSource(int x, int y, int radius, float intensity) {}

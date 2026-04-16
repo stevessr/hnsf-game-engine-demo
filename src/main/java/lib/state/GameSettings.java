@@ -115,6 +115,11 @@ public interface GameSettings {
     boolean isLightingEnabled();
 
     /**
+     * 循环切换油门功率。
+     */
+    void cycleThrottle();
+
+    /**
      * 设置光照系统状态。
      */
     void setLightingEnabled(boolean enabled);
