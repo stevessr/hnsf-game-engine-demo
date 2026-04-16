@@ -143,9 +143,17 @@ public final class PlayerObject extends ActorObject {
         return (int) Math.round(getVelocityYDouble());
     }
 
-    public void jump() {
-        if (getVelocityYDouble() >= 0) {
-            setVelocityY(-500.0);
+    public void jump(GameWorld world) {
+        if (world == null || !world.isGravityEnabled()) {
+            return;
+        }
+        
+        // 检查脚下是否靠近地面 (往下探测 4 像素)
+        boolean nearGround = world.collidesWithSolid(this, getX(), getY() + 4);
+        
+        if (nearGround && getVelocityYDouble() >= 0) {
+            // 一次性向上加速度 (较大数值)
+            setVelocityY(-650.0);
         }
     }
 

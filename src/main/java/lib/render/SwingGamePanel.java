@@ -23,7 +23,6 @@ import org.json.JSONObject;
 import lib.game.GameWorld;
 import lib.input.GameInputController;
 import lib.input.InputAction;
-import lib.input.InputActionMapper;
 import lib.object.DialogObject;
 import lib.object.GameObject;
 import lib.object.GameObjectType;

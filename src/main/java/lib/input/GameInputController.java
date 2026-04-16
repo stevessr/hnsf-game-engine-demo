@@ -68,7 +68,7 @@ public final class GameInputController {
         }
 
         if (world.isGravityEnabled() && actionMapper.isKeyboardJustActivated(InputAction.JUMP, keyboardManager)) {
-            player.jump();
+            player.jump(world);
         }
 
         if (actionMapper.isJustActivated(InputAction.SHOOT, keyboardManager, mouseManager)) {

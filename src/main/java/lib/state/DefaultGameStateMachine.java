@@ -64,7 +64,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
     @Override
     public boolean canTransitionTo(GameState newState) {
-        if (newState == currentState) return true;
+        if (newState == currentState) {
+            return true;
+        }
         Set<GameState> allowed = allowedTransitions.get(currentState);
         return allowed != null && allowed.contains(newState);
     }
@@ -72,7 +74,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     @Override
     public void transitionTo(GameState newState) {
         Objects.requireNonNull(newState, "newState must not be null");
-        if (newState == currentState) return;
+        if (newState == currentState) {
+            return;
+        }
         if (!canTransitionTo(newState)) {
             throw new IllegalStateException("Cannot transition from " + currentState + " to " + newState);
         }
@@ -100,7 +104,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     private void hideActiveDialog(GameWorld world) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         DialogObject dialog = findActiveDialog(world);
         if (dialog != null && dialog.isActive()) {
             hiddenDialog = dialog;
@@ -109,13 +115,17 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     private void restoreHiddenDialog(GameWorld world) {
-        if (world == null || hiddenDialog == null) return;
+        if (world == null || hiddenDialog == null) {
+            return;
+        }
         hiddenDialog.setActive(true);
         hiddenDialog = null;
     }
 
     private void createPauseMenu(GameWorld world, GameSettings settings) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         removeMenu(world, PAUSE_MENU_NAME);
         int menuWidth = 320;
         int fontSize = settings != null ? settings.getUIFontSize() : 18;
@@ -129,7 +139,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     private void createGameOverMenu(GameWorld world, GameSettings settings) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         removeMenu(world, GAMEOVER_MENU_NAME);
         int menuWidth = 320;
         int fontSize = settings != null ? settings.getUIFontSize() : 24;
@@ -144,7 +156,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     private void createVictoryDialog(GameWorld world, GameSettings settings) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         removeDialog(world, VICTORY_DIALOG_NAME);
         DialogObject victoryDialog = new DialogObject(VICTORY_DIALOG_NAME, 0, 0, (int) (world.getWidth() * 0.8), 100, "SYSTEM", "VICTORY! All enemies defeated. Press Confirm to continue.");
         victoryDialog.setColor(new Color(0, 80, 0, 220));
@@ -154,7 +168,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     public void recenterUI(GameWorld world) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         int worldWidth = world.getWidth();
         int worldHeight = world.getHeight();
 
@@ -175,12 +191,16 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     private void removeMenu(GameWorld world, String name) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         world.getObjectsByType(GameObjectType.MENU).stream().filter(obj -> name.equals(obj.getName())).forEach(world::removeObject);
     }
 
     private void removeDialog(GameWorld world, String name) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         world.getObjectsByType(GameObjectType.DIALOG).stream().filter(obj -> name.equals(obj.getName())).forEach(world::removeObject);
     }
 
@@ -194,12 +214,26 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         }
 
         switch (currentState) {
-            case MENU -> processMenuInput(context);
-            case PLAYING -> processPlayingInput(context);
-            case DIALOG -> processDialogInput(context);
-            case PAUSED -> processPausedInput(context);
-            case GAMEOVER -> processGameOverInput(context);
-            case SETTLEMENT -> processSettlementInput(context);
+            case MENU:
+                processMenuInput(context);
+                break;
+            case PLAYING:
+                processPlayingInput(context);
+                break;
+            case DIALOG:
+                processDialogInput(context);
+                break;
+            case PAUSED:
+                processPausedInput(context);
+                break;
+            case GAMEOVER:
+                processGameOverInput(context);
+                break;
+            case SETTLEMENT:
+                processSettlementInput(context);
+                break;
+            default:
+                break;
         }
     }
 
@@ -234,7 +268,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         GameWorld world = context.getWorld();
 
         MenuObject menu = findActiveMenu(world);
-        if (menu == null) return;
+        if (menu == null) {
+            return;
+        }
 
         if (actionMapper.isKeyboardJustActivated(InputAction.PAUSE, keyboard)) {
             if (isOptionsMenu(menu)) {
@@ -265,7 +301,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         }
         if (actionMapper.isMouseJustActivated(InputAction.MENU_CONFIRM, inputController.getMouseManager())) {
             int hoveredIndex = findHoveredOptionIndex(menu, inputController.getMouseManager().getMouseX(), inputController.getMouseManager().getMouseY());
-            if (hoveredIndex >= 0) menu.setSelectedIndex(hoveredIndex);
+            if (hoveredIndex >= 0) {
+                menu.setSelectedIndex(hoveredIndex);
+            }
             syncActiveDialog(world, "已确认", menu.getSelectedOption());
             handleMenuSelection(menu, context);
         } else if (actionMapper.isKeyboardJustActivated(InputAction.MENU_CONFIRM, keyboard)) {
@@ -382,7 +420,9 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     private void showOptionsMenu(GameWorld world, GameSettings settings) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         removeMenu(world, OPTIONS_MENU_NAME);
         world.getObjectsByType(GameObjectType.MENU).stream().filter(GameObject::isActive).forEach(obj -> obj.setActive(false));
 
@@ -401,8 +441,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             List.of("Resolution: " + world.getWidth() + "x" + world.getHeight(), "FPS: " + (settings != null ? settings.getTargetFPS() : 60), 
                     "Throttle: " + throttle, "Deceleration: " + deceleration + "%", "Gravity: " + (gravityEnabled ? "On" : "Off"), 
                     "Lighting: " + (lightingEnabled ? "On" : "Off"), 
-                    "Ambient: " + (int)(ambient * 100) + "%",
-                    "Intensity: " + (int)(intensity * 100) + "%",
+                    "Ambient: " + (int) (ambient * 100) + "%",
+                    "Intensity: " + (int) (intensity * 100) + "%",
                     "UI Font: " + fontSize, "Key Bindings", "Back"));
         optionsMenu.setFontSize(fontSize);
         optionsMenu.setSize(menuWidth, Math.max(menuHeight, optionsMenu.getPreferredHeight()));
@@ -411,10 +451,14 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     private void showKeyBindingsMenu(GameWorld world, GameSettings settings) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         removeMenu(world, KEYBINDINGS_MENU_NAME);
         List<String> options = new ArrayList<>();
-        for (InputAction action : InputAction.values()) options.add("Rebind " + action.name());
+        for (InputAction action : InputAction.values()) {
+            options.add("Rebind " + action.name());
+        }
         options.add("Back");
         MenuObject menu = new MenuObject(KEYBINDINGS_MENU_NAME, 0, 0, 400, 400, "Rebind Keys", options);
         menu.setFontSize(settings != null ? settings.getUIFontSize() : 18);
@@ -426,17 +470,27 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     private void handleOptionsMenuSelection(MenuObject menu, GameStateContext context) {
         String selected = menu.getSelectedOption();
         GameSettings settings = context.getSettings();
-        if (isResolutionOption(selected)) cycleResolution(context.getWorld(), settings, menu);
-        else if (isFPSOption(selected)) cycleFPS(settings, menu);
-        else if (isThrottleOption(selected)) cycleThrottle(settings, menu);
-        else if (isDecelerationOption(selected)) cycleDeceleration(settings, menu);
-        else if (isGravityOption(selected)) cycleGravity(context.getWorld(), settings, menu);
-        else if (isLightingOption(selected)) cycleLighting(settings, menu);
-        else if (selected.startsWith("Ambient: ")) cycleAmbientLight(settings, menu);
-        else if (selected.startsWith("Intensity: ")) cycleLightingIntensity(settings, menu);
-        else if (selected.equals("Key Bindings")) showKeyBindingsMenu(context.getWorld(), settings);
-        else if (isUIFontSizeOption(selected)) cycleUIFontSize(context.getWorld(), settings, menu);
-        else if (isBackOption(selected)) {
+        if (isResolutionOption(selected)) {
+            cycleResolution(context.getWorld(), settings, menu);
+        } else if (isFPSOption(selected)) {
+            cycleFPS(settings, menu);
+        } else if (isThrottleOption(selected)) {
+            cycleThrottle(settings, menu);
+        } else if (isDecelerationOption(selected)) {
+            cycleDeceleration(settings, menu);
+        } else if (isGravityOption(selected)) {
+            cycleGravity(context.getWorld(), settings, menu);
+        } else if (isLightingOption(selected)) {
+            cycleLighting(settings, menu);
+        } else if (selected.startsWith("Ambient: ")) {
+            cycleAmbientLight(settings, menu);
+        } else if (selected.startsWith("Intensity: ")) {
+            cycleLightingIntensity(settings, menu);
+        } else if (selected.equals("Key Bindings")) {
+            showKeyBindingsMenu(context.getWorld(), settings);
+        } else if (isUIFontSizeOption(selected)) {
+            cycleUIFontSize(context.getWorld(), settings, menu);
+        } else if (isBackOption(selected)) {
             context.getWorld().removeObject(menu);
             restoreMenuAfterOptions(context.getWorld());
         }
@@ -450,116 +504,206 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     private void cycleThrottle(GameSettings settings, MenuObject menu) {
-        if (settings == null) return;
+        if (settings == null) {
+            return;
+        }
         int[] powers = {200, 400, 600, 800, 1000};
         int current = settings.getThrottlePower();
         int nextIdx = 0;
-        for (int i = 0; i < powers.length; i++) if (powers[i] >= current) { nextIdx = (i + 1) % powers.length; break; }
+        for (int i = 0; i < powers.length; i++) {
+            if (powers[i] >= current) {
+                nextIdx = (i + 1) % powers.length;
+                break;
+            }
+        }
         int newPower = powers[nextIdx];
         settings.setThrottlePower(newPower);
         List<String> options = new ArrayList<>(menu.getOptions());
-        for (int i = 0; i < options.size(); i++) if (isThrottleOption(options.get(i))) options.set(i, "Throttle: " + newPower);
+        for (int i = 0; i < options.size(); i++) {
+            if (isThrottleOption(options.get(i))) {
+                options.set(i, "Throttle: " + newPower);
+            }
+        }
         menu.setOptions(options);
     }
 
     private void cycleDeceleration(GameSettings settings, MenuObject menu) {
-        if (settings == null) return;
+        if (settings == null) {
+            return;
+        }
         int[] decelerations = {80, 85, 90, 92, 95, 98};
         int current = settings.getDeceleration();
         int nextIdx = 0;
-        for (int i = 0; i < decelerations.length; i++) if (decelerations[i] >= current) { nextIdx = (i + 1) % decelerations.length; break; }
+        for (int i = 0; i < decelerations.length; i++) {
+            if (decelerations[i] >= current) {
+                nextIdx = (i + 1) % decelerations.length;
+                break;
+            }
+        }
         int newDeceleration = decelerations[nextIdx];
         settings.setDeceleration(newDeceleration);
         List<String> options = new ArrayList<>(menu.getOptions());
-        for (int i = 0; i < options.size(); i++) if (isDecelerationOption(options.get(i))) options.set(i, "Deceleration: " + newDeceleration + "%");
+        for (int i = 0; i < options.size(); i++) {
+            if (isDecelerationOption(options.get(i))) {
+                options.set(i, "Deceleration: " + newDeceleration + "%");
+            }
+        }
         menu.setOptions(options);
     }
 
     private void cycleGravity(GameWorld world, GameSettings settings, MenuObject menu) {
-        if (settings == null || world == null) return;
+        if (settings == null || world == null) {
+            return;
+        }
         boolean enabled = !settings.isGravityEnabled();
         settings.setGravityEnabled(enabled);
         List<String> options = new ArrayList<>(menu.getOptions());
-        for (int i = 0; i < options.size(); i++) if (isGravityOption(options.get(i))) options.set(i, "Gravity: " + (enabled ? "On" : "Off"));
+        for (int i = 0; i < options.size(); i++) {
+            if (isGravityOption(options.get(i))) {
+                options.set(i, "Gravity: " + (enabled ? "On" : "Off"));
+            }
+        }
         menu.setOptions(options);
     }
 
     private void cycleLighting(GameSettings settings, MenuObject menu) {
-        if (settings == null) return;
+        if (settings == null) {
+            return;
+        }
         boolean enabled = !settings.isLightingEnabled();
         settings.setLightingEnabled(enabled);
         List<String> options = new ArrayList<>(menu.getOptions());
-        for (int i = 0; i < options.size(); i++) if (isLightingOption(options.get(i))) options.set(i, "Lighting: " + (enabled ? "On" : "Off"));
+        for (int i = 0; i < options.size(); i++) {
+            if (isLightingOption(options.get(i))) {
+                options.set(i, "Lighting: " + (enabled ? "On" : "Off"));
+            }
+        }
         menu.setOptions(options);
     }
 
     private void cycleAmbientLight(GameSettings settings, MenuObject menu) {
-        if (settings == null) return;
+        if (settings == null) {
+            return;
+        }
         float current = settings.getAmbientLight();
         float next = (current + 0.1f);
-        if (next > 1.05f) next = 0.0f;
+        if (next > 1.05f) {
+            next = 0.0f;
+        }
         settings.setAmbientLight(next);
         List<String> options = new ArrayList<>(menu.getOptions());
-        for (int i = 0; i < options.size(); i++) if (options.get(i).startsWith("Ambient: ")) options.set(i, "Ambient: " + (int)(next * 100) + "%");
+        for (int i = 0; i < options.size(); i++) {
+            if (options.get(i).startsWith("Ambient: ")) {
+                options.set(i, "Ambient: " + (int) (next * 100) + "%");
+            }
+        }
         menu.setOptions(options);
     }
 
     private void cycleLightingIntensity(GameSettings settings, MenuObject menu) {
-        if (settings == null) return;
+        if (settings == null) {
+            return;
+        }
         float current = settings.getLightingIntensity();
         float next = (current + 0.2f);
-        if (next > 2.05f) next = 0.2f;
+        if (next > 2.05f) {
+            next = 0.2f;
+        }
         settings.setLightingIntensity(next);
         List<String> options = new ArrayList<>(menu.getOptions());
-        for (int i = 0; i < options.size(); i++) if (options.get(i).startsWith("Intensity: ")) options.set(i, "Intensity: " + (int)(next * 100) + "%");
+        for (int i = 0; i < options.size(); i++) {
+            if (options.get(i).startsWith("Intensity: ")) {
+                options.set(i, "Intensity: " + (int) (next * 100) + "%");
+            }
+        }
         menu.setOptions(options);
     }
 
     private void cycleUIFontSize(GameWorld world, GameSettings settings, MenuObject menu) {
-        if (settings == null) return;
+        if (settings == null) {
+            return;
+        }
         int[] fontSizes = {14, 16, 18, 20, 22, 24, 28};
         int currentFontSize = settings.getUIFontSize();
         int nextIdx = 0;
-        for (int i = 0; i < fontSizes.length; i++) if (fontSizes[i] >= currentFontSize) { nextIdx = (i + 1) % fontSizes.length; break; }
+        for (int i = 0; i < fontSizes.length; i++) {
+            if (fontSizes[i] >= currentFontSize) {
+                nextIdx = (i + 1) % fontSizes.length;
+                break;
+            }
+        }
         int newFontSize = fontSizes[nextIdx];
         settings.setUIFontSize(newFontSize);
         if (world != null) {
-            for (GameObject object : world.getObjectsByType(GameObjectType.DIALOG)) if (object instanceof DialogObject dialog) dialog.setFontSize(newFontSize);
-            for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) if (object instanceof MenuObject otherMenu) {
-                otherMenu.setFontSize(newFontSize);
-                otherMenu.setSize(otherMenu.getWidth(), Math.max(otherMenu.getHeight(), otherMenu.getPreferredHeight()));
+            for (GameObject object : world.getObjectsByType(GameObjectType.DIALOG)) {
+                if (object instanceof DialogObject dialog) {
+                    dialog.setFontSize(newFontSize);
+                }
+            }
+            for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) {
+                if (object instanceof MenuObject otherMenu) {
+                    otherMenu.setFontSize(newFontSize);
+                    otherMenu.setSize(otherMenu.getWidth(), Math.max(otherMenu.getHeight(), otherMenu.getPreferredHeight()));
+                }
             }
             recenterUI(world);
         }
         List<String> options = new ArrayList<>(menu.getOptions());
-        for (int i = 0; i < options.size(); i++) if (isUIFontSizeOption(options.get(i))) options.set(i, "UI Font: " + newFontSize);
+        for (int i = 0; i < options.size(); i++) {
+            if (isUIFontSizeOption(options.get(i))) {
+                options.set(i, "UI Font: " + newFontSize);
+            }
+        }
         menu.setOptions(options);
     }
 
     private void cycleResolution(GameWorld world, GameSettings settings, MenuObject menu) {
-        if (settings == null || world == null) return;
+        if (settings == null || world == null) {
+            return;
+        }
         int[][] resolutions = {{960, 540}, {1280, 720}, {1920, 1080}, {640, 480}};
         int panelW = (settings instanceof SwingGamePanel panel) ? panel.getWidth() : world.getWidth();
         int nextIdx = 0;
-        for (int i = 0; i < resolutions.length; i++) if (resolutions[i][0] == panelW) { nextIdx = (i + 1) % resolutions.length; break; }
-        int newW = resolutions[nextIdx][0], newH = resolutions[nextIdx][1];
+        for (int i = 0; i < resolutions.length; i++) {
+            if (resolutions[i][0] == panelW) {
+                nextIdx = (i + 1) % resolutions.length;
+                break;
+            }
+        }
+        int newW = resolutions[nextIdx][0];
+        int newH = resolutions[nextIdx][1];
         settings.setResolution(newW, newH);
         recenterUI(world);
         List<String> options = new ArrayList<>(menu.getOptions());
-        for (int i = 0; i < options.size(); i++) if (isResolutionOption(options.get(i))) options.set(i, "Resolution: " + newW + "x" + newH);
+        for (int i = 0; i < options.size(); i++) {
+            if (isResolutionOption(options.get(i))) {
+                options.set(i, "Resolution: " + newW + "x" + newH);
+            }
+        }
         menu.setOptions(options);
     }
 
     private void cycleFPS(GameSettings settings, MenuObject menu) {
-        if (settings == null) return;
+        if (settings == null) {
+            return;
+        }
         int[] fpsOptions = {30, 60, 120, 144};
         int currentFPS = settings.getTargetFPS();
         int nextIdx = 0;
-        for (int i = 0; i < fpsOptions.length; i++) if (fpsOptions[i] == currentFPS) { nextIdx = (i + 1) % fpsOptions.length; break; }
+        for (int i = 0; i < fpsOptions.length; i++) {
+            if (fpsOptions[i] == currentFPS) {
+                nextIdx = (i + 1) % fpsOptions.length;
+                break;
+            }
+        }
         int newFPS = fpsOptions[nextIdx];
         settings.setTargetFPS(newFPS);
         List<String> options = new ArrayList<>(menu.getOptions());
-        for (int i = 0; i < options.size(); i++) if (isFPSOption(options.get(i))) options.set(i, "FPS: " + newFPS);
+        for (int i = 0; i < options.size(); i++) {
+            if (isFPSOption(options.get(i))) {
+                options.set(i, "FPS: " + newFPS);
+            }
+        }
         menu.setOptions(options);
     }
 
@@ -574,7 +718,11 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
 
-        if (findActiveDialog(world) != null) { transitionTo(GameState.DIALOG); clearPlayerMovement(context); return; }
+        if (findActiveDialog(world) != null) {
+            transitionTo(GameState.DIALOG);
+            clearPlayerMovement(context);
+            return;
+        }
 
         PlayerObject player = world.findPlayer().orElse(null);
         if (player == null || (!player.isActive() && !player.isDying())) {
@@ -582,17 +730,36 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             createGameOverMenu(world, context.getSettings());
             return;
         }
-        if (player.isDying()) return;
-        if (checkLevelComplete(world)) { transitionTo(GameState.SETTLEMENT); createVictoryDialog(world, context.getSettings()); return; }
+        if (player.isDying()) {
+            return;
+        }
+        if (checkLevelComplete(world)) {
+            transitionTo(GameState.SETTLEMENT);
+            createVictoryDialog(world, context.getSettings());
+            return;
+        }
 
-        double ax = 0, ay = 0;
+        double ax = 0;
+        double ay = 0;
         var kb = inputController.getKeyboardManager();
         var ms = inputController.getMouseManager();
-        if (actionMapper.isActive(InputAction.MOVE_LEFT, kb, ms)) ax -= 1.0;
-        if (actionMapper.isActive(InputAction.MOVE_RIGHT, kb, ms)) ax += 1.0;
-        if (actionMapper.isActive(InputAction.MOVE_UP, kb, ms)) ay -= 1.0;
-        if (actionMapper.isActive(InputAction.MOVE_DOWN, kb, ms)) ay += 1.0;
-        if (ax != 0 && ay != 0) { double mag = Math.sqrt(ax * ax + ay * ay); ax /= mag; ay /= mag; }
+        if (actionMapper.isActive(InputAction.MOVE_LEFT, kb, ms)) {
+            ax -= 1.0;
+        }
+        if (actionMapper.isActive(InputAction.MOVE_RIGHT, kb, ms)) {
+            ax += 1.0;
+        }
+        if (actionMapper.isActive(InputAction.MOVE_UP, kb, ms)) {
+            ay -= 1.0;
+        }
+        if (actionMapper.isActive(InputAction.MOVE_DOWN, kb, ms)) {
+            ay += 1.0;
+        }
+        if (ax != 0 && ay != 0) {
+            double mag = Math.sqrt(ax * ax + ay * ay);
+            ax /= mag;
+            ay /= mag;
+        }
         player.accelerate(ax, ay, 1.0 / 60.0);
     }
 
@@ -604,14 +771,21 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         var inputController = context.getInputController();
         var actionMapper = inputController.getActionMapper();
         DialogObject dialog = findActiveDialog(context.getWorld());
-        if (dialog == null) { transitionTo(GameState.PLAYING); return; }
+        if (dialog == null) {
+            transitionTo(GameState.PLAYING);
+            return;
+        }
 
         if (actionMapper.isKeyboardJustActivated(InputAction.MENU_CONFIRM, inputController.getKeyboardManager())
             || actionMapper.isKeyboardJustActivated(InputAction.DIALOG_NEXT, inputController.getKeyboardManager())
             || actionMapper.isMouseJustActivated(InputAction.MENU_CONFIRM, inputController.getMouseManager())) {
             dialog.setActive(false);
-            if (currentState == GameState.SETTLEMENT) { activateMainMenu(context.getWorld()); transitionTo(GameState.MENU); }
-            else transitionTo(GameState.PLAYING);
+            if (currentState == GameState.SETTLEMENT) {
+                activateMainMenu(context.getWorld());
+                transitionTo(GameState.MENU);
+            } else {
+                transitionTo(GameState.PLAYING);
+            }
         }
         clearPlayerMovement(context);
     }
@@ -625,68 +799,134 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         clearPlayerMovement(context);
     }
 
-    private void processGameOverInput(GameStateContext context) { processMenuInput(context); }
-    private void processSettlementInput(GameStateContext context) { processDialogInput(context); }
+    private void processGameOverInput(GameStateContext context) {
+        processMenuInput(context);
+    }
 
-    private void clearPlayerMovement(GameWorld world) { if (world == null) return; world.findPlayer().ifPresent(p -> p.setVelocity(0.0, 0.0)); }
-    private void clearPlayerMovement(GameStateContext context) { if (context != null) clearPlayerMovement(context.getWorld()); }
+    private void processSettlementInput(GameStateContext context) {
+        processDialogInput(context);
+    }
+
+    private void clearPlayerMovement(GameWorld world) {
+        if (world == null) {
+            return;
+        }
+        world.findPlayer().ifPresent(p -> p.setVelocity(0.0, 0.0));
+    }
+
+    private void clearPlayerMovement(GameStateContext context) {
+        if (context != null) {
+            clearPlayerMovement(context.getWorld());
+        }
+    }
+
     private void syncActiveDialog(GameWorld world, String prefix, String selectedOption) {
         DialogObject dialog = findActiveDialog(world);
-        if (dialog != null) dialog.setMessage(prefix + "菜单项：" + selectedOption);
+        if (dialog != null) {
+            dialog.setMessage(prefix + "菜单项：" + selectedOption);
+        }
     }
 
     private MenuObject findActiveMenu(GameWorld world) {
-        if (world == null) return null;
-        for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) if (object instanceof MenuObject menu && menu.isActive()) return menu;
+        if (world == null) {
+            return null;
+        }
+        for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) {
+            if (object instanceof MenuObject menu && menu.isActive()) {
+                return menu;
+            }
+        }
         return null;
     }
 
     private MenuObject findMenuByName(GameWorld world, String name) {
-        if (world == null) return null;
-        for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) if (object instanceof MenuObject menu && name.equals(menu.getName())) return menu;
+        if (world == null) {
+            return null;
+        }
+        for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) {
+            if (object instanceof MenuObject menu && name.equals(menu.getName())) {
+                return menu;
+            }
+        }
         return null;
     }
 
     private DialogObject findActiveDialog(GameWorld world) {
-        if (world == null) return null;
-        for (GameObject object : world.getObjectsByType(GameObjectType.DIALOG)) if (object instanceof DialogObject dialog && dialog.isActive()) return dialog;
+        if (world == null) {
+            return null;
+        }
+        for (GameObject object : world.getObjectsByType(GameObjectType.DIALOG)) {
+            if (object instanceof DialogObject dialog && dialog.isActive()) {
+                return dialog;
+            }
+        }
         return null;
     }
 
     private void activateMainMenu(GameWorld world) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         MenuObject mainMenu = findMenuByName(world, MAIN_MENU_NAME);
-        if (mainMenu != null) mainMenu.setActive(true);
+        if (mainMenu != null) {
+            mainMenu.setActive(true);
+        }
         MenuObject levelMenu = findMenuByName(world, LEVEL_SELECT_MENU_NAME);
-        if (levelMenu != null) levelMenu.setActive(false);
+        if (levelMenu != null) {
+            levelMenu.setActive(false);
+        }
     }
 
     private void activateLevelSelectMenu(GameWorld world) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         MenuObject mainMenu = findMenuByName(world, MAIN_MENU_NAME);
-        if (mainMenu != null) mainMenu.setActive(false);
+        if (mainMenu != null) {
+            mainMenu.setActive(false);
+        }
         MenuObject levelMenu = findMenuByName(world, LEVEL_SELECT_MENU_NAME);
-        if (levelMenu != null) { levelMenu.setActive(true); if (levelMenu.getSelectedIndex() < 0) levelMenu.setSelectedIndex(0); }
+        if (levelMenu != null) {
+            levelMenu.setActive(true);
+            if (levelMenu.getSelectedIndex() < 0) {
+                levelMenu.setSelectedIndex(0);
+            }
+        }
     }
 
     private void restoreMenuAfterOptions(GameWorld world) {
-        if (world == null) return;
+        if (world == null) {
+            return;
+        }
         if (currentState == GameState.PAUSED) {
             MenuObject pauseMenu = findMenuByName(world, PAUSE_MENU_NAME);
-            if (pauseMenu != null) { pauseMenu.setActive(true); return; }
+            if (pauseMenu != null) {
+                pauseMenu.setActive(true);
+                return;
+            }
         }
         MenuObject mainMenu = findMenuByName(world, MAIN_MENU_NAME);
-        if (mainMenu != null) mainMenu.setActive(true);
-        else { MenuObject levelMenu = findMenuByName(world, LEVEL_SELECT_MENU_NAME); if (levelMenu != null) levelMenu.setActive(true); }
+        if (mainMenu != null) {
+            mainMenu.setActive(true);
+        } else {
+            MenuObject levelMenu = findMenuByName(world, LEVEL_SELECT_MENU_NAME);
+            if (levelMenu != null) {
+                levelMenu.setActive(true);
+            }
+        }
     }
 
     private int findHoveredOptionIndex(MenuObject menu, int mouseX, int mouseY) {
-        if (!isInsideMenu(menu, mouseX, mouseY)) return -1;
+        if (!isInsideMenu(menu, mouseX, mouseY)) {
+            return -1;
+        }
         int optionStartY = menu.getOptionStartY();
         int optionHeight = menu.getOptionLineHeight();
         int relativeY = mouseY - optionStartY;
         int hoveredIndex = relativeY / optionHeight;
-        if (hoveredIndex < 0 || hoveredIndex >= menu.getOptions().size()) return -1;
+        if (hoveredIndex < 0 || hoveredIndex >= menu.getOptions().size()) {
+            return -1;
+        }
         return hoveredIndex;
     }
 
@@ -694,24 +934,83 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         return mouseX >= menu.getX() && mouseX <= menu.getX() + menu.getWidth() && mouseY >= menu.getY() && mouseY <= menu.getY() + menu.getHeight();
     }
 
-    private boolean isStartOption(String s) { return List.of("Start", "start", "开始游戏", "开始").contains(s); }
-    private boolean isLevelsOption(String s) { return List.of("Levels", "Level Select", "level select", "关卡选择", "选择关卡").contains(s); }
-    private boolean isEditorOption(String s) { return List.of("Editor", "Level Editor", "关卡编辑器", "编辑器").contains(s); }
-    private boolean isExitOption(String s) { return List.of("Exit", "exit", "退出", "退出游戏").contains(s); }
-    private boolean isResumeOption(String s) { return List.of("Resume", "resume", "恢复", "继续游戏").contains(s); }
-    private boolean isExitToMenuOption(String s) { return List.of("Exit to Menu", "返回主菜单", "退出到菜单").contains(s); }
-    private boolean isOptionsOption(String s) { return List.of("Options", "options", "选项", "设置").contains(s); }
-    private boolean isResolutionOption(String s) { return s != null && s.startsWith("Resolution:"); }
-    private boolean isFPSOption(String s) { return s != null && (s.startsWith("FPS:") || s.startsWith("帧率:")); }
-    private boolean isThrottleOption(String s) { return s != null && (s.startsWith("Throttle:") || s.startsWith("油门:")); }
-    private boolean isDecelerationOption(String s) { return s != null && (s.startsWith("Deceleration:") || s.startsWith("减速度:")); }
-    private boolean isGravityOption(String s) { return s != null && (s.startsWith("Gravity:") || s.startsWith("重力:")); }
-    private boolean isLightingOption(String s) { return s != null && (s.startsWith("Lighting:") || s.startsWith("光照:")); }
-    private boolean isUIFontSizeOption(String s) { return s != null && (s.startsWith("UI Font:") || s.startsWith("字体:")); }
-    private boolean isBackOption(String s) { return List.of("Back", "back", "返回").contains(s); }
-    private boolean isPauseMenu(MenuObject m) { return m != null && PAUSE_MENU_NAME.equals(m.getName()); }
-    private boolean isOptionsMenu(MenuObject m) { return m != null && OPTIONS_MENU_NAME.equals(m.getName()); }
-    private boolean isKeyBindingsMenu(MenuObject m) { return m != null && KEYBINDINGS_MENU_NAME.equals(m.getName()); }
-    private boolean isLevelSelectMenu(MenuObject m) { return m != null && LEVEL_SELECT_MENU_NAME.equals(m.getName()); }
-    private boolean isGameOverMenu(MenuObject m) { return m != null && GAMEOVER_MENU_NAME.equals(m.getName()); }
+    private boolean isStartOption(String s) {
+        return List.of("Start", "start", "开始游戏", "开始").contains(s);
+    }
+
+    private boolean isLevelsOption(String s) {
+        return List.of("Levels", "Level Select", "level select", "关卡选择", "选择关卡").contains(s);
+    }
+
+    private boolean isEditorOption(String s) {
+        return List.of("Editor", "Level Editor", "关卡编辑器", "编辑器").contains(s);
+    }
+
+    private boolean isExitOption(String s) {
+        return List.of("Exit", "exit", "退出", "退出游戏").contains(s);
+    }
+
+    private boolean isResumeOption(String s) {
+        return List.of("Resume", "resume", "恢复", "继续游戏").contains(s);
+    }
+
+    private boolean isExitToMenuOption(String s) {
+        return List.of("Exit to Menu", "返回主菜单", "退出到菜单").contains(s);
+    }
+
+    private boolean isOptionsOption(String s) {
+        return List.of("Options", "options", "选项", "设置").contains(s);
+    }
+
+    private boolean isResolutionOption(String s) {
+        return s != null && s.startsWith("Resolution:");
+    }
+
+    private boolean isFPSOption(String s) {
+        return s != null && (s.startsWith("FPS:") || s.startsWith("帧率:"));
+    }
+
+    private boolean isThrottleOption(String s) {
+        return s != null && (s.startsWith("Throttle:") || s.startsWith("油门:"));
+    }
+
+    private boolean isDecelerationOption(String s) {
+        return s != null && (s.startsWith("Deceleration:") || s.startsWith("减速度:"));
+    }
+
+    private boolean isGravityOption(String s) {
+        return s != null && (s.startsWith("Gravity:") || s.startsWith("重力:"));
+    }
+
+    private boolean isLightingOption(String s) {
+        return s != null && (s.startsWith("Lighting:") || s.startsWith("光照:"));
+    }
+
+    private boolean isUIFontSizeOption(String s) {
+        return s != null && (s.startsWith("UI Font:") || s.startsWith("字体:"));
+    }
+
+    private boolean isBackOption(String s) {
+        return List.of("Back", "back", "返回").contains(s);
+    }
+
+    private boolean isPauseMenu(MenuObject m) {
+        return m != null && PAUSE_MENU_NAME.equals(m.getName());
+    }
+
+    private boolean isOptionsMenu(MenuObject m) {
+        return m != null && OPTIONS_MENU_NAME.equals(m.getName());
+    }
+
+    private boolean isKeyBindingsMenu(MenuObject m) {
+        return m != null && KEYBINDINGS_MENU_NAME.equals(m.getName());
+    }
+
+    private boolean isLevelSelectMenu(MenuObject m) {
+        return m != null && LEVEL_SELECT_MENU_NAME.equals(m.getName());
+    }
+
+    private boolean isGameOverMenu(MenuObject m) {
+        return m != null && GAMEOVER_MENU_NAME.equals(m.getName());
+    }
 }
