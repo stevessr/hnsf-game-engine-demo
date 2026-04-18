@@ -5,38 +5,24 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 
+/**
+ * 具有生命值、攻击力和死亡动画的实体基类。
+ */
 public abstract class ActorObject extends BaseObject {
     private int health;
+    private int maxHealth;
     private int attack;
     private int speed;
-    private double velocityY;
-    private boolean dying;
-    private double deathAnimationTime;
-    private static final double DEATH_DURATION = 0.5;
+    private boolean dying = false;
+    private double deathTimer = 0;
+    private static final double DEATH_ANIMATION_DURATION = 0.8;
 
-    protected ActorObject(GameObjectType type, String name, Color color) {
-        this(type, name, 0, 0, 48, 48, color, 100, 10, 5);
-    }
-
-    protected ActorObject(
-        GameObjectType type,
-        String name,
-        int x,
-        int y,
-        int width,
-        int height,
-        Color color,
-        int health,
-        int attack,
-        int speed
-    ) {
-        super(type, name, x, y, width, height, color, health > 0);
-        this.health = normalizeNonNegative(health);
-        this.attack = normalizeNonNegative(attack);
-        this.speed = normalizeNonNegative(speed);
-        this.velocityY = 0.0;
-        this.dying = false;
-        this.deathAnimationTime = 0.0;
+    public ActorObject(GameObjectType type, String name, int x, int y, int width, int height, Color color, int health, int attack, int speed) {
+        super(type, name, x, y, width, height, color, true);
+        this.maxHealth = Math.max(1, health);
+        this.health = this.maxHealth;
+        this.attack = Math.max(0, attack);
+        this.speed = Math.max(0, speed);
     }
 
     public final int getHealth() {
@@ -44,13 +30,19 @@ public abstract class ActorObject extends BaseObject {
     }
 
     public final void setHealth(int health) {
-        if (this.health > 0 && health <= 0 && !dying) {
+        this.health = Math.max(0, Math.min(maxHealth, health));
+        if (this.health == 0 && !dying) {
             startDeathAnimation();
         }
-        this.health = normalizeNonNegative(health);
-        if (!dying) {
-            setActive(this.health > 0);
-        }
+    }
+
+    public final int getMaxHealth() {
+        return maxHealth;
+    }
+
+    public final void setMaxHealth(int maxHealth) {
+        this.maxHealth = Math.max(1, maxHealth);
+        this.health = Math.min(health, this.maxHealth);
     }
 
     public final int getAttack() {
@@ -58,7 +50,7 @@ public abstract class ActorObject extends BaseObject {
     }
 
     public final void setAttack(int attack) {
-        this.attack = normalizeNonNegative(attack);
+        this.attack = Math.max(0, attack);
     }
 
     public final int getSpeed() {
@@ -66,15 +58,7 @@ public abstract class ActorObject extends BaseObject {
     }
 
     public final void setSpeed(int speed) {
-        this.speed = normalizeNonNegative(speed);
-    }
-
-    public final double getVelocityYDouble() {
-        return velocityY;
-    }
-
-    public final void setVelocityY(double velocityY) {
-        this.velocityY = velocityY;
+        this.speed = Math.max(0, speed);
     }
 
     public final boolean isDying() {
@@ -83,49 +67,40 @@ public abstract class ActorObject extends BaseObject {
 
     protected final void startDeathAnimation() {
         this.dying = true;
-        this.deathAnimationTime = 0.0;
+        this.deathTimer = 0;
     }
 
     protected final void updateDeathAnimation(double deltaSeconds) {
-        if (!dying) {
-            return;
-        }
-        deathAnimationTime += deltaSeconds;
-        if (deathAnimationTime >= DEATH_DURATION) {
+        deathTimer += deltaSeconds;
+        if (deathTimer >= DEATH_ANIMATION_DURATION) {
             setActive(false);
-            dying = false;
+            // 保持 dying 为 true 以表示它是死掉的，而不是简单的非活跃
         }
     }
 
     protected final void renderDeathAnimation(Graphics2D graphics, Runnable baseRender) {
-        double progress = Math.min(1.0, deathAnimationTime / DEATH_DURATION);
-        float alpha = (float) (1.0 - progress);
-        
+        double progress = deathTimer / DEATH_ANIMATION_DURATION;
         Graphics2D g2d = (Graphics2D) graphics.create();
-        try {
-            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
-            
-            // 旋转并缩小效果
-            double centerX = getX() + getWidth() / 2.0;
-            double centerY = getY() + getHeight() / 2.0;
-            AffineTransform transform = new AffineTransform();
-            transform.translate(centerX, centerY);
-            transform.rotate(progress * Math.PI * 2);
-            transform.scale(1.0 - progress, 1.0 - progress);
-            transform.translate(-centerX, -centerY);
-            g2d.transform(transform);
-            
-            baseRender.run();
-        } finally {
-            g2d.dispose();
-        }
+        
+        int cx = getX() + getWidth() / 2;
+        int cy = getY() + getHeight() / 2;
+        
+        AffineTransform at = AffineTransform.getTranslateInstance(cx, cy);
+        at.rotate(progress * Math.PI * 4); // 旋转
+        at.scale(1.0 - progress, 1.0 - progress); // 缩小
+        at.translate(-cx, -cy);
+        
+        g2d.transform(at);
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (1.0 - progress)));
+        baseRender.run();
+        g2d.dispose();
     }
 
-    public final void takeDamage(int damage) {
-        if (damage <= 0 || dying) {
+    public final void takeDamage(int amount) {
+        if (amount <= 0 || dying) {
             return;
         }
-        setHealth(health - damage);
+        setHealth(health - amount);
     }
 
     public final void heal(int amount) {
@@ -149,9 +124,5 @@ public abstract class ActorObject extends BaseObject {
         
         graphics.setColor(Color.WHITE);
         graphics.drawString(text, textX, textY);
-    }
-
-    private static int normalizeNonNegative(int value) {
-        return Math.max(0, value);
     }
 }

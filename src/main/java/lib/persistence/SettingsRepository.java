@@ -45,6 +45,7 @@ public final class SettingsRepository {
         int deceleration,
         boolean gravityEnabled,
         boolean lightingEnabled,
+        boolean debugEnabled,
         float ambientLight,
         float lightingIntensity,
         JSONObject keyBindings
@@ -58,6 +59,7 @@ public final class SettingsRepository {
         json.put("deceleration", deceleration);
         json.put("gravityEnabled", gravityEnabled);
         json.put("lightingEnabled", lightingEnabled);
+        json.put("debugEnabled", debugEnabled);
         json.put("ambientLight", ambientLight);
         json.put("lightingIntensity", lightingIntensity);
         json.put("keyBindings", keyBindings);

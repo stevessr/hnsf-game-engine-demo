@@ -147,4 +147,21 @@ public interface GameSettings {
      * 手动触发一次设置的持久化保存。
      */
     void savePersistentSettings();
+
+    /**
+     * 获取调试模式状态。
+     */
+    boolean isDebugEnabled();
+
+    /**
+     * 设置调试模式状态。
+     */
+    void setDebugEnabled(boolean enabled);
+
+    /**
+     * 切换调试模式。
+     */
+    default void toggleDebug() {
+        setDebugEnabled(!isDebugEnabled());
+    }
 }

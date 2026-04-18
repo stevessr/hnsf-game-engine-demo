@@ -13,6 +13,7 @@ import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
 import javax.swing.InputMap;
 import javax.swing.KeyStroke;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -23,6 +24,7 @@ import org.json.JSONObject;
 import lib.game.GameWorld;
 import lib.input.GameInputController;
 import lib.input.InputAction;
+import lib.manager.DebugManager;
 import lib.object.DialogObject;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
@@ -41,10 +43,13 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     private final SettingsRepository settingsRepository;
     private final Camera camera;
     private final ControlHintsOverlay hintsOverlay;
+    private final DebugManager debugManager;
+    private final MinimapOverlay minimapOverlay;
     private GameRuntimeActions runtimeActions = GameRuntimeActions.noOp();
     private long lastUpdateNanos;
     private int targetFPS = 60;
     private int uiFontSize = 18;
+    private boolean debugEnabled = false;
 
     public SwingGamePanel(GameWorld world) {
         this(world, GameInputController.createDefault());
@@ -55,8 +60,9 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         this.inputController = inputController;
         this.settingsRepository = new SettingsRepository();
         this.hintsOverlay = new ControlHintsOverlay();
+        this.debugManager = new DebugManager();
+        this.minimapOverlay = new MinimapOverlay();
         
-        // 初始视口大小 960x540
         this.camera = new Camera(960, 540);
         world.setCamera(camera);
         
@@ -78,6 +84,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             return;
         }
         
+        this.debugEnabled = json.optBoolean("debugEnabled", false);
         this.targetFPS = json.optInt("targetFPS", 60);
         this.uiFontSize = json.optInt("uiFontSize", 18);
         int w = json.optInt("width", 960);
@@ -123,6 +130,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             getDeceleration(),
             isGravityEnabled(),
             isLightingEnabled(),
+            isDebugEnabled(),
             getAmbientLight(),
             getLightingIntensity(),
             serializeKeyBindings()
@@ -298,6 +306,18 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         }
     }
 
+    @Override
+    public boolean isDebugEnabled() {
+        return debugEnabled;
+    }
+
+    @Override
+    public void setDebugEnabled(boolean enabled) {
+        this.debugEnabled = enabled;
+        savePersistentSettings();
+        repaint();
+    }
+
     public void setResolution(int width, int height) {
         setPreferredSize(new Dimension(width, height));
         
@@ -386,7 +406,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         inputController.processInputs(new GameStateContext(world, inputController, this, runtimeActions));
         world.update(deltaSeconds);
         
-        // 更新摄像机位置，使其跟随玩家
         world.findPlayer().ifPresent(player -> camera.update(world, player));
         
         inputController.finishFrame();
@@ -404,6 +423,11 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent event) {
+                if (event.getKeyCode() == KeyEvent.VK_F3) {
+                    toggleDebug();
+                } else if (event.getKeyCode() == KeyEvent.VK_BACK_QUOTE && debugEnabled) {
+                    showDebugConsole();
+                }
                 inputController.getKeyboardManager().pressKey(event.getKeyCode());
             }
 
@@ -419,7 +443,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             @Override
             public void mousePressed(MouseEvent event) {
                 requestFocusInWindow();
-                // 在摄像机模式下，鼠标坐标需要加上摄像机偏移量才是世界坐标
                 double scale = getScale();
                 int offsetX = (int) ((getWidth() - 960 * scale) / 2);
                 int offsetY = (int) ((getHeight() - 540 * scale) / 2);
@@ -457,6 +480,14 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         };
         addMouseListener(mouseAdapter);
         addMouseMotionListener(mouseAdapter);
+    }
+
+    private void showDebugConsole() {
+        String cmd = JOptionPane.showInputDialog(this, "Debug Console (god, speed [val], tp [x] [y], heal):", "Debug Console", JOptionPane.PLAIN_MESSAGE);
+        if (cmd != null && !cmd.isBlank()) {
+            debugManager.executeCommand(cmd, world);
+            repaint();
+        }
     }
 
     private double getScale() {
@@ -506,26 +537,23 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         try {
             int panelWidth = getWidth();
             int panelHeight = getHeight();
-            
-            // 视口大小固定为 960x540 进行缩放显示
             int viewW = 960;
             int viewH = 540;
-
             double scale = getScale();
-
             int offsetX = (int) ((panelWidth - viewW * scale) / 2);
             int offsetY = (int) ((panelHeight - viewH * scale) / 2);
 
             graphics2d.translate(offsetX, offsetY);
             graphics2d.scale(scale, scale);
-            // 裁切视口区域
             graphics2d.setClip(0, 0, viewW, viewH);
 
-            // 渲染世界
             world.render(graphics2d);
-            
-            // 渲染提示 (在 UI 层级之上)
             hintsOverlay.render(graphics2d, viewW, viewH);
+            
+            if (debugEnabled) {
+                debugManager.render(graphics2d, world, viewW, viewH);
+            }
+            minimapOverlay.render(graphics2d, world, viewW, viewH);
         } finally {
             graphics2d.dispose();
         }

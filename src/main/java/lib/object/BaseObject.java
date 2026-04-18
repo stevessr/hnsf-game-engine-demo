@@ -17,6 +17,7 @@ public abstract class BaseObject implements GameObject {
     private Color color;
     private String texturePath;
     private String material;
+    private double velocityY;
 
     protected BaseObject(GameObjectType type, String name, Color color, boolean active) {
         this(type, name, 0, 0, 32, 32, color, active);
@@ -127,6 +128,14 @@ public abstract class BaseObject implements GameObject {
 
     public final void setMaterial(String material) {
         this.material = material;
+    }
+
+    public final double getVelocityYDouble() {
+        return velocityY;
+    }
+
+    public final void setVelocityY(double velocityY) {
+        this.velocityY = velocityY;
     }
 
     @Override

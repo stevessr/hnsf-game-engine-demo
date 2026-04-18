@@ -39,7 +39,7 @@ class GameObjectModelTest {
         // 模拟动画完成
         monster.update(null, 1.0);
 
-        assertFalse(monster.isDying());
+        assertTrue(monster.isDying());
         assertFalse(monster.isActive());
         assertFalse(monster.canAttack());
         assertEquals(25, monster.getRewardExperience());
