@@ -3,15 +3,18 @@ package org.example;
 import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import lib.editor.EditorWindow;
@@ -20,15 +23,19 @@ import lib.game.LevelManager;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
 import lib.object.MenuObject;
+import lib.object.dto.MapData;
 import lib.persistence.MapDataMapper;
 import lib.persistence.MapRepository;
 import lib.render.SwingGamePanel;
 import lib.state.DefaultGameStateMachine;
 import lib.state.GameRuntimeActions;
 import lib.state.GameState;
-import lib.object.dto.MapData;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONObject;
 
+/**
+ * 游戏应用程序主入口。
+ */
 @Slf4j
 public class App {
     private static final int DEFAULT_WIDTH = 960;
@@ -47,6 +54,13 @@ public class App {
         SwingUtilities.invokeLater(App::startGame);
     }
 
+    /**
+     * 简单的加法辅助方法 (用于测试)。
+     * 
+     * @param a 第一个数
+     * @param b 第二个数
+     * @return 两数之和
+     */
     public static int add(int a, int b) {
         return a + b;
     }
@@ -59,6 +73,15 @@ public class App {
         GameWorld world = loadGameWorld(repository, levelManager, DEMO_MAP, 18);
         SwingGamePanel panel = new SwingGamePanel(world);
         JFrame frame = new JFrame("Primary Software Game Demo");
+        
+        setupMainFrame(frame, panel, world, repository, levelManager);
+        frame.setVisible(true);
+        panel.start();
+
+        log.info("Game window started with {} objects", world.getObjects().size());
+    }
+
+    private static void setupMainFrame(JFrame frame, SwingGamePanel panel, GameWorld world, MapRepository repository, LevelManager levelManager) {
         panel.setRuntimeActions(createRuntimeActions(frame, panel, world, repository, levelManager));
 
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -69,71 +92,87 @@ public class App {
             }
         });
         frame.setContentPane(panel);
-        
+        frame.setJMenuBar(createMenuBar(frame, world, repository, levelManager, panel));
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+        frame.setResizable(false);
+    }
+
+    private static JMenuBar createMenuBar(JFrame frame, GameWorld world, MapRepository repository, LevelManager levelManager, SwingGamePanel panel) {
         JMenuBar menuBar = new JMenuBar();
+        
+        // 游戏菜单
         JMenu gameMenu = new JMenu("游戏 (Game)");
         JMenuItem restartItem = new JMenuItem("重置 (Restart)");
         restartItem.addActionListener(e -> reloadGameWorld(world, repository, levelManager, DEMO_MAP, panel));
         
         JMenuItem importItem = new JMenuItem("导入地图 (Import Map)");
-        importItem.addActionListener(e -> {
-            javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
-            if (chooser.showOpenDialog(frame) == javax.swing.JFileChooser.APPROVE_OPTION) {
-                try {
-                    String content = java.nio.file.Files.readString(chooser.getSelectedFile().toPath());
-                    var mapData = MapDataMapper.importFromJson(new org.json.JSONObject(content));
-                    repository.saveMap(mapData);
-                    reloadGameWorld(world, repository, levelManager, mapData.getName(), panel);
-                } catch (Exception ex) {
-                    javax.swing.JOptionPane.showMessageDialog(frame, "导入失败: " + ex.getMessage());
-                }
-            }
-        });
+        importItem.addActionListener(e -> handleImportMap(frame, world, repository, levelManager, panel));
 
         JMenuItem exportItem = new JMenuItem("导出当前地图 (Export Map)");
-        exportItem.addActionListener(e -> {
-            javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
-            if (chooser.showSaveDialog(frame) == javax.swing.JFileChooser.APPROVE_OPTION) {
-                try {
-                    var mapData = MapDataMapper.fromWorld(world, "exported-map");
-                    var json = MapDataMapper.exportToJson(mapData);
-                    java.nio.file.Files.writeString(chooser.getSelectedFile().toPath(), json.toString(4));
-                } catch (Exception ex) {
-                    javax.swing.JOptionPane.showMessageDialog(frame, "导出失败: " + ex.getMessage());
-                }
-            }
-        });
+        exportItem.addActionListener(e -> handleExportMap(frame, world));
 
         JMenuItem exitItem = new JMenuItem("退出 (Exit)");
         exitItem.addActionListener(e -> requestExit(frame, panel));
+        
         gameMenu.add(restartItem);
         gameMenu.add(importItem);
         gameMenu.add(exportItem);
         gameMenu.addSeparator();
         gameMenu.add(exitItem);
         
+        // 工具菜单
         JMenu toolsMenu = new JMenu("工具 (Tools)");
         JMenuItem editorItem = new JMenuItem("地图编辑器 (Level Editor)");
         editorItem.addActionListener(e -> EditorWindow.open(snapshotEditorWorld(world), repository));
         toolsMenu.add(editorItem);
         
+        // 帮助菜单
         JMenu helpMenu = new JMenu("帮助 (Help)");
         JMenuItem aboutItem = new JMenuItem("关于 (About)");
-        aboutItem.addActionListener(e -> javax.swing.JOptionPane.showMessageDialog(frame, "Primary Software Game Demo\nWASD/IJKL/Arrows to Move\nC to Cycle Color\nSpace to Jump (Gravity On)\nMouse Left: Build Voxel\nMouse Right: Destroy Voxel"));
+        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(frame, 
+            "Primary Software Game Engine Prototype\n\n" +
+            "Controls:\n" +
+            "- WASD/Arrows: Move\n" +
+            "- Space: Jump\n" +
+            "- K: Shoot\n" +
+            "- T: Cycle Throttle\n" +
+            "- C: Cycle Color\n" +
+            "- P/Esc: Pause"));
         helpMenu.add(aboutItem);
         
         menuBar.add(gameMenu);
         menuBar.add(toolsMenu);
         menuBar.add(helpMenu);
-        frame.setJMenuBar(menuBar);
+        return menuBar;
+    }
 
-        frame.pack();
-        frame.setLocationRelativeTo(null);
-        frame.setResizable(false);
-        frame.setVisible(true);
-        panel.start();
+    private static void handleImportMap(JFrame frame, GameWorld world, MapRepository repository, LevelManager levelManager, SwingGamePanel panel) {
+        JFileChooser chooser = new JFileChooser();
+        if (chooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
+            try {
+                String content = Files.readString(chooser.getSelectedFile().toPath());
+                var mapData = MapDataMapper.importFromJson(new JSONObject(content));
+                repository.saveMap(mapData);
+                reloadGameWorld(world, repository, levelManager, mapData.getName(), panel);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(frame, "导入失败: " + ex.getMessage());
+            }
+        }
+    }
 
-        log.info("Game window started with {} objects", world.getObjects().size());
+    private static void handleExportMap(JFrame frame, GameWorld world) {
+        JFileChooser chooser = new JFileChooser();
+        if (chooser.showSaveDialog(frame) == JFileChooser.APPROVE_OPTION) {
+            try {
+                var mapData = MapDataMapper.fromWorld(world, "exported-map");
+                var json = MapDataMapper.exportToJson(mapData);
+                Files.writeString(chooser.getSelectedFile().toPath(), json.toString(4));
+                JOptionPane.showMessageDialog(frame, "地图导出成功！");
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(frame, "导出失败: " + ex.getMessage());
+            }
+        }
     }
 
     private static void startEditor() {
@@ -159,7 +198,14 @@ public class App {
 
             @Override
             public void requestLoadLevel(String levelName) {
-                Runnable action = () -> reloadGameWorld(world, repository, levelManager, levelName, panel);
+                Runnable action = () -> {
+                    if ("NEXT_LEVEL_PLACEHOLDER".equals(levelName)) {
+                        levelManager.loadNextLevel();
+                        reloadGameWorld(world, repository, levelManager, levelManager.getCurrentLevelName(), panel);
+                    } else {
+                        reloadGameWorld(world, repository, levelManager, levelName, panel);
+                    }
+                };
                 runOnEdt(action);
             }
 
@@ -187,9 +233,9 @@ public class App {
         }
         if (SwingUtilities.isEventDispatchThread()) {
             action.run();
-            return;
+        } else {
+            SwingUtilities.invokeLater(action);
         }
-        SwingUtilities.invokeLater(action);
     }
 
     private static void ensureBuiltinLevels(MapRepository repository, LevelManager levelManager) {
@@ -198,12 +244,7 @@ public class App {
         }
     }
 
-    private static GameWorld loadGameWorld(
-        MapRepository repository,
-        LevelManager levelManager,
-        String levelName,
-        int uiFontSize
-    ) {
+    private static GameWorld loadGameWorld(MapRepository repository, LevelManager levelManager, String levelName, int uiFontSize) {
         MapData mapData = loadLevelData(repository, levelManager, levelName);
         GameWorld world = mapData == null ? createFallbackWorld() : MapDataMapper.toWorld(mapData);
         removeShellMenus(world);
@@ -220,8 +261,7 @@ public class App {
         return world;
     }
 
-    private static void reloadGameWorld(GameWorld world, MapRepository repository, LevelManager levelManager,
-                                        String levelName, SwingGamePanel panel) {
+    private static void reloadGameWorld(GameWorld world, MapRepository repository, LevelManager levelManager, String levelName, SwingGamePanel panel) {
         if (world == null || panel == null) {
             return;
         }
@@ -229,11 +269,11 @@ public class App {
         if (mapData == null) {
             return;
         }
+        
         MapDataMapper.applyToWorld(world, mapData);
         removeShellMenus(world);
         installGameShell(world, resolveLevelNames(repository, levelManager), false, panel.getUIFontSize());
-        panel.setResolution(world.getWidth(), world.getHeight());
-        panel.applyUIFontSizeToWorld();
+        
         panel.getInputController().getKeyboardManager().reset();
         panel.getInputController().getMouseManager().reset();
         panel.repaint();
@@ -249,6 +289,7 @@ public class App {
         if (mapData != null) {
             return mapData;
         }
+        
         if (levelManager.getLevelNames().contains(normalized)) {
             MapData created = levelManager.createLevelData(normalized);
             repository.saveMap(created);
@@ -279,12 +320,7 @@ public class App {
         if (name == null || name.isBlank()) {
             return false;
         }
-        return !Set.of(
-            MAIN_MENU_NAME,
-            LEVEL_SELECT_MENU_NAME,
-            PAUSE_MENU_NAME,
-            OPTIONS_MENU_NAME
-        ).contains(name);
+        return !Set.of(MAIN_MENU_NAME, LEVEL_SELECT_MENU_NAME, PAUSE_MENU_NAME, OPTIONS_MENU_NAME).contains(name);
     }
 
     private static void installGameShell(GameWorld world, List<String> levelNames, boolean mainMenuActive, int uiFontSize) {
@@ -298,22 +334,11 @@ public class App {
 
     private static MenuObject createMainMenu(GameWorld world, boolean active, int uiFontSize) {
         List<String> options = List.of("Start", "Levels", "Editor", "Options", "Exit");
-        int menuWidth = 240;
-        int menuHeight = Math.max(180, 48 + (options.size() * Math.max(20, uiFontSize + 8)) + 12);
-        MenuObject menu = new MenuObject(
-            MAIN_MENU_NAME,
-            24,
-            24,
-            menuWidth,
-            menuHeight,
-            "Demo Menu",
-            options
-        );
+        MenuObject menu = new MenuObject(MAIN_MENU_NAME, 24, 24, 240, 180, "Demo Menu", options);
         menu.setActive(active);
         menu.setSelectedIndex(0);
         menu.setFontSize(uiFontSize);
-        menu.setSize(menuWidth, Math.max(menuHeight, menu.getPreferredHeight()));
-        menu.setPosition(24, 24);
+        menu.setSize(240, Math.max(180, menu.getPreferredHeight()));
         return menu;
     }
 
@@ -326,26 +351,12 @@ public class App {
             options.add(DEMO_MAP);
         }
         options.add("Back");
-        int maxOptionLength = options.stream().mapToInt(option -> option == null ? 0 : option.length()).max().orElse(12);
-        int menuWidth = Math.max(320, 18 * maxOptionLength);
-        int menuHeight = Math.max(180, 56 + (options.size() * Math.max(20, uiFontSize + 8)) + 12);
-        MenuObject menu = new MenuObject(
-            LEVEL_SELECT_MENU_NAME,
-            Math.max(24, (world.getWidth() - menuWidth) / 2),
-            Math.max(24, (world.getHeight() - menuHeight) / 2),
-            menuWidth,
-            menuHeight,
-            "Select Level",
-            options
-        );
+        int maxOptionLength = options.stream().mapToInt(s -> s == null ? 0 : s.length()).max().orElse(12);
+        MenuObject menu = new MenuObject(LEVEL_SELECT_MENU_NAME, 24, 24, Math.max(320, 18 * maxOptionLength), 180, "Select Level", options);
         menu.setActive(active);
         menu.setSelectedIndex(0);
         menu.setFontSize(uiFontSize);
-        menu.setSize(menuWidth, Math.max(menuHeight, menu.getPreferredHeight()));
-        menu.setPosition(
-            Math.max(24, (world.getWidth() - menuWidth) / 2),
-            Math.max(24, (world.getHeight() - menuHeight) / 2)
-        );
+        menu.setSize(menu.getWidth(), Math.max(180, menu.getPreferredHeight()));
         return menu;
     }
 
@@ -359,10 +370,7 @@ public class App {
     }
 
     private static boolean isShellMenuName(String name) {
-        return MAIN_MENU_NAME.equals(name)
-            || LEVEL_SELECT_MENU_NAME.equals(name)
-            || PAUSE_MENU_NAME.equals(name)
-            || OPTIONS_MENU_NAME.equals(name);
+        return Set.of(MAIN_MENU_NAME, LEVEL_SELECT_MENU_NAME, PAUSE_MENU_NAME, OPTIONS_MENU_NAME).contains(name);
     }
 
     private static void ensureMainMenuSelection(GameWorld world) {
@@ -416,9 +424,6 @@ public class App {
     }
 
     private static String normalizeLevelName(String levelName) {
-        if (levelName == null || levelName.isBlank()) {
-            return null;
-        }
-        return levelName.trim();
+        return levelName == null || levelName.isBlank() ? null : levelName.trim();
     }
 }

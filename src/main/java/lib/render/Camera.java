@@ -4,27 +4,60 @@ import lib.game.GameWorld;
 import lib.object.GameObject;
 
 /**
- * 摄像机类，负责跟踪目标并在渲染时提供偏移量。
+ * 摄像机类，负责跟踪目标（通常是玩家）并在渲染时提供世界坐标到屏幕坐标的偏移量。
+ * 
+ * <p>核心功能：
+ * <ul>
+ *   <li>平滑跟踪：将目标保持在视口中心。</li>
+ *   <li>边界限制：防止摄像机移动到地图外部区域。</li>
+ *   <li>自适应居中：当地图尺寸小于视口时，自动将地图居中显示。</li>
+ * </ul>
  */
 public final class Camera {
+    /** 摄像机在世界坐标系中的 X 坐标 (视口左上角) */
     private double x;
+    /** 摄像机在世界坐标系中的 Y 坐标 (视口左上角) */
     private double y;
+    /** 视口的宽度 */
     private final int viewportWidth;
+    /** 视口的高度 */
     private final int viewportHeight;
 
+    /**
+     * 创建一个新的摄像机实例。
+     * 
+     * @param viewportWidth  视口宽度 (逻辑像素)
+     * @param viewportHeight 视口高度 (逻辑像素)
+     */
     public Camera(int viewportWidth, int viewportHeight) {
         this.viewportWidth = viewportWidth;
         this.viewportHeight = viewportHeight;
     }
 
+    /**
+     * 获取当前摄像机的 X 偏移量。
+     * 
+     * @return 整数形式的 X 坐标
+     */
     public int getX() {
         return (int) Math.round(x);
     }
 
+    /**
+     * 获取当前摄像机的 Y 偏移量。
+     * 
+     * @return 整数形式的 Y 坐标
+     */
     public int getY() {
         return (int) Math.round(y);
     }
 
+    /**
+     * 根据目标对象的位置更新摄像机坐标。
+     * 
+     * @param world  当前游戏世界，用于获取边界
+     * @param target 要跟踪的目标对象
+     */
     public void update(GameWorld world, GameObject target) {
         if (target == null) {
             return;

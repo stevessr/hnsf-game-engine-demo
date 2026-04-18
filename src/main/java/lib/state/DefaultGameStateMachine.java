@@ -27,9 +27,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     private static final String LEVEL_SELECT_MENU_NAME = "level-select-menu";
     private static final String PAUSE_MENU_NAME = "pause-menu";
     private static final String OPTIONS_MENU_NAME = "options-menu";
-    private static final String KEYBINDINGS_MENU_NAME = "keybindings-menu";
     private static final String GAMEOVER_MENU_NAME = "gameover-menu";
-    private static final String VICTORY_DIALOG_NAME = "victory-dialog";
+    private static final String VICTORY_MENU_NAME = "victory-menu";
 
     private GameState currentState;
     private GameState previousState;
@@ -89,7 +88,6 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         if (currentState == GameState.PAUSED) {
             removeMenu(world, PAUSE_MENU_NAME);
             removeMenu(world, OPTIONS_MENU_NAME);
-            removeMenu(world, KEYBINDINGS_MENU_NAME);
             restoreHiddenDialog(world);
             transitionTo(previousState == GameState.PAUSED ? GameState.PLAYING : previousState);
             return;
@@ -154,15 +152,25 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         recenterUI(world);
     }
 
-    private void createVictoryDialog(GameWorld world, GameSettings settings) {
+    private void createVictoryMenu(GameWorld world, GameSettings settings, boolean hasNext) {
         if (world == null) {
             return;
         }
-        removeDialog(world, VICTORY_DIALOG_NAME);
-        DialogObject victoryDialog = new DialogObject(VICTORY_DIALOG_NAME, 0, 0, (int) (world.getWidth() * 0.8), 100, "SYSTEM", "VICTORY! Press Confirm to continue.");
-        victoryDialog.setColor(new Color(0, 80, 0, 220));
-        victoryDialog.setFontSize(settings != null ? settings.getUIFontSize() : 20);
-        world.addObject(victoryDialog);
+        removeMenu(world, VICTORY_MENU_NAME);
+        int menuWidth = 320;
+        int fontSize = settings != null ? settings.getUIFontSize() : 20;
+        
+        List<String> options = new ArrayList<>();
+        if (hasNext) {
+            options.add("Next Level");
+        }
+        options.add("Back to Menu");
+        
+        MenuObject victoryMenu = new MenuObject(VICTORY_MENU_NAME, 0, 0, menuWidth, 200, "VICTORY!", options);
+        victoryMenu.setColor(new Color(0, 80, 0, 200));
+        victoryMenu.setFontSize(fontSize);
+        victoryMenu.setSize(menuWidth, Math.max(200, victoryMenu.getPreferredHeight()));
+        world.addObject(victoryMenu);
         recenterUI(world);
     }
 
@@ -172,19 +180,34 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         }
         int worldWidth = world.getWidth();
         int worldHeight = world.getHeight();
+        
+        // 如果有摄像机，UI 应该相对于视口（通常是 960x540）进行居中。
+        // 但目前的 UI 对象是相对于世界坐标的，所以我们要么更新它们相对于摄像机，
+        // 要么这里获取视口大小。
+        int viewW = 960;
+        int viewH = 540;
+        int camX = 0;
+        int camY = 0;
+        if (world.getCamera() != null) {
+            camX = world.getCamera().getX();
+            camY = world.getCamera().getY();
+        } else {
+            viewW = worldWidth;
+            viewH = worldHeight;
+        }
 
         for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) {
             if (object instanceof MenuObject menu && menu.isActive()) {
-                menu.setPosition(Math.max(0, (worldWidth - menu.getWidth()) / 2), Math.max(0, (worldHeight - menu.getHeight()) / 2));
+                menu.setPosition(camX + Math.max(0, (viewW - menu.getWidth()) / 2), camY + Math.max(0, (viewH - menu.getHeight()) / 2));
             }
         }
 
         for (GameObject object : world.getObjectsByType(GameObjectType.DIALOG)) {
             if (object instanceof DialogObject dialog && dialog.isActive()) {
-                int dialogWidth = (int) (worldWidth * 0.8);
+                int dialogWidth = (int) (viewW * 0.8);
                 int dialogHeight = Math.max(60, dialog.getFontSize() * 3 + 20);
                 dialog.setSize(dialogWidth, dialogHeight);
-                dialog.setPosition((worldWidth - dialogWidth) / 2, worldHeight - dialogHeight - 40);
+                dialog.setPosition(camX + (viewW - dialogWidth) / 2, camY + viewH - dialogHeight - 40);
             }
         }
     }
@@ -296,6 +319,10 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             handleGameOverMenuSelection(menu, context);
             return;
         }
+        if (isVictoryMenu(menu)) {
+            handleVictoryMenuSelection(menu, context);
+            return;
+        }
 
         if (isStartOption(selected)) {
             handleMainMenuSelectionForGameplay(menu, context);
@@ -362,6 +389,22 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         }
     }
 
+    private void handleVictoryMenuSelection(MenuObject menu, GameStateContext context) {
+        String selected = menu.getSelectedOption();
+        removeMenu(context.getWorld(), VICTORY_MENU_NAME);
+        if (selected.equals("Next Level")) {
+            context.getRuntimeActions().requestLoadLevel(null); // LevelManager handles "next" logic usually
+            // To ensure we load the NEXT level specifically:
+            // Since requestLoadLevel(null) usually means current, we might need to improve this.
+            // Let's assume we can trigger "Next" via runtime actions or just load the next one.
+            context.getRuntimeActions().requestLoadLevel("NEXT_LEVEL_PLACEHOLDER");
+            transitionTo(GameState.PLAYING);
+        } else {
+            activateMainMenu(context.getWorld());
+            transitionTo(GameState.MENU);
+        }
+    }
+
     private void showOptionsMenu(GameWorld world, GameSettings settings) {
         if (world == null) {
             return;
@@ -381,7 +424,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         float intensity = settings != null ? settings.getLightingIntensity() : 1.0f;
 
         MenuObject optionsMenu = new MenuObject(OPTIONS_MENU_NAME, 0, 0, menuWidth, menuHeight, "Options", 
-            List.of("Resolution: " + world.getWidth() + "x" + world.getHeight(), "FPS: " + (settings != null ? settings.getTargetFPS() : 60), 
+            List.of("Resolution: " + (settings instanceof SwingGamePanel p ? p.getWidth() : world.getWidth()) + "x" + (settings instanceof SwingGamePanel p ? p.getHeight() : world.getHeight()), 
+                    "FPS: " + (settings != null ? settings.getTargetFPS() : 60), 
                     "Throttle: " + throttle, "Deceleration: " + deceleration + "%", "Gravity: " + (gravityEnabled ? "On" : "Off"), 
                     "Lighting: " + (lightingEnabled ? "On" : "Off"), 
                     "Ambient: " + (int) (ambient * 100) + "%",
@@ -661,19 +705,22 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         if (player.isDying()) {
             return;
         }
-        if (checkLevelComplete(world)) {
-            transitionTo(GameState.SETTLEMENT);
-            createVictoryDialog(world, context.getSettings());
-            return;
-        }
-
+        
         // Check for Goal contact
         for (GameObject other : world.getCollisions(player)) {
             if (other.getType() == GameObjectType.GOAL && other.isActive()) {
                 transitionTo(GameState.SETTLEMENT);
-                createVictoryDialog(world, context.getSettings());
+                // 这里我们假设 LevelManager 是可以访问到的。
+                // 暂时用一个简单的方法检测是否有下一关
+                createVictoryMenu(world, context.getSettings(), true); 
                 return;
             }
+        }
+
+        if (checkLevelComplete(world)) {
+            transitionTo(GameState.SETTLEMENT);
+            createVictoryMenu(world, context.getSettings(), true);
+            return;
         }
 
         double ax = 0, ay = 0;
@@ -740,7 +787,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
     }
 
     private void processSettlementInput(GameStateContext context) {
-        processDialogInput(context);
+        processMenuInput(context);
     }
 
     private void clearPlayerMovement(GameWorld world) {
@@ -938,15 +985,15 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         return m != null && OPTIONS_MENU_NAME.equals(m.getName());
     }
 
-    private boolean isKeyBindingsMenu(MenuObject m) {
-        return m != null && KEYBINDINGS_MENU_NAME.equals(m.getName());
-    }
-
     private boolean isLevelSelectMenu(MenuObject m) {
         return m != null && LEVEL_SELECT_MENU_NAME.equals(m.getName());
     }
 
     private boolean isGameOverMenu(MenuObject m) {
         return m != null && GAMEOVER_MENU_NAME.equals(m.getName());
+    }
+
+    private boolean isVictoryMenu(MenuObject m) {
+        return m != null && VICTORY_MENU_NAME.equals(m.getName());
     }
 }

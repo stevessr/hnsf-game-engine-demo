@@ -55,6 +55,17 @@ public final class LevelManager {
         return Collections.unmodifiableList(levelNames);
     }
 
+    public boolean hasNextLevel() {
+        return currentLevelIndex + 1 < levelNames.size();
+    }
+
+    public String getCurrentLevelName() {
+        if (currentLevelIndex >= 0 && currentLevelIndex < levelNames.size()) {
+            return levelNames.get(currentLevelIndex);
+        }
+        return null;
+    }
+
     public void loadNextLevel() {
         if (levelNames.isEmpty() || world == null) {
             return;

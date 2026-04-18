@@ -40,6 +40,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     private final Timer timer;
     private final SettingsRepository settingsRepository;
     private final Camera camera;
+    private final ControlHintsOverlay hintsOverlay;
     private GameRuntimeActions runtimeActions = GameRuntimeActions.noOp();
     private long lastUpdateNanos;
     private int targetFPS = 60;
@@ -53,6 +54,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         this.world = world;
         this.inputController = inputController;
         this.settingsRepository = new SettingsRepository();
+        this.hintsOverlay = new ControlHintsOverlay();
         
         // 初始视口大小 960x540
         this.camera = new Camera(960, 540);
@@ -247,8 +249,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
 
     @Override
     public void setLogicalResolution(int width, int height) {
-        // 在摄像机模式下，逻辑分辨率即为视口大小
-        // 我们这里暂时保持 960x540 的逻辑视口，进行缩放显示
     }
 
     @Override
@@ -420,10 +420,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             public void mousePressed(MouseEvent event) {
                 requestFocusInWindow();
                 // 在摄像机模式下，鼠标坐标需要加上摄像机偏移量才是世界坐标
-                int worldX = event.getX();
-                int worldY = event.getY();
-                
-                // 计算实际缩放后的偏移
                 double scale = getScale();
                 int offsetX = (int) ((getWidth() - 960 * scale) / 2);
                 int offsetY = (int) ((getHeight() - 540 * scale) / 2);
@@ -527,6 +523,9 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
 
             // 渲染世界
             world.render(graphics2d);
+            
+            // 渲染提示 (在 UI 层级之上)
+            hintsOverlay.render(graphics2d, viewW, viewH);
         } finally {
             graphics2d.dispose();
         }
