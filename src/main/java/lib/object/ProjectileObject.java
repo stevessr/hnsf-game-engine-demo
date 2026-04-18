@@ -15,7 +15,7 @@ public final class ProjectileObject extends BaseObject {
     private double lifetime = 3.0; // 存活 3 秒
 
     public ProjectileObject(String name, int x, int y, double vx, double vy, int damage, GameObject shooter) {
-        super(GameObjectType.ITEM, name, x, y, 8, 8, Color.YELLOW, true);
+        super(GameObjectType.PROJECTILE, name, x, y, 8, 8, Color.YELLOW, true);
         this.vx = vx;
         this.vy = vy;
         this.damage = damage;

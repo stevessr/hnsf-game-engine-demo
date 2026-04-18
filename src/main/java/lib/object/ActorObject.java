@@ -135,6 +135,22 @@ public abstract class ActorObject extends BaseObject {
         setHealth(health + amount);
     }
 
+    protected final void renderInfo(Graphics2D graphics, int fontSize) {
+        graphics.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        graphics.setFont(graphics.getFont().deriveFont((float) fontSize));
+        
+        String text = getName() + " HP: " + health;
+        int textX = getX();
+        int textY = Math.max(fontSize, getY() - 4);
+        
+        // 绘制阴影以提高可读性
+        graphics.setColor(new Color(0, 0, 0, 180));
+        graphics.drawString(text, textX + 1, textY + 1);
+        
+        graphics.setColor(Color.WHITE);
+        graphics.drawString(text, textX, textY);
+    }
+
     private static int normalizeNonNegative(int value) {
         return Math.max(0, value);
     }

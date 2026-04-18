@@ -320,6 +320,7 @@ public final class PlayerObject extends ActorObject {
             return;
         }
         renderBase(graphics);
+        renderInfo(graphics, fontSize);
     }
 
     private void renderBase(Graphics2D graphics) {
@@ -330,19 +331,5 @@ public final class PlayerObject extends ActorObject {
         }
         graphics.setColor(getColor());
         graphics.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 16, 16);
-        
-        // 渲染文本
-        graphics.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        graphics.setFont(graphics.getFont().deriveFont((float) fontSize));
-        String text = getName() + " HP: " + getHealth();
-        int textX = getX();
-        int textY = Math.max(fontSize, getY() - 4);
-        
-        // 绘制阴影以提高可读性
-        graphics.setColor(new Color(0, 0, 0, 180));
-        graphics.drawString(text, textX + 1, textY + 1);
-        
-        graphics.setColor(Color.WHITE);
-        graphics.drawString(text, textX, textY);
     }
 }

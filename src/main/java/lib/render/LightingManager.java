@@ -94,6 +94,13 @@ public final class LightingManager {
             }
         }
         
+        // 为投影物添加光源
+        for (lib.object.GameObject obj : world.getObjectsByType(lib.object.GameObjectType.PROJECTILE)) {
+            if (obj.isActive()) {
+                drawLight(g2d, obj.getX() + obj.getWidth() / 2, obj.getY() + obj.getHeight() / 2, 80, 0.8f * intensityMultiplier);
+            }
+        }
+        
         for (LightSource light : lights) {
             drawLight(g2d, light.x, light.y, light.radius, light.intensity * intensityMultiplier);
         }

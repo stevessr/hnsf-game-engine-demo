@@ -99,24 +99,11 @@ public final class MonsterObject extends ActorObject {
             return;
         }
         renderBase(graphics);
+        renderInfo(graphics, fontSize);
     }
 
     private void renderBase(Graphics2D graphics) {
         graphics.setColor(getColor());
         graphics.fillOval(getX(), getY(), getWidth(), getHeight());
-        
-        // 渲染文本
-        graphics.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        graphics.setFont(graphics.getFont().deriveFont((float) fontSize));
-        String text = getName();
-        int textX = getX();
-        int textY = Math.max(fontSize, getY() - 4);
-        
-        // 绘制阴影
-        graphics.setColor(new Color(255, 255, 255, 120));
-        graphics.drawString(text, textX + 1, textY + 1);
-        
-        graphics.setColor(Color.BLACK);
-        graphics.drawString(text, textX, textY);
     }
 }

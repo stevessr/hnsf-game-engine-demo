@@ -16,6 +16,7 @@ import lib.object.WallObject;
 import lib.object.VoxelObject;
 import lib.object.dto.MapData;
 import lib.persistence.MapDataMapper;
+import lib.state.DefaultGameStateMachine;
 
 /**
  * 关卡管理器，负责管理内置关卡模板和关卡切换。
@@ -86,7 +87,7 @@ public final class LevelManager {
         MapDataMapper.applyToWorld(world, mapData);
         
         // 某些情况下需要同步面板大小，这里尝试通过状态机上下文或直接操作
-        if (world.getStateMachine() instanceof lib.state.DefaultGameStateMachine dsm) {
+        if (world.getStateMachine() instanceof DefaultGameStateMachine dsm) {
             dsm.recenterUI(world);
         }
     }

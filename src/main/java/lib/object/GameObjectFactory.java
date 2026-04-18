@@ -86,6 +86,7 @@ public final class GameObjectFactory {
             case ITEM -> object = createItem(data);
             case VOXEL -> object = createVoxel(data);
             case GOAL -> object = new GoalObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
+            case PROJECTILE -> object = new ProjectileObject(data.getName(), data.getX(), data.getY(), 0, 0, 10, null);
             case WALL -> object = new WallObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
             case BOUNDARY -> object = new BoundaryObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
             case MENU -> object = createMenu(data);

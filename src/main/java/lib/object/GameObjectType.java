@@ -10,5 +10,6 @@ public enum GameObjectType {
     DIALOG,
     ITEM,
     VOXEL,
-    GOAL
+    GOAL,
+    PROJECTILE
 }

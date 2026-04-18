@@ -109,7 +109,7 @@ public final class EntityManager {
                 continue;
             }
             GameObjectType type = object.getType();
-            if (type == GameObjectType.PLAYER || type == GameObjectType.MONSTER || type == GameObjectType.ITEM) {
+            if (type == GameObjectType.PLAYER || type == GameObjectType.MONSTER || type == GameObjectType.ITEM || type == GameObjectType.PROJECTILE) {
                 object.render(graphics);
             }
         }
