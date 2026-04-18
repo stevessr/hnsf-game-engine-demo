@@ -1,5 +1,8 @@
 # HNSF Game Engine Demo
 
+[![CI](https://github.com/stevessr/hnsf-game-engine-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/stevessr/hnsf-game-engine-demo/actions/workflows/ci.yml)
+[![Release](https://github.com/stevessr/hnsf-game-engine-demo/actions/workflows/release.yml/badge.svg)](https://github.com/stevessr/hnsf-game-engine-demo/actions/workflows/release.yml)
+
 这是一个基于 Java Swing 开发的 2D 游戏引擎原型，旨在展示模块化的架构设计、物理引擎、光照系统以及灵活的关卡编辑能力。
 
 ## 核心特性

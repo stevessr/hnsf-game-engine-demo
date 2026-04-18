@@ -1,10 +1,11 @@
 plugins {
     java
+    jacoco
     application
     id("io.freefair.lombok") version "8.14.2"
     id("checkstyle")
     id("com.github.spotbugs") version "6.4.4"
-    id("com.gradleup.shadow") version "8.3.5"
+    id("com.gradleup.shadow") version "8.3.10"
 }
 
 group = "org.example"
@@ -32,6 +33,15 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
 
 checkstyle {
