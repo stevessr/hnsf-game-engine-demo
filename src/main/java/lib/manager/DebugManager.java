@@ -10,7 +10,15 @@ import lib.game.GameWorld;
 import lib.object.PlayerObject;
 
 /**
- * 调试管理器，负责渲染调试信息和处理调试指令。
+ * 调试管理器，负责实时监控系统状态并提供开发者后门。
+ * 
+ * <p>核心功能：
+ * <ul>
+ *   <li>性能监控：计算并显示当前的实时 FPS。</li>
+ *   <li>状态追踪：显示主角的精确坐标、速度、生命值及世界对象总数。</li>
+ *   <li>简易控制台：支持通过指令（如 god, tp, speed）实时修改游戏运行参数。</li>
+ *   <li>调试日志：提供一个精简的最近 5 条消息的日志显示区。</li>
+ * </ul>
  */
 public final class DebugManager {
     private long lastFrameTime = System.nanoTime();
@@ -18,6 +26,11 @@ public final class DebugManager {
     private int fps = 0;
     private final List<String> logMessages = new ArrayList<>();
 
+    /**
+     * 向调试控制台添加一条日志消息。
+     * 
+     * @param message 消息内容
+     */
     public void log(String message) {
         logMessages.add(message);
         if (logMessages.size() > 5) {
@@ -25,6 +38,14 @@ public final class DebugManager {
         }
     }
 
+    /**
+     * 在屏幕底部区域渲染调试面板。
+     * 
+     * @param g      图形上下文
+     * @param world  当前世界引用
+     * @param viewW  视口宽度
+     * @param viewH  视口高度
+     */
     public void render(Graphics2D g, GameWorld world, int viewW, int viewH) {
         updateFps();
 
@@ -75,6 +96,9 @@ public final class DebugManager {
 
     /**
      * 处理简单的调试指令 (内置修改器)。
+     * 
+     * @param cmd   原始指令字符串
+     * @param world 目标游戏世界
      */
     public void executeCommand(String cmd, GameWorld world) {
         if (cmd == null || world == null) {
@@ -108,10 +132,14 @@ public final class DebugManager {
             }
             case "tp" -> {
                 if (parts.length >= 3) {
-                    int tx = Integer.parseInt(parts[1]);
-                    int ty = Integer.parseInt(parts[2]);
-                    world.moveObject(player, tx, ty);
-                    log("Teleported to " + tx + ", " + ty);
+                    try {
+                        int tx = Integer.parseInt(parts[1]);
+                        int ty = Integer.parseInt(parts[2]);
+                        world.moveObject(player, tx, ty);
+                        log("Teleported to " + tx + ", " + ty);
+                    } catch (NumberFormatException e) {
+                        log("Invalid coordinates");
+                    }
                 }
             }
             default -> log("Unknown command: " + parts[0]);

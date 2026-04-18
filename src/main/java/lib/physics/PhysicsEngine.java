@@ -5,7 +5,21 @@ import java.util.List;
 
 import lib.object.GameObject;
 
+/**
+ * 核心物理引擎，负责处理碰撞检测和移动解析。
+ */
 public final class PhysicsEngine {
+    /**
+     * 解析一个移动尝试，处理与障碍物的碰撞以及世界边界限制。
+     * 
+     * @param movingObject  要移动的对象
+     * @param targetX       目标 X 坐标
+     * @param targetY       目标 Y 坐标
+     * @param worldWidth    地图宽度
+     * @param worldHeight   地图高度
+     * @param obstacles     潜在障碍物列表
+     * @return 包含最终合法位置和阻挡状态的结果
+     */
     public MovementResult resolveMovement(
         GameObject movingObject,
         int targetX,
@@ -44,7 +58,7 @@ public final class PhysicsEngine {
         GameObject blockedByX = null;
         GameObject blockedByY = null;
 
-        // X 轴移动
+        // X 轴移动：逐像素/步进检查以防止穿墙
         if (clampedTargetX != originalX) {
             int stepX = Integer.compare(clampedTargetX, originalX);
             int currentX = originalX;
@@ -81,6 +95,15 @@ public final class PhysicsEngine {
         return new MovementResult(resolvedX, resolvedY, blockedX, blockedY, blockedByX, blockedByY);
     }
 
+    /**
+     * 检测对象在指定位置是否会与任一障碍物重叠。
+     * 
+     * @param movingObject 源对象
+     * @param targetX      检测位置 X
+     * @param targetY      检测位置 Y
+     * @param obstacles    障碍物列表
+     * @return 如果发生重叠返回 true
+     */
     public boolean collidesAt(GameObject movingObject, int targetX, int targetY, List<? extends GameObject> obstacles) {
         Aabb movingBox = Aabb.at(movingObject, targetX, targetY);
         for (GameObject obstacle : obstacles) {
@@ -112,6 +135,13 @@ public final class PhysicsEngine {
         return null;
     }
 
+    /**
+     * 查找当前与给定对象相交的所有活跃对象。
+     * 
+     * @param gameObject 源对象
+     * @param candidates 候选对象列表
+     * @return 发生碰撞的对象列表
+     */
     public List<GameObject> findCollisions(GameObject gameObject, List<? extends GameObject> candidates) {
         List<GameObject> collisions = new ArrayList<>();
         Aabb sourceBox = Aabb.from(gameObject);

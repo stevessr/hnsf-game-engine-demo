@@ -16,19 +16,37 @@ import lib.object.GameObjectType;
 import lib.object.dto.MapData;
 import lib.object.dto.ObjectData;
 
+/**
+ * 地图持久化仓库，基于 SQLite 数据库。
+ * 处理地图元数据及其包含的所有游戏对象的 CRUD 操作。
+ */
 public final class MapRepository {
     private static final String DB_FILE_NAME = "maps.db";
     private final Path dbPath;
 
+    /**
+     * 使用默认路径创建仓库实例。
+     */
     public MapRepository() {
         this(resolveDefaultPath());
     }
 
+    /**
+     * 为指定的数据库路径创建仓库。
+     * 
+     * @param dbPath 数据库文件路径
+     */
     public MapRepository(Path dbPath) {
         this.dbPath = dbPath;
         initializeSchema();
     }
 
+    /**
+     * 保存或更新地图。
+     * 
+     * @param mapData 地图数据
+     * @return 数据库中的地图 ID
+     */
     public long saveMap(MapData mapData) {
         if (mapData == null) {
             return 0L;
@@ -46,6 +64,12 @@ public final class MapRepository {
         }
     }
 
+    /**
+     * 根据 ID 加载地图。
+     * 
+     * @param mapId 地图 ID
+     * @return 包含所有对象的 MapData，如果不存在则返回 null
+     */
     public MapData loadMapById(long mapId) {
         if (mapId <= 0) {
             return null;
@@ -62,6 +86,12 @@ public final class MapRepository {
         }
     }
 
+    /**
+     * 根据名称加载地图。
+     * 
+     * @param name 地图唯一名称
+     * @return 包含所有对象的 MapData，如果不存在则返回 null
+     */
     public MapData loadMapByName(String name) {
         if (name == null || name.isBlank()) {
             return null;
@@ -78,6 +108,11 @@ public final class MapRepository {
         }
     }
 
+    /**
+     * 获取库中所有地图的名称列表。
+     * 
+     * @return 按名称排序的字符串列表
+     */
     public List<String> listMapNames() {
         List<String> names = new ArrayList<>();
         try (Connection connection = openConnection();

@@ -8,12 +8,29 @@ import lib.object.GameObject;
 import lib.object.GameObjectType;
 
 /**
- * 小地图渲染遮罩。
+ * 小地图渲染层，提供世界的缩略俯视图，帮助玩家在大地图中导航。
+ * 
+ * <p>特性：
+ * <ul>
+ *   <li>自适应缩放：自动根据地图宽高调整显示比例。</li>
+ *   <li>颜色标记：使用不同颜色区分玩家(蓝)、敌对实体(红)、目标(金)和墙壁(灰)。</li>
+ *   <li>视口反馈：在缩略图上用白框标出当前摄像机锁定的可见区域。</li>
+ * </ul>
  */
 public final class MinimapOverlay {
+    /** 小地图的最大显示尺寸 (像素) */
     private static final int MINIMAP_SIZE = 150;
+    /** 距离屏幕边缘的边距 */
     private static final int MARGIN = 15;
 
+    /**
+     * 在屏幕右上角渲染小地图。
+     * 
+     * @param g      图形上下文
+     * @param world  当前世界引用
+     * @param viewW  视口宽度
+     * @param viewH  视口高度
+     */
     public void render(Graphics2D g, GameWorld world, int viewW, int viewH) {
         int worldW = world.getWidth();
         int worldH = world.getHeight();

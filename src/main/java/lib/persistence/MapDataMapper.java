@@ -10,10 +10,21 @@ import lib.object.GameObjectFactory;
 import lib.object.dto.MapData;
 import lib.object.dto.ObjectData;
 
+/**
+ * 地图数据转换工具类。
+ * 负责在 GameWorld、MapData (DTO) 和 JSONObject (导出格式) 之间进行无损转换。
+ */
 public final class MapDataMapper {
     private MapDataMapper() {
     }
 
+    /**
+     * 将实时游戏世界状态快照转换为地图数据对象。
+     * 
+     * @param world 游戏世界实例
+     * @param name  地图名称
+     * @return MapData 实例
+     */
     public static MapData fromWorld(GameWorld world, String name) {
         if (world == null) {
             return null;
@@ -34,6 +45,12 @@ public final class MapDataMapper {
         return mapData;
     }
 
+    /**
+     * 将地图数据导出为 JSON 格式，适用于文件保存和分享。
+     * 
+     * @param mapData 地图数据对象
+     * @return 包含地图完整信息的 JSONObject
+     */
     public static JSONObject exportToJson(MapData mapData) {
         if (mapData == null) {
             return null;
@@ -67,6 +84,12 @@ public final class MapDataMapper {
         return json;
     }
 
+    /**
+     * 从 JSON 对象导入地图数据。
+     * 
+     * @param json 源 JSON
+     * @return 转换后的 MapData 实例
+     */
     public static MapData importFromJson(JSONObject json) {
         if (json == null) {
             return null;
@@ -102,6 +125,12 @@ public final class MapDataMapper {
         return mapData;
     }
 
+    /**
+     * 将地图数据创建为一个新的 GameWorld 实例。
+     * 
+     * @param mapData 源地图数据
+     * @return 新的 GameWorld 实例
+     */
     public static GameWorld toWorld(MapData mapData) {
         if (mapData == null) {
             return null;
@@ -118,6 +147,12 @@ public final class MapDataMapper {
         return world;
     }
 
+    /**
+     * 将地图数据应用到已有的 GameWorld 实例，会清空世界中的已有对象。
+     * 
+     * @param world   目标世界实例
+     * @param mapData 要加载的数据
+     */
     public static void applyToWorld(GameWorld world, MapData mapData) {
         if (world == null || mapData == null) {
             return;
