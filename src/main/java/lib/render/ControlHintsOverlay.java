@@ -33,6 +33,10 @@ public final class ControlHintsOverlay {
      * @param viewportHeight 视口高度
      */
     public void render(Graphics2D graphics, int viewportWidth, int viewportHeight) {
+        render(graphics, viewportWidth, viewportHeight, false);
+    }
+
+    public void render(Graphics2D graphics, int viewportWidth, int viewportHeight, boolean aiActive) {
         if (!visible) {
             return;
         }
@@ -44,10 +48,9 @@ public final class ControlHintsOverlay {
         hints.add(new Hint("WASD / Arrows", "Move (移动)"));
         hints.add(new Hint("Space", "Jump (跳跃)"));
         hints.add(new Hint("K", "Shoot (攻击)"));
-        hints.add(new Hint("T", "Cycle Throttle (切换动力)"));
-        hints.add(new Hint("C", "Cycle Color (切换颜色)"));
+        hints.add(new Hint("H", "AI Auto-play (自动通关)"));
         hints.add(new Hint("P / Esc", "Pause (暂停)"));
-        hints.add(new Hint("Mouse L/R", "Voxel (体素建造/销毁)"));
+        hints.add(new Hint("F3", "Debug (调试)"));
 
         int x = 20;
         int y = 30;
@@ -55,11 +58,16 @@ public final class ControlHintsOverlay {
         
         // 绘制背景板 (半透明深色)
         int bgW = 240;
-        int bgH = hints.size() * rowHeight + 15;
+        int bgH = (hints.size() + (aiActive ? 1 : 0)) * rowHeight + 15;
         graphics.setColor(new Color(0, 0, 0, 100));
         graphics.fillRoundRect(10, 10, bgW, bgH, 10, 10);
-        graphics.setColor(new Color(255, 255, 255, 40));
-        graphics.drawRoundRect(10, 10, bgW, bgH, 10, 10);
+        
+        if (aiActive) {
+            graphics.setColor(new Color(0, 255, 0, 180));
+            graphics.setFont(new Font("SansSerif", Font.BOLD, 14));
+            graphics.drawString("● AI AUTO-PLAY ACTIVE", x, y);
+            y += rowHeight;
+        }
 
         Font keyFont = new Font("Monospaced", Font.BOLD, 12);
         Font descFont = new Font("SansSerif", Font.PLAIN, 12);

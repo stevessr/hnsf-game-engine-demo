@@ -1,8 +1,8 @@
 package lib.object;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.Color;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import lib.object.dto.ObjectData;

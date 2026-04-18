@@ -35,7 +35,9 @@ import lib.state.GameRuntimeActions;
 import lib.state.GameSettings;
 import lib.state.GameState;
 import lib.state.GameStateContext;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public final class SwingGamePanel extends JPanel implements GameSettings {
     private final GameWorld world;
     private final GameInputController inputController;
@@ -45,6 +47,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     private final ControlHintsOverlay hintsOverlay;
     private final DebugManager debugManager;
     private final MinimapOverlay minimapOverlay;
+    private final lib.manager.AITestManager aiTestManager;
     private GameRuntimeActions runtimeActions = GameRuntimeActions.noOp();
     private long lastUpdateNanos;
     private int targetFPS = 60;
@@ -62,6 +65,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         this.hintsOverlay = new ControlHintsOverlay();
         this.debugManager = new DebugManager();
         this.minimapOverlay = new MinimapOverlay();
+        this.aiTestManager = new lib.manager.AITestManager();
         
         this.camera = new Camera(960, 540);
         world.setCamera(camera);
@@ -404,6 +408,9 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         lastUpdateNanos = now;
         
         inputController.processInputs(new GameStateContext(world, inputController, this, runtimeActions));
+        if (aiTestManager.isEnabled()) {
+            aiTestManager.update(world, deltaSeconds);
+        }
         world.update(deltaSeconds);
         
         world.findPlayer().ifPresent(player -> camera.update(world, player));
@@ -425,6 +432,9 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             public void keyPressed(KeyEvent event) {
                 if (event.getKeyCode() == KeyEvent.VK_F3) {
                     toggleDebug();
+                } else if (event.getKeyCode() == KeyEvent.VK_H) {
+                    aiTestManager.setEnabled(!aiTestManager.isEnabled());
+                    log.info("AI Auto-play: {}", aiTestManager.isEnabled() ? "ENABLED" : "DISABLED");
                 } else if (event.getKeyCode() == KeyEvent.VK_BACK_QUOTE && debugEnabled) {
                     showDebugConsole();
                 }
@@ -483,9 +493,14 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     }
 
     private void showDebugConsole() {
-        String cmd = JOptionPane.showInputDialog(this, "Debug Console (god, speed [val], tp [x] [y], heal):", "Debug Console", JOptionPane.PLAIN_MESSAGE);
+        String cmd = JOptionPane.showInputDialog(this, "Debug Console (god, auto, speed [val], tp [x] [y], heal):", "Debug Console", JOptionPane.PLAIN_MESSAGE);
         if (cmd != null && !cmd.isBlank()) {
-            debugManager.executeCommand(cmd, world);
+            if ("auto".equalsIgnoreCase(cmd.trim())) {
+                aiTestManager.setEnabled(!aiTestManager.isEnabled());
+                debugManager.log("AI Auto-play: " + (aiTestManager.isEnabled() ? "ON" : "OFF"));
+            } else {
+                debugManager.executeCommand(cmd, world);
+            }
             repaint();
         }
     }
@@ -548,7 +563,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             graphics2d.setClip(0, 0, viewW, viewH);
 
             world.render(graphics2d);
-            hintsOverlay.render(graphics2d, viewW, viewH);
+            hintsOverlay.render(graphics2d, viewW, viewH, aiTestManager.isEnabled());
             
             if (debugEnabled) {
                 debugManager.render(graphics2d, world, viewW, viewH);

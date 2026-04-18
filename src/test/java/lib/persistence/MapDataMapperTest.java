@@ -1,13 +1,13 @@
 package lib.persistence;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.awt.Color;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
 import lib.game.GameWorld;
-import lib.object.GameObject;
 import lib.object.GameObjectType;
 import lib.object.dto.MapData;
 import lib.object.dto.ObjectData;
