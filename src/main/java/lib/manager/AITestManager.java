@@ -33,14 +33,14 @@ public final class AITestManager {
             return;
         }
 
-        GameObject goal = findGoal(world);
-        if (goal == null) {
+        GameObject target = findTarget(world, player);
+        if (target == null) {
             return;
         }
 
-        // 1. 基础移动逻辑：向终点移动
-        double dx = goal.getX() - player.getX();
-        double dy = goal.getY() - player.getY();
+        // 1. 基础移动逻辑：向目标移动
+        double dx = target.getX() - player.getX();
+        double dy = target.getY() - player.getY();
         double ax = 0;
         double ay = 0;
 
@@ -77,11 +77,36 @@ public final class AITestManager {
         player.accelerate(ax, ay, deltaSeconds);
     }
 
-    private GameObject findGoal(GameWorld world) {
-        return world.getObjectsByType(GameObjectType.GOAL).stream()
-            .filter(GameObject::isActive)
-            .findFirst()
-            .orElse(null);
+    private GameObject findTarget(GameWorld world, PlayerObject player) {
+        return switch (world.getWinCondition()) {
+            case COLLECT_TARGET_COUNT, CLEAR_ALL_ITEMS -> findNearest(world, player, GameObjectType.ITEM);
+            case KILL_ALL_MONSTERS, KILL_TARGET_COUNT -> findNearest(world, player, GameObjectType.MONSTER);
+            case REACH_GOAL -> findNearest(world, player, GameObjectType.GOAL);
+        };
+    }
+
+    private GameObject findNearest(GameWorld world, PlayerObject player, GameObjectType type) {
+        List<GameObject> candidates = world.getObjectsByType(type);
+        GameObject nearest = null;
+        double minDistSq = Double.MAX_VALUE;
+        
+        for (GameObject obj : candidates) {
+            if (!obj.isActive()) {
+                continue;
+            }
+            double d2 = Math.pow(obj.getX() - player.getX(), 2) + Math.pow(obj.getY() - player.getY(), 2);
+            if (d2 < minDistSq) {
+                minDistSq = d2;
+                nearest = obj;
+            }
+        }
+        
+        // 如果找不到目标类型，回退到寻找 Goal
+        if (nearest == null && type != GameObjectType.GOAL) {
+            return findNearest(world, player, GameObjectType.GOAL);
+        }
+        
+        return nearest;
     }
 
     private boolean isObstacleAhead(GameWorld world, PlayerObject player, double directionX) {

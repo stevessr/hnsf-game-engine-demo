@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import lib.game.WinConditionType;
 public final class MapData {
     private long id;
     private String name;
@@ -12,10 +13,37 @@ public final class MapData {
     private Color backgroundColor;
     private boolean gravityEnabled;
     private int gravityStrength;
+    private WinConditionType winCondition = WinConditionType.REACH_GOAL;
+    private int targetKills = 0;
+    private int targetItems = 0;
     private final List<ObjectData> objects;
 
     public MapData() {
         this(0L, "untitled", 960, 540, new Color(32, 36, 48), false, 900, new ArrayList<>());
+    }
+
+    public WinConditionType getWinCondition() {
+        return winCondition;
+    }
+
+    public void setWinCondition(WinConditionType winCondition) {
+        this.winCondition = winCondition == null ? WinConditionType.REACH_GOAL : winCondition;
+    }
+
+    public int getTargetKills() {
+        return targetKills;
+    }
+
+    public void setTargetKills(int targetKills) {
+        this.targetKills = Math.max(0, targetKills);
+    }
+
+    public int getTargetItems() {
+        return targetItems;
+    }
+
+    public void setTargetItems(int targetItems) {
+        this.targetItems = Math.max(0, targetItems);
     }
 
     public MapData(

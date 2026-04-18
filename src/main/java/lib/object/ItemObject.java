@@ -70,6 +70,7 @@ public final class ItemObject extends BaseObject {
             return;
         }
         applyEffect(player);
+        world.recordItemCollection();
         setActive(false);
     }
 

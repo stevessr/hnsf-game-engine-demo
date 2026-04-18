@@ -47,6 +47,7 @@ public final class InputActionMapper {
         mapper.bindKey(InputAction.JUMP, KeyEvent.VK_SPACE);
         mapper.bindKey(InputAction.SHOOT, KeyEvent.VK_K);
         mapper.bindKey(InputAction.CYCLE_THROTTLE, KeyEvent.VK_T);
+        mapper.bindKey(InputAction.TOGGLE_GOALS, KeyEvent.VK_G);
         mapper.bindMouseButton(InputAction.VOXEL_BUILD, MouseEvent.BUTTON1);
         mapper.bindMouseButton(InputAction.VOXEL_DESTROY, MouseEvent.BUTTON3);
         return mapper;

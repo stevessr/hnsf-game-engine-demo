@@ -11,6 +11,7 @@ public final class MonsterObject extends ActorObject {
     private boolean aggressive;
     private int directionX;
     private int fontSize = 12;
+    private boolean killRecorded = false;
 
     public MonsterObject(String name) {
         this(name, 0, 0, 60);
@@ -54,13 +55,15 @@ public final class MonsterObject extends ActorObject {
     @Override
     public void update(GameWorld world, double deltaSeconds) {
         if (isDying()) {
+            if (!killRecorded && world != null) {
+                world.recordKill();
+                world.findPlayer().ifPresent(p -> p.gainExperience(rewardExperience));
+                killRecorded = true;
+            }
             updateDeathAnimation(deltaSeconds);
             return;
         }
 
-        if (!canAttack()) {
-            return;
-        }
 
         if (world != null && world.isGravityEnabled()) {
             setVelocityY(getVelocityYDouble() + world.getGravityStrength() * deltaSeconds);

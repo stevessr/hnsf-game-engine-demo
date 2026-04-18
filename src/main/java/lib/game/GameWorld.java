@@ -29,9 +29,77 @@ public final class GameWorld {
     private Color backgroundColor;
     private boolean gravityEnabled;
     private int gravityStrength;
+    private WinConditionType winCondition = WinConditionType.REACH_GOAL;
+    private int targetKills = 0;
+    private int targetItems = 0;
+    private int kills = 0;
+    private int itemsCollected = 0;
+    private boolean showGoals = true;
 
     public GameWorld(int width, int height) {
         this(width, height, new Color(32, 36, 48));
+    }
+
+    public WinConditionType getWinCondition() {
+        return winCondition;
+    }
+
+    public void setWinCondition(WinConditionType winCondition) {
+        this.winCondition = winCondition == null ? WinConditionType.REACH_GOAL : winCondition;
+    }
+
+    public int getTargetKills() {
+        return targetKills;
+    }
+
+    public void setTargetKills(int targetKills) {
+        this.targetKills = Math.max(0, targetKills);
+    }
+
+    public int getTargetItems() {
+        return targetItems;
+    }
+
+    public void setTargetItems(int targetItems) {
+        this.targetItems = Math.max(0, targetItems);
+    }
+
+    public int getKills() {
+        return kills;
+    }
+
+    public void recordKill() {
+        this.kills++;
+    }
+
+    public int getItemsCollected() {
+        return itemsCollected;
+    }
+
+    public void recordItemCollection() {
+        this.itemsCollected++;
+    }
+
+    public boolean isShowGoals() {
+        return showGoals;
+    }
+
+    public void setShowGoals(boolean showGoals) {
+        this.showGoals = showGoals;
+    }
+
+    public void toggleShowGoals() {
+        this.showGoals = !this.showGoals;
+    }
+
+    public boolean isComplete() {
+        return switch (winCondition) {
+            case REACH_GOAL -> false; // Handled by GoalObject collision usually
+            case KILL_ALL_MONSTERS -> getObjectsByType(GameObjectType.MONSTER).stream().noneMatch(GameObject::isActive);
+            case KILL_TARGET_COUNT -> kills >= targetKills;
+            case COLLECT_TARGET_COUNT -> itemsCollected >= targetItems;
+            case CLEAR_ALL_ITEMS -> getObjectsByType(GameObjectType.ITEM).stream().noneMatch(GameObject::isActive);
+        };
     }
 
     public GameWorld(int width, int height, Color backgroundColor) {

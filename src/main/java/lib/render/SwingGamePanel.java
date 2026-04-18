@@ -47,6 +47,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     private final ControlHintsOverlay hintsOverlay;
     private final DebugManager debugManager;
     private final MinimapOverlay minimapOverlay;
+    private final GoalOverlay goalOverlay;
     private final lib.manager.AITestManager aiTestManager;
     private GameRuntimeActions runtimeActions = GameRuntimeActions.noOp();
     private long lastUpdateNanos;
@@ -65,6 +66,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         this.hintsOverlay = new ControlHintsOverlay();
         this.debugManager = new DebugManager();
         this.minimapOverlay = new MinimapOverlay();
+        this.goalOverlay = new GoalOverlay();
         this.aiTestManager = new lib.manager.AITestManager();
         
         this.camera = new Camera(960, 540);
@@ -569,6 +571,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
                 debugManager.render(graphics2d, world, viewW, viewH);
             }
             minimapOverlay.render(graphics2d, world, viewW, viewH);
+            goalOverlay.render(graphics2d, world, viewW, viewH);
         } finally {
             graphics2d.dispose();
         }

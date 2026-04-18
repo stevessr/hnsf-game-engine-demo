@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import lib.game.GameWorld;
+import lib.game.WinConditionType;
 import lib.input.InputAction;
 import lib.input.KeyBindingsWindow;
 import lib.object.DialogObject;
@@ -694,6 +695,10 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
 
+        if (actionMapper.isKeyboardJustActivated(InputAction.TOGGLE_GOALS, inputController.getKeyboardManager())) {
+            world.toggleShowGoals();
+        }
+
         if (findActiveDialog(world) != null) {
             transitionTo(GameState.DIALOG);
             clearPlayerMovement(context);
@@ -710,18 +715,18 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
         
-        // Check for Goal contact
-        for (GameObject other : world.getCollisions(player)) {
-            if (other.getType() == GameObjectType.GOAL && other.isActive()) {
-                transitionTo(GameState.SETTLEMENT);
-                // 这里我们假设 LevelManager 是可以访问到的。
-                // 暂时用一个简单的方法检测是否有下一关
-                createVictoryMenu(world, context.getSettings(), true); 
-                return;
+        // Check for Goal contact (only if winCondition is REACH_GOAL)
+        if (world.getWinCondition() == WinConditionType.REACH_GOAL) {
+            for (GameObject other : world.getCollisions(player)) {
+                if (other.getType() == GameObjectType.GOAL && other.isActive()) {
+                    transitionTo(GameState.SETTLEMENT);
+                    createVictoryMenu(world, context.getSettings(), true); 
+                    return;
+                }
             }
         }
 
-        if (checkLevelComplete(world)) {
+        if (world.isComplete()) {
             transitionTo(GameState.SETTLEMENT);
             createVictoryMenu(world, context.getSettings(), true);
             return;

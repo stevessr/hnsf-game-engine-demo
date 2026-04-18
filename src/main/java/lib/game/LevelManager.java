@@ -113,16 +113,26 @@ public final class LevelManager {
         }
 
         if (normalized.equals(PROC_FOREST)) {
-            return ProceduralLevelGenerator.generateForest(PROC_FOREST, System.currentTimeMillis());
+            MapData mapData = ProceduralLevelGenerator.generateForest(PROC_FOREST, System.currentTimeMillis());
+            mapData.setWinCondition(WinConditionType.COLLECT_TARGET_COUNT);
+            mapData.setTargetItems(5);
+            return mapData;
         }
         if (normalized.equals(PROC_CAVE)) {
-            return ProceduralLevelGenerator.generateCave(PROC_CAVE, System.currentTimeMillis());
+            MapData mapData = ProceduralLevelGenerator.generateCave(PROC_CAVE, System.currentTimeMillis());
+            mapData.setWinCondition(WinConditionType.KILL_TARGET_COUNT);
+            mapData.setTargetKills(10);
+            return mapData;
         }
 
         GameWorld levelWorld = switch (normalized) {
             case TUTORIAL_LEVEL -> createTutorialLevelWorld();
             case DEMO_MAP -> createDemoMapWorld();
-            case LEVEL_1 -> createForestLevelWorld();
+            case LEVEL_1 -> {
+                GameWorld world = createForestLevelWorld();
+                world.setWinCondition(WinConditionType.KILL_ALL_MONSTERS);
+                yield world;
+            }
             case LEVEL_2 -> createRuinsLevelWorld();
             case LEVEL_3 -> createCavernLevelWorld();
             case LEVEL_4 -> createBossArenaWorld();

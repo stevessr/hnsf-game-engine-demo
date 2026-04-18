@@ -5,6 +5,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import lib.game.GameWorld;
+import lib.game.WinConditionType;
 import lib.object.GameObject;
 import lib.object.GameObjectFactory;
 import lib.object.dto.MapData;
@@ -36,6 +37,9 @@ public final class MapDataMapper {
         mapData.setBackgroundColor(world.getBackgroundColor());
         mapData.setGravityEnabled(world.isGravityEnabled());
         mapData.setGravityStrength(world.getGravityStrength());
+        mapData.setWinCondition(world.getWinCondition());
+        mapData.setTargetKills(world.getTargetKills());
+        mapData.setTargetItems(world.getTargetItems());
         for (GameObject object : world.getObjects()) {
             ObjectData data = GameObjectFactory.toObjectData(object);
             if (data != null) {
@@ -62,6 +66,9 @@ public final class MapDataMapper {
         json.put("backgroundColor", mapData.getBackgroundColor().getRGB());
         json.put("gravityEnabled", mapData.isGravityEnabled());
         json.put("gravityStrength", mapData.getGravityStrength());
+        json.put("winCondition", mapData.getWinCondition().name());
+        json.put("targetKills", mapData.getTargetKills());
+        json.put("targetItems", mapData.getTargetItems());
         
         JSONArray objects = new JSONArray();
         for (ObjectData obj : mapData.getObjects()) {
@@ -102,6 +109,16 @@ public final class MapDataMapper {
         mapData.setGravityEnabled(json.optBoolean("gravityEnabled", false));
         mapData.setGravityStrength(json.optInt("gravityStrength", 900));
         
+        if (json.has("winCondition")) {
+            try {
+                mapData.setWinCondition(WinConditionType.valueOf(json.getString("winCondition")));
+            } catch (Exception ignored) {
+                // Ignore invalid enum values
+            }
+        }
+        mapData.setTargetKills(json.optInt("targetKills", 0));
+        mapData.setTargetItems(json.optInt("targetItems", 0));
+        
         JSONArray objects = json.optJSONArray("objects");
         if (objects != null) {
             for (int i = 0; i < objects.length(); i++) {
@@ -138,6 +155,9 @@ public final class MapDataMapper {
         GameWorld world = new GameWorld(mapData.getWidth(), mapData.getHeight(), mapData.getBackgroundColor());
         world.setGravityEnabled(mapData.isGravityEnabled());
         world.setGravityStrength(mapData.getGravityStrength());
+        world.setWinCondition(mapData.getWinCondition());
+        world.setTargetKills(mapData.getTargetKills());
+        world.setTargetItems(mapData.getTargetItems());
         for (ObjectData objectData : mapData.getObjects()) {
             GameObject object = GameObjectFactory.fromObjectData(objectData);
             if (object != null) {
@@ -161,6 +181,9 @@ public final class MapDataMapper {
         world.setBackgroundColor(mapData.getBackgroundColor());
         world.setGravityEnabled(mapData.isGravityEnabled());
         world.setGravityStrength(mapData.getGravityStrength());
+        world.setWinCondition(mapData.getWinCondition());
+        world.setTargetKills(mapData.getTargetKills());
+        world.setTargetItems(mapData.getTargetItems());
         world.getEntityManager().clear();
         for (ObjectData objectData : mapData.getObjects()) {
             GameObject object = GameObjectFactory.fromObjectData(objectData);
