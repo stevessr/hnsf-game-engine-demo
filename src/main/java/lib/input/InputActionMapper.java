@@ -23,13 +23,9 @@ public final class InputActionMapper {
     public static InputActionMapper createDefaultGameMapping() {
         InputActionMapper mapper = new InputActionMapper();
         mapper.bindKey(InputAction.MOVE_UP, KeyEvent.VK_W);
-        mapper.bindKey(InputAction.MOVE_UP, KeyEvent.VK_I);
         mapper.bindKey(InputAction.MOVE_DOWN, KeyEvent.VK_S);
-        mapper.bindKey(InputAction.MOVE_DOWN, KeyEvent.VK_K);
         mapper.bindKey(InputAction.MOVE_LEFT, KeyEvent.VK_A);
-        mapper.bindKey(InputAction.MOVE_LEFT, KeyEvent.VK_J);
         mapper.bindKey(InputAction.MOVE_RIGHT, KeyEvent.VK_D);
-        mapper.bindKey(InputAction.MOVE_RIGHT, KeyEvent.VK_L);
         mapper.bindKey(InputAction.THROTTLE_UP, KeyEvent.VK_UP);
         mapper.bindKey(InputAction.THROTTLE_DOWN, KeyEvent.VK_DOWN);
         mapper.bindKey(InputAction.THROTTLE_LEFT, KeyEvent.VK_LEFT);
