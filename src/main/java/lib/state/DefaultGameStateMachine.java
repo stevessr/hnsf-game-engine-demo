@@ -46,6 +46,10 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         initializeTransitions();
     }
 
+    public void init(GameWorld world) {
+        recenterUI(world);
+    }
+
     private void initializeTransitions() {
         allowedTransitions.put(GameState.MENU, EnumSet.of(GameState.DIALOG, GameState.PLAYING));
         allowedTransitions.put(GameState.PLAYING, EnumSet.of(GameState.PAUSED, GameState.DIALOG, GameState.MENU, GameState.GAMEOVER, GameState.SETTLEMENT));

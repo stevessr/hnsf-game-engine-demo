@@ -252,7 +252,9 @@ public class App {
         removeShellMenus(world);
         installGameShell(world, resolveLevelNames(repository, levelManager), true, uiFontSize);
         ensureMainMenuSelection(world);
-        world.setStateMachine(new DefaultGameStateMachine(resolveInitialState(world)));
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(resolveInitialState(world));
+        world.setStateMachine(stateMachine);
+        stateMachine.init(world);
         return world;
     }
 
@@ -275,6 +277,10 @@ public class App {
         MapDataMapper.applyToWorld(world, mapData);
         removeShellMenus(world);
         installGameShell(world, resolveLevelNames(repository, levelManager), false, panel.getUIFontSize());
+        
+        if (world.getStateMachine() instanceof DefaultGameStateMachine dsm) {
+            dsm.init(world);
+        }
         
         panel.getInputController().getKeyboardManager().reset();
         panel.getInputController().getMouseManager().reset();

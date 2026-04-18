@@ -94,20 +94,49 @@ public final class MenuObject extends BaseObject {
         Font font = originalFont.deriveFont((float) fontSize);
         graphics.setFont(font);
         
-        graphics.setColor(getColor());
+        // 渲染阴影
+        graphics.setColor(new Color(0, 0, 0, 80));
+        graphics.fillRoundRect(getX() + 4, getY() + 4, getWidth(), getHeight(), 18, 18);
+
+        // 背景渐变
+        java.awt.GradientPaint gp = new java.awt.GradientPaint(
+            getX(), getY(), new Color(28, 32, 45, 245),
+            getX(), getY() + getHeight(), new Color(48, 55, 75, 245)
+        );
+        graphics.setPaint(gp);
         graphics.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 18, 18);
-        graphics.setColor(Color.WHITE);
+        
+        graphics.setColor(new Color(255, 255, 255, 60));
         graphics.drawRoundRect(getX(), getY(), getWidth(), getHeight(), 18, 18);
         
         FontMetrics metrics = graphics.getFontMetrics(font);
-        int titleBaseline = getY() + (fontSize == 18 ? 20 : Math.max(20, metrics.getAscent() + 10));
-        graphics.drawString(title, getX() + 12, titleBaseline);
         
+        // 居中标题
+        graphics.setColor(Color.WHITE);
+        int titleWidth = metrics.stringWidth(title);
+        int titleX = getX() + (getWidth() - titleWidth) / 2;
+        int titleBaseline = getY() + (fontSize == 18 ? 20 : Math.max(20, metrics.getAscent() + 10));
+        graphics.drawString(title, titleX, titleBaseline);
+        
+        // 标题下方装饰线
+        graphics.setColor(new Color(255, 255, 255, 40));
+        graphics.drawLine(getX() + 20, titleBaseline + 8, getX() + getWidth() - 20, titleBaseline + 8);
+
         for (int index = 0; index < options.size(); index++) {
             int lineY = getOptionStartY() + (index * getOptionLineHeight()) + (fontSize == 18 ? 0 : metrics.getAscent());
-            String prefix = index == selectedIndex ? "> " : "  ";
-            graphics.setColor(index == selectedIndex ? new Color(255, 220, 120) : Color.LIGHT_GRAY);
-            graphics.drawString(prefix + options.get(index), getX() + 12, lineY);
+            boolean isSelected = (index == selectedIndex);
+            
+            if (isSelected) {
+                // 选中项的高亮背景
+                graphics.setColor(new Color(255, 215, 100, 40));
+                graphics.fillRoundRect(getX() + 8, lineY - metrics.getAscent() + 2, getWidth() - 16, getOptionLineHeight(), 8, 8);
+                graphics.setColor(new Color(255, 220, 120));
+            } else {
+                graphics.setColor(new Color(200, 200, 200));
+            }
+            
+            String prefix = isSelected ? "▶ " : "  ";
+            graphics.drawString(prefix + options.get(index), getX() + 20, lineY);
         }
         graphics.setFont(originalFont);
     }

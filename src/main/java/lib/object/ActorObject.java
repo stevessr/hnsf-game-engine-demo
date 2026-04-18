@@ -2,6 +2,8 @@ package lib.object;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 
@@ -112,17 +114,32 @@ public abstract class ActorObject extends BaseObject {
 
     protected final void renderInfo(Graphics2D graphics, int fontSize) {
         graphics.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        graphics.setFont(graphics.getFont().deriveFont((float) fontSize));
         
-        String text = getName() + " HP: " + health;
-        int textX = getX();
-        int textY = Math.max(fontSize, getY() - 4);
+        int barW = 60;
+        int barH = 6;
+        int barX = getX() + (getWidth() - barW) / 2;
+        int barY = getY() - 12;
         
-        // 绘制阴影以提高可读性
+        // 血条背景
         graphics.setColor(new Color(0, 0, 0, 180));
-        graphics.drawString(text, textX + 1, textY + 1);
+        graphics.fillRoundRect(barX - 1, barY - 1, barW + 2, barH + 2, 4, 4);
         
+        // 血条前景
+        float healthPercent = (float) health / maxHealth;
+        Color healthColor = Color.getHSBColor(healthPercent * 0.33f, 0.9f, 0.9f); // 绿到红
+        graphics.setColor(healthColor);
+        graphics.fillRoundRect(barX, barY, (int) (barW * healthPercent), barH, 4, 4);
+        
+        // 名字文本
+        graphics.setFont(graphics.getFont().deriveFont(Font.BOLD, (float) fontSize - 4));
+        FontMetrics metrics = graphics.getFontMetrics();
+        int nameW = metrics.stringWidth(getName());
+        int nameX = getX() + (getWidth() - nameW) / 2;
+        int nameY = barY - 4;
+        
+        graphics.setColor(new Color(0, 0, 0, 150));
+        graphics.drawString(getName(), nameX + 1, nameY + 1);
         graphics.setColor(Color.WHITE);
-        graphics.drawString(text, textX, textY);
+        graphics.drawString(getName(), nameX, nameY);
     }
 }

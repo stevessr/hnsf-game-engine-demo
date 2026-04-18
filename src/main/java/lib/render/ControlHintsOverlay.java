@@ -45,45 +45,49 @@ public final class ControlHintsOverlay {
         graphics.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         
         List<Hint> hints = new ArrayList<>();
-        hints.add(new Hint("WASD / Arrows", "Move (移动)"));
-        hints.add(new Hint("Space", "Jump (跳跃)"));
-        hints.add(new Hint("K", "Shoot (攻击)"));
-        hints.add(new Hint("H", "AI Auto-play (自动通关)"));
-        hints.add(new Hint("P / Esc", "Pause (暂停)"));
-        hints.add(new Hint("F3", "Debug (调试)"));
+        hints.add(new Hint("WASD", "Move"));
+        hints.add(new Hint("Space", "Jump"));
+        hints.add(new Hint("K", "Shoot"));
+        hints.add(new Hint("H", "AI Auto"));
+        hints.add(new Hint("P/Esc", "Pause"));
 
-        int x = 20;
-        int y = 30;
-        int rowHeight = 22;
-        
-        // 绘制背景板 (半透明深色)
-        int bgW = 240;
+        int bgW = 180;
+        int rowHeight = 20;
         int bgH = (hints.size() + (aiActive ? 1 : 0)) * rowHeight + 15;
-        graphics.setColor(new Color(0, 0, 0, 100));
-        graphics.fillRoundRect(10, 10, bgW, bgH, 10, 10);
+        
+        // 移至右下角，避开右上角小地图
+        int x = viewportWidth - bgW - 20;
+        int y = viewportHeight - bgH - 20;
+        
+        // 绘制背景板 (极简毛玻璃感)
+        graphics.setColor(new Color(15, 15, 20, 160));
+        graphics.fillRoundRect(x, y, bgW, bgH, 12, 12);
+        graphics.setColor(new Color(255, 255, 255, 30));
+        graphics.drawRoundRect(x, y, bgW, bgH, 12, 12);
+
+        int textX = x + 15;
+        int textY = y + 22;
         
         if (aiActive) {
-            graphics.setColor(new Color(0, 255, 0, 180));
-            graphics.setFont(new Font("SansSerif", Font.BOLD, 14));
-            graphics.drawString("● AI AUTO-PLAY ACTIVE", x, y);
-            y += rowHeight;
+            graphics.setColor(new Color(100, 255, 100));
+            graphics.setFont(new Font("SansSerif", Font.BOLD, 11));
+            graphics.drawString("● AI ACTIVE", textX, textY);
+            textY += rowHeight;
         }
 
-        Font keyFont = new Font("Monospaced", Font.BOLD, 12);
-        Font descFont = new Font("SansSerif", Font.PLAIN, 12);
+        Font keyFont = new Font("Monospaced", Font.BOLD, 11);
+        Font descFont = new Font("SansSerif", Font.PLAIN, 11);
 
         for (Hint hint : hints) {
-            // 绘制按键标识 (金色)
             graphics.setFont(keyFont);
-            graphics.setColor(new Color(255, 215, 0)); 
-            graphics.drawString("[" + hint.key + "]", x, y);
+            graphics.setColor(new Color(255, 215, 100)); 
+            graphics.drawString(hint.key, textX, textY);
             
-            // 绘制功能描述 (白色)
             graphics.setFont(descFont);
-            graphics.setColor(Color.WHITE);
-            graphics.drawString(hint.desc, x + 110, y);
+            graphics.setColor(new Color(220, 220, 220));
+            graphics.drawString(hint.desc, textX + 65, textY);
             
-            y += rowHeight;
+            textY += rowHeight;
         }
     }
 
