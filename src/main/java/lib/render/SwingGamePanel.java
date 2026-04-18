@@ -39,6 +39,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     private final GameInputController inputController;
     private final Timer timer;
     private final SettingsRepository settingsRepository;
+    private final Camera camera;
     private GameRuntimeActions runtimeActions = GameRuntimeActions.noOp();
     private long lastUpdateNanos;
     private int targetFPS = 60;
@@ -52,12 +53,17 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         this.world = world;
         this.inputController = inputController;
         this.settingsRepository = new SettingsRepository();
+        
+        // 初始视口大小 960x540
+        this.camera = new Camera(960, 540);
+        world.setCamera(camera);
+        
         this.timer = new Timer(1000 / targetFPS, event -> onFrame());
         this.lastUpdateNanos = 0L;
         
         loadPersistentSettings();
         
-        setPreferredSize(new Dimension(world.getWidth(), world.getHeight()));
+        setPreferredSize(new Dimension(960, 540));
         setDoubleBuffered(true);
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
@@ -72,8 +78,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         
         this.targetFPS = json.optInt("targetFPS", 60);
         this.uiFontSize = json.optInt("uiFontSize", 18);
-        int w = json.optInt("width", world.getWidth());
-        int h = json.optInt("height", world.getHeight());
+        int w = json.optInt("width", 960);
+        int h = json.optInt("height", 540);
         
         setTargetFPS(targetFPS);
         setUIFontSize(uiFontSize);
@@ -98,7 +104,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             deserializeKeyBindings(json.getJSONObject("keyBindings"));
         }
         
-        // Apply player settings if available
         world.findPlayer().ifPresent(player -> {
             player.setThrottlePower(json.optInt("throttlePower", 600));
             player.setDeceleration(json.optInt("deceleration", 92) / 100.0);
@@ -242,11 +247,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
 
     @Override
     public void setLogicalResolution(int width, int height) {
-        if (world != null) {
-            world.setSize(width, height);
-            applyUIFontSizeToWorld();
-            repaint();
-        }
+        // 在摄像机模式下，逻辑分辨率即为视口大小
+        // 我们这里暂时保持 960x540 的逻辑视口，进行缩放显示
     }
 
     @Override
@@ -380,8 +382,13 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             ? 1.0 / 60.0
             : (now - lastUpdateNanos) / 1_000_000_000.0;
         lastUpdateNanos = now;
+        
         inputController.processInputs(new GameStateContext(world, inputController, this, runtimeActions));
         world.update(deltaSeconds);
+        
+        // 更新摄像机位置，使其跟随玩家
+        world.findPlayer().ifPresent(player -> camera.update(world, player));
+        
         inputController.finishFrame();
         repaint();
     }
@@ -406,33 +413,60 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             }
         });
 
-        // Use dynamic keys from mapper for InputMap
         syncInputMap();
         
         MouseAdapter mouseAdapter = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent event) {
                 requestFocusInWindow();
-                inputController.getMouseManager().pressButton(event.getButton(), event.getX(), event.getY());
+                // 在摄像机模式下，鼠标坐标需要加上摄像机偏移量才是世界坐标
+                int worldX = event.getX();
+                int worldY = event.getY();
+                
+                // 计算实际缩放后的偏移
+                double scale = getScale();
+                int offsetX = (int) ((getWidth() - 960 * scale) / 2);
+                int offsetY = (int) ((getHeight() - 540 * scale) / 2);
+                
+                int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
+                int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
+                
+                inputController.getMouseManager().pressButton(event.getButton(), logicalX, logicalY);
             }
 
             @Override
             public void mouseReleased(MouseEvent event) {
-                inputController.getMouseManager().releaseButton(event.getButton(), event.getX(), event.getY());
+                double scale = getScale();
+                int offsetX = (int) ((getWidth() - 960 * scale) / 2);
+                int offsetY = (int) ((getHeight() - 540 * scale) / 2);
+                int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
+                int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
+                inputController.getMouseManager().releaseButton(event.getButton(), logicalX, logicalY);
             }
 
             @Override
             public void mouseMoved(MouseEvent event) {
-                inputController.getMouseManager().moveTo(event.getX(), event.getY());
+                double scale = getScale();
+                int offsetX = (int) ((getWidth() - 960 * scale) / 2);
+                int offsetY = (int) ((getHeight() - 540 * scale) / 2);
+                int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
+                int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
+                inputController.getMouseManager().moveTo(logicalX, logicalY);
             }
 
             @Override
             public void mouseDragged(MouseEvent event) {
-                inputController.getMouseManager().moveTo(event.getX(), event.getY());
+                mouseMoved(event);
             }
         };
         addMouseListener(mouseAdapter);
         addMouseMotionListener(mouseAdapter);
+    }
+
+    private double getScale() {
+        double scaleX = (double) getWidth() / 960;
+        double scaleY = (double) getHeight() / 540;
+        return Math.min(scaleX, scaleY);
     }
 
     public void syncInputMap() {
@@ -476,20 +510,22 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         try {
             int panelWidth = getWidth();
             int panelHeight = getHeight();
-            int worldWidth = world.getWidth();
-            int worldHeight = world.getHeight();
+            
+            // 视口大小固定为 960x540 进行缩放显示
+            int viewW = 960;
+            int viewH = 540;
 
-            double scaleX = (double) panelWidth / worldWidth;
-            double scaleY = (double) panelHeight / worldHeight;
-            double scale = Math.min(scaleX, scaleY);
+            double scale = getScale();
 
-            int offsetX = (int) ((panelWidth - worldWidth * scale) / 2);
-            int offsetY = (int) ((panelHeight - worldHeight * scale) / 2);
+            int offsetX = (int) ((panelWidth - viewW * scale) / 2);
+            int offsetY = (int) ((panelHeight - viewH * scale) / 2);
 
             graphics2d.translate(offsetX, offsetY);
             graphics2d.scale(scale, scale);
-            graphics2d.setClip(0, 0, worldWidth, worldHeight);
+            // 裁切视口区域
+            graphics2d.setClip(0, 0, viewW, viewH);
 
+            // 渲染世界
             world.render(graphics2d);
         } finally {
             graphics2d.dispose();

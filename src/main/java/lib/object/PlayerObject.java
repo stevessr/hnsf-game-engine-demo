@@ -21,6 +21,7 @@ public final class PlayerObject extends ActorObject {
     private double shootCooldown = 0.3;
     private double lastDirX = 1.0;
     private double lastDirY = 0.0;
+    private double walkingTimer = 0;
     private static final long INVULNERABILITY_DURATION_NANOS = 1_000_000_000L; // 1秒
 
     public PlayerObject(String name) {
@@ -148,12 +149,9 @@ public final class PlayerObject extends ActorObject {
             return;
         }
         
-        // 更加鲁棒的地面检测：检查下方是否有碰撞
-        // 我们检查当前位置稍微往下一点点是否会碰撞
         boolean onGround = world.collidesWithSolid(this, getX(), getY() + 1);
         
         if (onGround && getVelocityYDouble() >= 0) {
-            // 一次性向上加速度
             setVelocityY(-650.0);
         }
     }
@@ -193,7 +191,12 @@ public final class PlayerObject extends ActorObject {
             }
         }
 
-        // 应用阻尼（减速）
+        if (Math.abs(velocityX) > 10 || Math.abs(getVelocityYDouble()) > 10) {
+            walkingTimer += deltaSeconds * 10;
+        } else {
+            walkingTimer = 0;
+        }
+
         velocityX *= Math.pow(deceleration, deltaSeconds * 60.0);
         double vY = getVelocityYDouble();
         if (world != null && !world.isGravityEnabled()) {
@@ -203,7 +206,6 @@ public final class PlayerObject extends ActorObject {
         }
         setVelocityY(vY);
 
-        // 如果速度极小则直接归零，防止漂移
         if (Math.abs(velocityX) < 1.0) {
             velocityX = 0.0;
         }
@@ -211,35 +213,30 @@ public final class PlayerObject extends ActorObject {
             setVelocityY(0.0);
         }
 
-        if (velocityX == 0 && getVelocityYDouble() == 0) {
-            return;
-        }
+        if (velocityX != 0 || getVelocityYDouble() != 0) {
+            int deltaX = (int) Math.round(velocityX * deltaSeconds);
+            int deltaY = (int) Math.round(getVelocityYDouble() * deltaSeconds);
 
-        int deltaX = (int) Math.round(velocityX * deltaSeconds);
-        int deltaY = (int) Math.round(getVelocityYDouble() * deltaSeconds);
+            int nextX = getX() + deltaX;
+            int nextY = getY() + deltaY;
 
-        int nextX = getX() + deltaX;
-        int nextY = getY() + deltaY;
+            if (world == null) {
+                setPosition(nextX, nextY);
+            } else {
+                MovementResult movementResult = world.moveObject(this, nextX, nextY);
+                setPosition(movementResult.getResolvedX(), movementResult.getResolvedY());
 
-        if (world == null) {
-            setPosition(nextX, nextY);
-            return;
-        }
+                if (movementResult.isBlockedX()) {
+                    velocityX = 0.0;
+                }
+                if (movementResult.isBlockedY()) {
+                    setVelocityY(0.0);
+                }
 
-        MovementResult movementResult = world.moveObject(this, nextX, nextY);
-
-        // 使用碰撞检测后的实际位置，防止卡墙
-        setPosition(movementResult.getResolvedX(), movementResult.getResolvedY());
-
-        if (movementResult.isBlockedX()) {
-            velocityX = 0.0;
-        }
-        if (movementResult.isBlockedY()) {
-            setVelocityY(0.0);
-        }
-
-        if (world != null && isActive()) {
-            checkColorConflictWithBlocks(world, movementResult);
+                if (isActive()) {
+                    checkColorConflictWithBlocks(world, movementResult);
+                }
+            }
         }
     }
 
@@ -254,7 +251,6 @@ public final class PlayerObject extends ActorObject {
                 takeDamage(monster.getAttack());
                 lastDamageTimeNanos = now;
                 
-                // 简单的击退效果
                 int pushDirectionX = Integer.compare(getX(), monster.getX());
                 int pushDirectionY = Integer.compare(getY(), monster.getY());
                 if (pushDirectionX == 0) {
@@ -325,11 +321,62 @@ public final class PlayerObject extends ActorObject {
 
     private void renderBase(Graphics2D graphics) {
         long now = System.nanoTime();
-        // 受伤闪烁效果
         if (now - lastDamageTimeNanos < INVULNERABILITY_DURATION_NANOS && (now / 100_000_000L) % 2 == 0) {
             return;
         }
-        graphics.setColor(getColor());
-        graphics.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 16, 16);
+
+        int x = getX();
+        int y = getY();
+        int w = getWidth();
+        int h = getHeight();
+        
+        Color skinColor = new Color(255, 224, 189);
+        Color shirtColor = getColor();
+        Color pantColor = new Color(50, 50, 50);
+
+        boolean isBack = lastDirY < 0;
+        boolean isSide = Math.abs(lastDirX) > Math.abs(lastDirY);
+        boolean isLeft = lastDirX < 0;
+
+        int legOffset = (int)(Math.sin(walkingTimer) * 8);
+        int armOffset = (int)(Math.cos(walkingTimer) * 6);
+
+        graphics.setColor(pantColor);
+        if (isSide) {
+            graphics.fillRect(x + 12, y + 36, 12, 16 + legOffset/2);
+            graphics.fillRect(x + 24, y + 36, 12, 16 - legOffset/2);
+        } else {
+            graphics.fillRect(x + 6, y + 36, 15, 16 + legOffset);
+            graphics.fillRect(x + 27, y + 36, 15, 16 - legOffset);
+        }
+
+        graphics.setColor(shirtColor);
+        graphics.fillRoundRect(x, y + 16, w, 22, 8, 8);
+
+        graphics.setColor(skinColor);
+        if (isSide) {
+            int armX = isLeft ? x : x + w - 8;
+            graphics.fillRect(armX, y + 20, 8, 16 + armOffset);
+        } else {
+            graphics.fillRect(x - 6, y + 20, 8, 16 + armOffset);
+            graphics.fillRect(x + w - 2, y + 20, 8, 16 - armOffset);
+        }
+
+        graphics.setColor(skinColor);
+        graphics.fillOval(x + 8, y, 32, 32);
+
+        graphics.setColor(Color.BLACK);
+        if (!isBack) {
+            if (isSide) {
+                int eyeX = isLeft ? x + 12 : x + 32;
+                graphics.fillRect(eyeX, y + 12, 6, 6);
+            } else {
+                graphics.fillRect(x + 16, y + 12, 6, 6);
+                graphics.fillRect(x + 26, y + 12, 6, 6);
+            }
+        } else {
+            graphics.setColor(new Color(60, 30, 20));
+            graphics.fillArc(x + 8, y, 32, 32, 0, 180);
+        }
     }
 }

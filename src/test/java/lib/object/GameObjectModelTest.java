@@ -84,7 +84,7 @@ class GameObjectModelTest {
         }
 
         int centerX = player.getX() + (player.getWidth() / 2);
-        int centerY = player.getY() + (player.getHeight() / 2);
+        int centerY = player.getY() + (player.getHeight() / 2) + 8; // 更加靠下，确保命中衣服颜色
         assertEquals(player.getColor().getRGB(), image.getRGB(centerX, centerY));
     }
 

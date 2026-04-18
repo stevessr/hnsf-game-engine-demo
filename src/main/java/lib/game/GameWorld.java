@@ -12,6 +12,7 @@ import lib.object.PlayerObject;
 import lib.object.SceneObject;
 import lib.physics.MovementResult;
 import lib.physics.PhysicsEngine;
+import lib.render.Camera;
 import lib.render.LightingManager;
 import lib.state.DefaultGameStateMachine;
 import lib.state.GameState;
@@ -21,6 +22,7 @@ public final class GameWorld {
     private final EntityManager entityManager;
     private final PhysicsEngine physicsEngine;
     private final LightingManager lightingManager;
+    private Camera camera;
     private GameStateMachine stateMachine;
     private int width;
     private int height;
@@ -49,6 +51,14 @@ public final class GameWorld {
 
     public LightingManager getLightingManager() {
         return lightingManager;
+    }
+
+    public Camera getCamera() {
+        return camera;
+    }
+
+    public void setCamera(Camera camera) {
+        this.camera = camera;
     }
 
     public int getWidth() {
@@ -189,8 +199,16 @@ public final class GameWorld {
     public void render(Graphics2D graphics) {
         graphics.setColor(backgroundColor);
         graphics.fillRect(0, 0, width, height);
-        entityManager.renderWorld(graphics);
-        lightingManager.render(graphics, this);
+        
+        Graphics2D worldGraphics = (Graphics2D) graphics.create();
+        if (camera != null) {
+            worldGraphics.translate(-camera.getX(), -camera.getY());
+        }
+        
+        entityManager.renderWorld(worldGraphics);
+        lightingManager.render(worldGraphics, this);
+        worldGraphics.dispose();
+        
         entityManager.renderUI(graphics);
     }
 }

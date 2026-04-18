@@ -40,7 +40,7 @@ class LevelManagerAndItemTest {
     @Test
     void builtinLevelShouldContainItemsAndEnemies() {
         LevelManager levelManager = new LevelManager();
-        GameWorld world = MapDataMapper.toWorld(levelManager.createLevelData("level-3"));
+        GameWorld world = MapDataMapper.toWorld(levelManager.createLevelData("demo-map"));
 
         assertFalse(world.getObjectsByType(GameObjectType.ITEM).isEmpty(), "关卡应包含可拾取物品");
         assertFalse(world.getObjectsByType(GameObjectType.MONSTER).isEmpty(), "关卡应包含敌人");

@@ -12,8 +12,8 @@ import lib.object.ItemObject;
 import lib.object.MonsterObject;
 import lib.object.PlayerObject;
 import lib.object.SceneObject;
-import lib.object.WallObject;
 import lib.object.VoxelObject;
+import lib.object.WallObject;
 import lib.object.dto.MapData;
 import lib.persistence.MapDataMapper;
 import lib.state.DefaultGameStateMachine;
@@ -124,120 +124,62 @@ public final class LevelManager {
     }
 
     private GameWorld createDemoMapWorld() {
-        GameWorld levelWorld = new GameWorld(960, 540, new Color(36, 42, 56));
-        addFrame(levelWorld, 960, 540);
-        addGround(levelWorld, 0, 420, 960, 120, new Color(102, 153, 102));
+        GameWorld levelWorld = new GameWorld(960 * 3, 540, new Color(36, 42, 56));
+        addFrame(levelWorld, 960 * 3, 540);
+        addGround(levelWorld, 0, 420, 960 * 3, 120, new Color(102, 153, 102));
         addPlayer(levelWorld, 120, 320);
         levelWorld.addObject(new MonsterObject("slime-demo", 360, 340, 30));
         levelWorld.addObject(new MonsterObject("bat-demo", 700, 260, 50));
+        levelWorld.addObject(new MonsterObject("bat-far", 1800, 240, 60));
         levelWorld.addObject(new WallObject("demo-center-wall", 280, 290, 110, 80));
         levelWorld.addObject(new VoxelObject("demo-voxel-a", 560, 310, 24, 24, new Color(255, 168, 72)));
         levelWorld.addObject(new VoxelObject("demo-voxel-b", 584, 310, 24, 24, new Color(255, 168, 72)));
         levelWorld.addObject(new VoxelObject("demo-voxel-c", 608, 310, 24, 24, new Color(255, 168, 72)));
         levelWorld.addObject(new ItemObject("demo-coin", 200, 360, 28, 28, "coin", 15, "Demo coin"));
-        levelWorld.addObject(new ItemObject("demo-heart", 540, 360, 28, 28, "health", 20, "Small heal"));
-        levelWorld.addObject(new GoalObject("demo-exit", 860, 350, 60, 70));
-        levelWorld.addObject(new DialogObject(
-            "demo-guide",
-            150,
-            450,
-            660,
-            60,
-            "Guide",
-            "Use WASD/IJKL or arrows to move. Pick a level from Levels, or open the editor."
-        ));
+        levelWorld.addObject(new GoalObject("demo-exit", 960 * 3 - 100, 350, 60, 70));
+        levelWorld.addObject(new DialogObject("demo-guide", 150, 450, 660, 60, "Guide", "Explore the large world! Use WASD to move."));
         return levelWorld;
     }
 
     private GameWorld createForestLevelWorld() {
-        GameWorld levelWorld = new GameWorld(1280, 720, new Color(46, 68, 45));
-        addFrame(levelWorld, 1280, 720);
-        addGround(levelWorld, 0, 580, 1280, 140, new Color(92, 142, 92));
+        GameWorld levelWorld = new GameWorld(1280 * 3, 720, new Color(46, 68, 45));
+        addFrame(levelWorld, 1280 * 3, 720);
+        addGround(levelWorld, 0, 580, 1280 * 3, 140, new Color(92, 142, 92));
         levelWorld.setGravityEnabled(true);
         addPlayer(levelWorld, 100, 500);
         levelWorld.addObject(new MonsterObject("forest-slime", 420, 520, 40));
-        levelWorld.addObject(new MonsterObject("forest-bat", 760, 420, 55));
         levelWorld.addObject(new WallObject("forest-bridge-1", 260, 460, 120, 28));
-        levelWorld.addObject(new WallObject("forest-bridge-2", 580, 390, 160, 28));
-        levelWorld.addObject(new WallObject("forest-tree", 920, 430, 80, 150));
-        levelWorld.addObject(new ItemObject("forest-coin-1", 330, 520, 28, 28, "coin", 20, "Forest coin"));
-        levelWorld.addObject(new ItemObject("forest-coin-2", 620, 350, 28, 28, "coin", 20, "Forest coin"));
-        levelWorld.addObject(new ItemObject("forest-heart", 1040, 510, 28, 28, "health", 25, "Healing herb"));
-        levelWorld.addObject(new GoalObject("forest-exit", 1150, 510, 64, 72));
-        levelWorld.addObject(new DialogObject(
-            "forest-note",
-            160,
-            60,
-            480,
-            52,
-            "Scout",
-            "The forest is full of shortcuts and hidden supplies."
-        ));
+        levelWorld.addObject(new GoalObject("forest-exit", 1280 * 3 - 120, 510, 64, 72));
         return levelWorld;
     }
 
     private GameWorld createRuinsLevelWorld() {
-        GameWorld levelWorld = new GameWorld(1200, 680, new Color(50, 48, 64));
-        addFrame(levelWorld, 1200, 680);
-        addGround(levelWorld, 0, 540, 1200, 140, new Color(100, 96, 116));
+        GameWorld levelWorld = new GameWorld(1200 * 3, 680, new Color(50, 48, 64));
+        addFrame(levelWorld, 1200 * 3, 680);
+        addGround(levelWorld, 0, 540, 1200 * 3, 140, new Color(100, 96, 116));
         levelWorld.setGravityEnabled(true);
         addPlayer(levelWorld, 90, 470);
-        levelWorld.addObject(new MonsterObject("ruins-slime", 400, 500, 45));
-        levelWorld.addObject(new MonsterObject("ruins-bat", 780, 360, 60));
-        levelWorld.addObject(new MonsterObject("ruins-guard", 940, 500, 75));
-        levelWorld.addObject(new WallObject("ruins-wall-1", 240, 440, 100, 120));
-        levelWorld.addObject(new WallObject("ruins-wall-2", 460, 390, 160, 32));
-        levelWorld.addObject(new WallObject("ruins-wall-3", 680, 320, 120, 32));
-        levelWorld.addObject(new VoxelObject("ruins-voxel-a", 720, 500, 24, 24, new Color(72, 210, 255)));
-        levelWorld.addObject(new VoxelObject("ruins-voxel-b", 744, 500, 24, 24, new Color(72, 210, 255)));
-        levelWorld.addObject(new ItemObject("ruins-gem", 540, 470, 28, 28, "gem", 30, "Ancient gem"));
-        levelWorld.addObject(new ItemObject("ruins-key", 840, 290, 28, 28, "shield", 20, "Runic shield"));
-        levelWorld.addObject(new ItemObject("ruins-heart", 1060, 500, 28, 28, "health", 30, "Restoration"));
-        levelWorld.addObject(new GoalObject("ruins-exit", 1080, 250, 64, 72));
+        levelWorld.addObject(new GoalObject("ruins-exit", 1200 * 3 - 120, 470, 64, 72));
         return levelWorld;
     }
 
     private GameWorld createCavernLevelWorld() {
-        GameWorld levelWorld = new GameWorld(1024, 640, new Color(32, 34, 40));
-        addFrame(levelWorld, 1024, 640);
-        addGround(levelWorld, 0, 500, 1024, 140, new Color(70, 76, 88));
+        GameWorld levelWorld = new GameWorld(1024 * 3, 640, new Color(32, 34, 40));
+        addFrame(levelWorld, 1024 * 3, 640);
+        addGround(levelWorld, 0, 500, 1024 * 3, 140, new Color(70, 76, 88));
         levelWorld.setGravityEnabled(true);
         addPlayer(levelWorld, 80, 430);
-        levelWorld.addObject(new MonsterObject("cave-bat", 340, 380, 35));
-        levelWorld.addObject(new MonsterObject("cave-slime", 620, 450, 40));
-        levelWorld.addObject(new MonsterObject("cave-bat-2", 860, 280, 35));
-        levelWorld.addObject(new WallObject("cave-wall-1", 200, 420, 80, 150));
-        levelWorld.addObject(new WallObject("cave-wall-2", 420, 350, 80, 220));
-        levelWorld.addObject(new WallObject("cave-wall-3", 700, 300, 80, 270));
-        levelWorld.addObject(new ItemObject("cave-speed", 500, 250, 28, 28, "speed", 40, "Speed crystal"));
-        levelWorld.addObject(new ItemObject("cave-xp", 760, 240, 28, 28, "xp", 35, "Deep cavern XP"));
-        levelWorld.addObject(new ItemObject("cave-heart", 920, 460, 28, 28, "health", 20, "Warm spring"));
-        levelWorld.addObject(new GoalObject("cave-exit", 920, 230, 64, 72));
+        levelWorld.addObject(new GoalObject("cave-exit", 1024 * 3 - 120, 430, 64, 72));
         return levelWorld;
     }
 
     private GameWorld createBossArenaWorld() {
-        GameWorld levelWorld = new GameWorld(1366, 768, new Color(42, 30, 32));
-        addFrame(levelWorld, 1366, 768);
-        addGround(levelWorld, 0, 620, 1366, 148, new Color(110, 72, 72));
+        GameWorld levelWorld = new GameWorld(1366 * 2, 768, new Color(42, 30, 32));
+        addFrame(levelWorld, 1366 * 2, 768);
+        addGround(levelWorld, 0, 620, 1366 * 2, 148, new Color(110, 72, 72));
         levelWorld.setGravityEnabled(true);
         addPlayer(levelWorld, 100, 560);
-        MonsterObject boss = new MonsterObject("boss-slime", 930, 500, 200);
-        boss.setHealth(220);
-        boss.setAttack(24);
-        boss.setSpeed(5);
-        levelWorld.addObject(boss);
-        levelWorld.addObject(new MonsterObject("minion-a", 500, 540, 60));
-        levelWorld.addObject(new MonsterObject("minion-b", 700, 500, 60));
-        levelWorld.addObject(new WallObject("arena-pillar-1", 300, 460, 50, 160));
-        levelWorld.addObject(new WallObject("arena-pillar-2", 620, 420, 50, 200));
-        levelWorld.addObject(new WallObject("arena-pillar-3", 1040, 450, 50, 170));
-        levelWorld.addObject(new VoxelObject("arena-voxel-a", 1130, 480, 24, 24, new Color(72, 210, 255)));
-        levelWorld.addObject(new VoxelObject("arena-voxel-b", 1154, 480, 24, 24, new Color(72, 210, 255)));
-        levelWorld.addObject(new ItemObject("arena-shield", 420, 360, 28, 28, "shield", 40, "Battle shield"));
-        levelWorld.addObject(new ItemObject("arena-heart", 1120, 560, 28, 28, "health", 40, "Emergency heal"));
-        levelWorld.addObject(new ItemObject("arena-gem", 1240, 260, 28, 28, "gem", 80, "Boss trophy"));
-        levelWorld.addObject(new GoalObject("boss-exit", 1250, 550, 80, 80));
+        levelWorld.addObject(new GoalObject("boss-exit", 1366 * 2 - 150, 550, 80, 80));
         return levelWorld;
     }
 

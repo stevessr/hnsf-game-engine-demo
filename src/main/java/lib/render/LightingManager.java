@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import lib.game.GameWorld;
+import lib.object.GameObject;
+import lib.object.GameObjectType;
 
 /**
  * 可选的光照系统管理器。
@@ -88,14 +90,14 @@ public final class LightingManager {
         });
         
         // 为出口添加光源
-        for (lib.object.GameObject obj : world.getObjectsByType(lib.object.GameObjectType.GOAL)) {
+        for (GameObject obj : world.getObjectsByType(GameObjectType.GOAL)) {
             if (obj.isActive()) {
                 drawLight(g2d, obj.getX() + obj.getWidth() / 2, obj.getY() + obj.getHeight() / 2, 250, 1.2f * intensityMultiplier);
             }
         }
         
         // 为投影物添加光源
-        for (lib.object.GameObject obj : world.getObjectsByType(lib.object.GameObjectType.PROJECTILE)) {
+        for (GameObject obj : world.getObjectsByType(GameObjectType.PROJECTILE)) {
             if (obj.isActive()) {
                 drawLight(g2d, obj.getX() + obj.getWidth() / 2, obj.getY() + obj.getHeight() / 2, 80, 0.8f * intensityMultiplier);
             }
@@ -115,7 +117,6 @@ public final class LightingManager {
             return;
         }
         float[] dist = {0.0f, 1.0f};
-        // intensity 控制光洞的“深度”，即透明度
         int alpha = (int)(255 * Math.max(0.0f, Math.min(1.0f, intensity)));
         Color[] colors = {new Color(0, 0, 0, alpha), new Color(0, 0, 0, 0)};
         RadialGradientPaint p = new RadialGradientPaint(
