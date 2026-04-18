@@ -22,6 +22,7 @@ import lib.state.DefaultGameStateMachine;
  * 关卡管理器，负责管理内置关卡模板和关卡切换。
  */
 public final class LevelManager {
+    private static final String TUTORIAL_LEVEL = "tutorial";
     private static final String DEMO_MAP = "demo-map";
     private static final String LEVEL_1 = "level-1";
     private static final String LEVEL_2 = "level-2";
@@ -97,41 +98,65 @@ public final class LevelManager {
         }
         MapDataMapper.applyToWorld(world, mapData);
         
-        // 某些情况下需要同步面板大小，这里尝试通过状态机上下文或直接操作
         if (world.getStateMachine() instanceof DefaultGameStateMachine dsm) {
             dsm.recenterUI(world);
         }
     }
 
-    /**
-     * 创建关卡数据，供持久化或预览使用。
-     *
-     * @param levelName 关卡名称
-     * @return 关卡数据
-     */
     public MapData createLevelData(String levelName) {
         String normalized = normalizeLevelName(levelName);
         if (normalized == null) {
-            normalized = DEMO_MAP;
+            normalized = TUTORIAL_LEVEL;
         }
 
         GameWorld levelWorld = switch (normalized) {
+            case TUTORIAL_LEVEL -> createTutorialLevelWorld();
             case DEMO_MAP -> createDemoMapWorld();
             case LEVEL_1 -> createForestLevelWorld();
             case LEVEL_2 -> createRuinsLevelWorld();
             case LEVEL_3 -> createCavernLevelWorld();
             case LEVEL_4 -> createBossArenaWorld();
-            default -> createDemoMapWorld();
+            default -> createTutorialLevelWorld();
         };
         return MapDataMapper.fromWorld(levelWorld, normalized);
     }
 
     private void registerBuiltinLevels() {
+        addLevel(TUTORIAL_LEVEL);
         addLevel(DEMO_MAP);
         addLevel(LEVEL_1);
         addLevel(LEVEL_2);
         addLevel(LEVEL_3);
         addLevel(LEVEL_4);
+    }
+
+    private GameWorld createTutorialLevelWorld() {
+        GameWorld levelWorld = new GameWorld(960 * 3, 540, new Color(40, 44, 52));
+        addFrame(levelWorld, 960 * 3, 540);
+        addGround(levelWorld, 0, 420, 960 * 3, 120, new Color(80, 84, 92));
+        levelWorld.setGravityEnabled(true);
+        addPlayer(levelWorld, 100, 320);
+
+        // 教程 1: 移动
+        levelWorld.addObject(new DialogObject("tut-1", 100, 100, 400, 60, "System", "Use WASD or Arrow Keys to MOVE."));
+        
+        // 教程 2: 跳跃
+        levelWorld.addObject(new WallObject("step-1", 600, 320, 100, 100));
+        levelWorld.addObject(new DialogObject("tut-2", 700, 100, 400, 60, "System", "Press SPACE to JUMP over obstacles."));
+
+        // 教程 3: 战斗
+        levelWorld.addObject(new MonsterObject("dummy", 1200, 340, 50));
+        levelWorld.addObject(new DialogObject("tut-3", 1200, 100, 400, 60, "System", "Press K to SHOOT and defeat enemies."));
+
+        // 教程 4: 收集
+        levelWorld.addObject(new ItemObject("orb", 1800, 340, 28, 28, "lightorb", 150, "Collected Light Orb!"));
+        levelWorld.addObject(new DialogObject("tut-4", 1800, 100, 400, 60, "System", "Collect LIGHT ORBS to increase your vision."));
+
+        // 终点
+        levelWorld.addObject(new DialogObject("tut-exit", 2500, 100, 400, 60, "System", "Reach the GOLDEN PORTAL to complete the tutorial."));
+        levelWorld.addObject(new GoalObject("goal", 2700, 350, 64, 72));
+
+        return levelWorld;
     }
 
     private GameWorld createDemoMapWorld() {

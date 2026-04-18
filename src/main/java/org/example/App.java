@@ -40,7 +40,7 @@ import org.json.JSONObject;
 public class App {
     private static final int DEFAULT_WIDTH = 960;
     private static final int DEFAULT_HEIGHT = 540;
-    private static final String DEMO_MAP = "demo-map";
+    private static final String DEFAULT_START_MAP = "tutorial";
     private static final String MAIN_MENU_NAME = "main-menu";
     private static final String LEVEL_SELECT_MENU_NAME = "level-select-menu";
     private static final String PAUSE_MENU_NAME = "pause-menu";
@@ -70,7 +70,7 @@ public class App {
         LevelManager levelManager = new LevelManager();
         ensureBuiltinLevels(repository, levelManager);
 
-        GameWorld world = loadGameWorld(repository, levelManager, DEMO_MAP, 18);
+        GameWorld world = loadGameWorld(repository, levelManager, DEFAULT_START_MAP, 18);
         SwingGamePanel panel = new SwingGamePanel(world);
         JFrame frame = new JFrame("Primary Software Game Demo");
         
@@ -104,7 +104,7 @@ public class App {
         // 游戏菜单
         JMenu gameMenu = new JMenu("游戏 (Game)");
         JMenuItem restartItem = new JMenuItem("重置 (Restart)");
-        restartItem.addActionListener(e -> reloadGameWorld(world, repository, levelManager, DEMO_MAP, panel));
+        restartItem.addActionListener(e -> reloadGameWorld(world, repository, levelManager, DEFAULT_START_MAP, panel));
         
         JMenuItem importItem = new JMenuItem("导入地图 (Import Map)");
         importItem.addActionListener(e -> handleImportMap(frame, world, repository, levelManager, panel));
@@ -179,7 +179,7 @@ public class App {
         MapRepository repository = new MapRepository();
         LevelManager levelManager = new LevelManager();
         ensureBuiltinLevels(repository, levelManager);
-        GameWorld world = loadEditorWorld(repository, levelManager, DEMO_MAP);
+        GameWorld world = loadEditorWorld(repository, levelManager, DEFAULT_START_MAP);
         EditorWindow.open(world, repository);
     }
 
@@ -211,7 +211,9 @@ public class App {
 
             @Override
             public void requestOpenEditor() {
-                Runnable action = () -> EditorWindow.open(snapshotEditorWorld(world), repository);
+                Runnable action = () -> {
+                    EditorWindow.open(snapshotEditorWorld(world), repository);
+                };
                 runOnEdt(action);
             }
         };
@@ -282,7 +284,7 @@ public class App {
     private static MapData loadLevelData(MapRepository repository, LevelManager levelManager, String levelName) {
         String normalized = normalizeLevelName(levelName);
         if (normalized == null) {
-            normalized = DEMO_MAP;
+            normalized = DEFAULT_START_MAP;
         }
 
         MapData mapData = repository.loadMapByName(normalized);
@@ -295,7 +297,7 @@ public class App {
             repository.saveMap(created);
             return created;
         }
-        return repository.loadMapByName(DEMO_MAP);
+        return repository.loadMapByName(DEFAULT_START_MAP);
     }
 
     private static List<String> resolveLevelNames(MapRepository repository, LevelManager levelManager) {
@@ -311,7 +313,7 @@ public class App {
             }
         }
         if (names.isEmpty()) {
-            names.add(DEMO_MAP);
+            names.add(DEFAULT_START_MAP);
         }
         return new ArrayList<>(names);
     }
@@ -348,7 +350,7 @@ public class App {
             options.addAll(levelNames);
         }
         if (options.isEmpty()) {
-            options.add(DEMO_MAP);
+            options.add(DEFAULT_START_MAP);
         }
         options.add("Back");
         int maxOptionLength = options.stream().mapToInt(s -> s == null ? 0 : s.length()).max().orElse(12);
