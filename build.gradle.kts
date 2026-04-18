@@ -4,7 +4,7 @@ plugins {
     id("io.freefair.lombok") version "8.14.2"
     id("checkstyle")
     id("com.github.spotbugs") version "6.4.4"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.5"
 }
 
 group = "org.example"
