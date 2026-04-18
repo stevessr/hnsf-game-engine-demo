@@ -16,6 +16,7 @@ import lib.object.VoxelObject;
 import lib.object.WallObject;
 import lib.object.dto.MapData;
 import lib.persistence.MapDataMapper;
+import lib.persistence.ProceduralLevelGenerator;
 import lib.state.DefaultGameStateMachine;
 
 /**
@@ -28,6 +29,8 @@ public final class LevelManager {
     private static final String LEVEL_2 = "level-2";
     private static final String LEVEL_3 = "level-3";
     private static final String LEVEL_4 = "level-4";
+    private static final String PROC_FOREST = "procedural-forest";
+    private static final String PROC_CAVE = "procedural-cave";
 
     private final GameWorld world;
     private final List<String> levelNames;
@@ -109,6 +112,13 @@ public final class LevelManager {
             normalized = TUTORIAL_LEVEL;
         }
 
+        if (normalized.equals(PROC_FOREST)) {
+            return ProceduralLevelGenerator.generateForest(PROC_FOREST, System.currentTimeMillis());
+        }
+        if (normalized.equals(PROC_CAVE)) {
+            return ProceduralLevelGenerator.generateCave(PROC_CAVE, System.currentTimeMillis());
+        }
+
         GameWorld levelWorld = switch (normalized) {
             case TUTORIAL_LEVEL -> createTutorialLevelWorld();
             case DEMO_MAP -> createDemoMapWorld();
@@ -128,6 +138,8 @@ public final class LevelManager {
         addLevel(LEVEL_2);
         addLevel(LEVEL_3);
         addLevel(LEVEL_4);
+        addLevel(PROC_FOREST);
+        addLevel(PROC_CAVE);
     }
 
     private GameWorld createTutorialLevelWorld() {
