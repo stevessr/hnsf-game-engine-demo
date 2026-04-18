@@ -22,6 +22,8 @@ public final class PlayerObject extends ActorObject {
     private double lastDirX = 1.0;
     private double lastDirY = 0.0;
     private double walkingTimer = 0;
+    private int lightRadius = 200;
+    private double lightOrbTimer = 0;
     private static final long INVULNERABILITY_DURATION_NANOS = 1_000_000_000L; // 1秒
 
     public PlayerObject(String name) {
@@ -144,6 +146,19 @@ public final class PlayerObject extends ActorObject {
         return (int) Math.round(getVelocityYDouble());
     }
 
+    public int getLightRadius() {
+        return lightRadius;
+    }
+
+    public void setLightRadius(int lightRadius) {
+        this.lightRadius = Math.max(50, lightRadius);
+    }
+
+    public void addLightOrbEffect(int bonus, double duration) {
+        this.lightRadius += bonus;
+        this.lightOrbTimer = Math.max(this.lightOrbTimer, duration);
+    }
+
     public void jump(GameWorld world) {
         if (world == null || !world.isGravityEnabled()) {
             return;
@@ -188,6 +203,13 @@ public final class PlayerObject extends ActorObject {
             checkColorConflicts(world);
             if (world.isGravityEnabled()) {
                 setVelocityY(getVelocityYDouble() + world.getGravityStrength() * deltaSeconds);
+            }
+            
+            if (lightOrbTimer > 0) {
+                lightOrbTimer -= deltaSeconds;
+                if (lightOrbTimer <= 0) {
+                    lightRadius = 200;
+                }
             }
         }
 

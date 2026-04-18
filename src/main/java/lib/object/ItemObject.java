@@ -8,7 +8,7 @@ import lib.game.GameWorld;
 
 /**
  * 可拾取物品对象。
- * 支持经验、回复、加速等简单效果。
+ * 支持经验、回复、加速、视野增强等简单效果。
  */
 public final class ItemObject extends BaseObject {
     private String kind;
@@ -89,6 +89,7 @@ public final class ItemObject extends BaseObject {
         switch (normalizedKind) {
             case "health", "heal", "heart" -> player.heal(value);
             case "speed", "boost", "dash" -> player.setThrottlePower(player.getThrottlePower() + value);
+            case "lightorb", "vision", "light" -> player.addLightOrbEffect(value, 15.0);
             case "coin", "gem", "xp", "experience" -> player.gainExperience(value);
             case "shield" -> player.heal(Math.max(1, value / 2));
             default -> player.gainExperience(Math.max(1, value));
@@ -109,6 +110,7 @@ public final class ItemObject extends BaseObject {
         return switch (kind == null ? "coin" : kind.toLowerCase(Locale.ROOT)) {
             case "health", "heal", "heart" -> "Recovered " + amount + " HP";
             case "speed", "boost", "dash" -> "Speed + " + amount;
+            case "lightorb", "vision", "light" -> "Vision Enhanced!";
             case "shield" -> "Shield + " + amount;
             case "gem", "xp", "experience" -> "Gained " + amount + " XP";
             default -> "Collected " + amount;
@@ -126,6 +128,7 @@ public final class ItemObject extends BaseObject {
         return switch (kind.toLowerCase(Locale.ROOT)) {
             case "health", "heal", "heart" -> new Color(92, 205, 120);
             case "speed", "boost", "dash" -> new Color(112, 160, 255);
+            case "lightorb", "vision", "light" -> new Color(255, 255, 200);
             case "shield" -> new Color(170, 130, 255);
             case "gem", "xp", "experience" -> new Color(255, 165, 60);
             default -> new Color(255, 210, 92);

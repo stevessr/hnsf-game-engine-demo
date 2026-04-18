@@ -86,7 +86,7 @@ public final class LightingManager {
         
         // 自动为玩家添加光源
         world.findPlayer().ifPresent(player -> {
-            drawLight(g2d, player.getX() + player.getWidth() / 2, player.getY() + player.getHeight() / 2, 200, 1.0f * intensityMultiplier);
+            drawLight(g2d, player.getX() + player.getWidth() / 2, player.getY() + player.getHeight() / 2, player.getLightRadius(), 1.0f * intensityMultiplier);
         });
         
         // 为出口添加光源

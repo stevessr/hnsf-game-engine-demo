@@ -136,6 +136,9 @@ public final class LevelManager {
         levelWorld.addObject(new VoxelObject("demo-voxel-b", 584, 310, 24, 24, new Color(255, 168, 72)));
         levelWorld.addObject(new VoxelObject("demo-voxel-c", 608, 310, 24, 24, new Color(255, 168, 72)));
         levelWorld.addObject(new ItemObject("demo-coin", 200, 360, 28, 28, "coin", 15, "Demo coin"));
+        levelWorld.addObject(new ItemObject("demo-heart", 540, 360, 28, 28, "health", 20, "Small heal"));
+        levelWorld.addObject(new ItemObject("demo-light-1", 160, 340, 28, 28, "lightorb", 150, "Vision Enhanced!"));
+        levelWorld.addObject(new ItemObject("demo-light-2", 1200, 340, 28, 28, "lightorb", 200, "Vision Enhanced!"));
         levelWorld.addObject(new GoalObject("demo-exit", 960 * 3 - 100, 350, 60, 70));
         levelWorld.addObject(new DialogObject("demo-guide", 150, 450, 660, 60, "Guide", "Explore the large world! Use WASD to move."));
         return levelWorld;
