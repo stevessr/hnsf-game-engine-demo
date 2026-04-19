@@ -409,6 +409,11 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             : (now - lastUpdateNanos) / 1_000_000_000.0;
         lastUpdateNanos = now;
         
+        // Cap deltaSeconds to avoid physics explosions when resuming from a long pause
+        if (deltaSeconds > 0.1) {
+            deltaSeconds = 0.1;
+        }
+        
         inputController.processInputs(new GameStateContext(world, inputController, this, runtimeActions));
         if (aiTestManager.isEnabled()) {
             aiTestManager.update(world, deltaSeconds);

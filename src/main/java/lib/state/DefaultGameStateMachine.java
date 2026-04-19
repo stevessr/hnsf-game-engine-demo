@@ -695,13 +695,28 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             world.toggleShowGoals();
         }
 
+        PlayerObject player = world.findPlayer().orElse(null);
+
+        // Proximity-based dialog activation
+        if (player != null) {
+            for (GameObject obj : world.getObjectsByType(GameObjectType.DIALOG)) {
+                if (obj instanceof DialogObject dialog && !dialog.isActive()) {
+                    // Activate if player is close (within 300 pixels of horizontal center)
+                    int dist = Math.abs((player.getX() + player.getWidth() / 2) - (dialog.getX() + dialog.getWidth() / 2));
+                    if (dist < 300) {
+                        dialog.setActive(true);
+                        break; // Only one dialog at a time
+                    }
+                }
+            }
+        }
+
         if (findActiveDialog(world) != null) {
             transitionTo(GameState.DIALOG);
             clearPlayerMovement(context);
             return;
         }
 
-        PlayerObject player = world.findPlayer().orElse(null);
         if (player == null || (!player.isActive() && !player.isDying())) {
             transitionTo(GameState.GAMEOVER);
             createGameOverMenu(world, context.getSettings());

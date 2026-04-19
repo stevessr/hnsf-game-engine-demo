@@ -171,22 +171,32 @@ public final class LevelManager {
         addPlayer(levelWorld, 100, 320);
 
         // 教程 1: 移动
-        levelWorld.addObject(new DialogObject("tut-1", 100, 100, 400, 60, "System", "Use WASD or Arrow Keys to MOVE."));
+        DialogObject tut1 = new DialogObject("tut-1", 100, 100, 400, 60, "System", "Use WASD or Arrow Keys to MOVE.");
+        tut1.setActive(false);
+        levelWorld.addObject(tut1);
         
         // 教程 2: 跳跃
         levelWorld.addObject(new WallObject("step-1", 600, 320, 100, 100));
-        levelWorld.addObject(new DialogObject("tut-2", 700, 100, 400, 60, "System", "Press SPACE to JUMP over obstacles."));
+        DialogObject tut2 = new DialogObject("tut-2", 700, 100, 400, 60, "System", "Press SPACE to JUMP over obstacles.");
+        tut2.setActive(false);
+        levelWorld.addObject(tut2);
 
         // 教程 3: 战斗
         levelWorld.addObject(new MonsterObject("dummy", 1200, 340, 50));
-        levelWorld.addObject(new DialogObject("tut-3", 1200, 100, 400, 60, "System", "Press K to SHOOT and defeat enemies."));
+        DialogObject tut3 = new DialogObject("tut-3", 1200, 100, 400, 60, "System", "Press K to SHOOT and defeat enemies.");
+        tut3.setActive(false);
+        levelWorld.addObject(tut3);
 
         // 教程 4: 收集
         levelWorld.addObject(new ItemObject("orb", 1800, 340, 28, 28, "lightorb", 150, "Collected Light Orb!"));
-        levelWorld.addObject(new DialogObject("tut-4", 1800, 100, 400, 60, "System", "Collect LIGHT ORBS to increase your vision."));
+        DialogObject tut4 = new DialogObject("tut-4", 1800, 100, 400, 60, "System", "Collect LIGHT ORBS to increase your vision.");
+        tut4.setActive(false);
+        levelWorld.addObject(tut4);
 
         // 终点
-        levelWorld.addObject(new DialogObject("tut-exit", 2500, 100, 400, 60, "System", "Reach the GOLDEN PORTAL to complete the tutorial."));
+        DialogObject tutExit = new DialogObject("tut-exit", 2500, 100, 400, 60, "System", "Reach the GOLDEN PORTAL to complete the tutorial.");
+        tutExit.setActive(false);
+        levelWorld.addObject(tutExit);
         levelWorld.addObject(new GoalObject("goal", 2700, 350, 64, 72));
 
         return levelWorld;
