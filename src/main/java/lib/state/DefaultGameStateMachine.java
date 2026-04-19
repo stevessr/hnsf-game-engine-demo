@@ -728,27 +728,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
 
-        double ax = 0, ay = 0;
-        var kb = inputController.getKeyboardManager();
-        var ms = inputController.getMouseManager();
-        if (actionMapper.isActive(InputAction.MOVE_LEFT, kb, ms)) {
-            ax -= 1.0;
-        }
-        if (actionMapper.isActive(InputAction.MOVE_RIGHT, kb, ms)) {
-            ax += 1.0;
-        }
-        if (actionMapper.isActive(InputAction.MOVE_UP, kb, ms)) {
-            ay -= 1.0;
-        }
-        if (actionMapper.isActive(InputAction.MOVE_DOWN, kb, ms)) {
-            ay += 1.0;
-        }
-        if (ax != 0 && ay != 0) {
-            double mag = Math.sqrt(ax * ax + ay * ay);
-            ax /= mag;
-            ay /= mag;
-        }
-        player.accelerate(ax, ay, 1.0 / 60.0);
+        inputController.applyPlayerMovement(world, context.getSettings(), player);
+        inputController.applyVoxelSystem(world);
     }
 
     private boolean checkLevelComplete(GameWorld world) {

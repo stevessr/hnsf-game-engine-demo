@@ -100,6 +100,6 @@ public final class DialogObject extends BaseObject {
         if (value == null || value.isBlank()) {
             return fallback;
         }
-        return value;
+        return lib.utils.Unicode2Gbk.convert(value);
     }
 }

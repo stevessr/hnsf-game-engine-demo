@@ -145,7 +145,7 @@ public final class MenuObject extends BaseObject {
         if (value == null || value.isBlank()) {
             return fallback;
         }
-        return value;
+        return lib.utils.Unicode2Gbk.convert(value);
     }
 
     private static List<String> normalizeOptions(List<String> rawOptions) {
@@ -153,7 +153,7 @@ public final class MenuObject extends BaseObject {
         if (rawOptions != null) {
             for (String option : rawOptions) {
                 if (option != null && !option.isBlank()) {
-                    normalized.add(option);
+                    normalized.add(lib.utils.Unicode2Gbk.convert(option));
                 }
             }
         }
