@@ -6,4 +6,5 @@ out/
 hnsfGame01
 *.zip
 初级实作课程素材资源
-gradle
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
