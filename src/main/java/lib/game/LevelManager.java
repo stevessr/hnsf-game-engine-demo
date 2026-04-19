@@ -70,6 +70,17 @@ public final class LevelManager {
         return null;
     }
 
+    public void setCurrentLevel(String levelName) {
+        String normalized = normalizeLevelName(levelName);
+        if (normalized == null) {
+            return;
+        }
+        int index = levelNames.indexOf(normalized);
+        if (index >= 0) {
+            currentLevelIndex = index;
+        }
+    }
+
     public void loadNextLevel() {
         if (levelNames.isEmpty() || world == null) {
             return;

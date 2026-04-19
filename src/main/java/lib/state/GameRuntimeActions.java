@@ -23,6 +23,21 @@ public interface GameRuntimeActions {
     }
 
     /**
+     * 请求加载下一关。
+     */
+    default void requestLoadNextLevel() {
+    }
+
+    /**
+     * 当前是否存在下一关。
+     *
+     * @return true 表示存在下一关
+     */
+    default boolean hasNextLevel() {
+        return false;
+    }
+
+    /**
      * 请求打开关卡编辑器。
      */
     default void requestOpenEditor() {

@@ -6,6 +6,9 @@ import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.List;
 
+import lib.game.GameWorld;
+import lib.state.GameState;
+
 /**
  * 屏幕按键提示遮罩层。
  * 
@@ -37,6 +40,10 @@ public final class ControlHintsOverlay {
     }
 
     public void render(Graphics2D graphics, int viewportWidth, int viewportHeight, boolean aiActive) {
+        render(graphics, viewportWidth, viewportHeight, null, aiActive);
+    }
+
+    public void render(Graphics2D graphics, int viewportWidth, int viewportHeight, GameWorld world, boolean aiActive) {
         if (!visible) {
             return;
         }
@@ -44,17 +51,11 @@ public final class ControlHintsOverlay {
         // 开启文本抗锯齿
         graphics.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         
-        List<Hint> hints = new ArrayList<>();
-        hints.add(new Hint("WASD", "Move"));
-        hints.add(new Hint("Space", "Jump"));
-        hints.add(new Hint("K", "Shoot"));
-        hints.add(new Hint("G", "Goals"));
-        hints.add(new Hint("H", "AI Auto"));
-        hints.add(new Hint("P/Esc", "Pause"));
+        List<Hint> hints = buildHints(world == null ? GameState.PLAYING : world.getCurrentState());
 
         int bgW = 180;
         int rowHeight = 20;
-        int bgH = (hints.size() + (aiActive ? 1 : 0)) * rowHeight + 15;
+        int bgH = (hints.size() + (aiActive ? 2 : 1)) * rowHeight + 15;
         
         // 移至右下角，避开右上角小地图
         int x = viewportWidth - bgW - 20;
@@ -68,6 +69,12 @@ public final class ControlHintsOverlay {
 
         int textX = x + 15;
         int textY = y + 22;
+
+        graphics.setColor(new Color(120, 190, 255));
+        graphics.setFont(new Font("SansSerif", Font.BOLD, 11));
+        String stateName = world == null ? "PLAYING" : world.getCurrentState().name();
+        graphics.drawString("STATE: " + stateName, textX, textY);
+        textY += rowHeight;
         
         if (aiActive) {
             graphics.setColor(new Color(100, 255, 100));
@@ -90,6 +97,40 @@ public final class ControlHintsOverlay {
             
             textY += rowHeight;
         }
+    }
+
+    private List<Hint> buildHints(GameState state) {
+        List<Hint> hints = new ArrayList<>();
+        switch (state) {
+            case MENU, GAMEOVER, SETTLEMENT -> {
+                hints.add(new Hint("W/S · Q/E", "Navigate"));
+                hints.add(new Hint("Enter/Click", "Confirm"));
+                hints.add(new Hint("P/Esc", "Back"));
+            }
+            case DIALOG -> {
+                hints.add(new Hint("Enter/Space", "Next Dialog"));
+                hints.add(new Hint("WASD", "Move After Close"));
+                hints.add(new Hint("P/Esc", "Pause"));
+            }
+            case PAUSED -> {
+                hints.add(new Hint("W/S · Q/E", "Navigate"));
+                hints.add(new Hint("Enter/Click", "Confirm"));
+                hints.add(new Hint("P/Esc", "Resume"));
+            }
+            case PLAYING -> {
+                hints.add(new Hint("WASD", "Move"));
+                hints.add(new Hint("Space", "Jump"));
+                hints.add(new Hint("K", "Shoot"));
+                hints.add(new Hint("G", "Goals"));
+                hints.add(new Hint("P/Esc", "Pause"));
+            }
+            default -> {
+                hints.add(new Hint("WASD", "Move"));
+                hints.add(new Hint("Enter", "Confirm"));
+            }
+        }
+        hints.add(new Hint("H", "AI Auto"));
+        return hints;
     }
 
     /** 简单的提示数据结构 */

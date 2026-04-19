@@ -27,6 +27,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 
 import lib.game.GameWorld;
+import lib.game.WinConditionType;
 import lib.object.ActorObject;
 import lib.object.BaseObject;
 import lib.object.DialogObject;
@@ -52,6 +53,9 @@ public final class EditorWindow extends JFrame {
     private final JSpinner heightSpinner;
     private final JSpinner gravityStrengthSpinner;
     private final JToggleButton gravityToggle;
+    private final JComboBox<WinConditionType> winConditionSelector;
+    private final JSpinner targetKillsSpinner;
+    private final JSpinner targetItemsSpinner;
     private final JSpinner xSpinner;
     private final JSpinner ySpinner;
     private final JSpinner wSpinner;
@@ -89,6 +93,9 @@ public final class EditorWindow extends JFrame {
         this.heightSpinner = new JSpinner(new SpinnerNumberModel(world.getHeight(), 240, 3000, 10));
         this.gravityStrengthSpinner = new JSpinner(new SpinnerNumberModel(world.getGravityStrength(), 0, 5000, 10));
         this.gravityToggle = new JToggleButton("重力", world.isGravityEnabled());
+        this.winConditionSelector = new JComboBox<>(WinConditionType.values());
+        this.targetKillsSpinner = new JSpinner(new SpinnerNumberModel(world.getTargetKills(), 0, 999, 1));
+        this.targetItemsSpinner = new JSpinner(new SpinnerNumberModel(world.getTargetItems(), 0, 999, 1));
         this.xSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 4000, 1));
         this.ySpinner = new JSpinner(new SpinnerNumberModel(0, 0, 4000, 1));
         this.wSpinner = new JSpinner(new SpinnerNumberModel(80, 4, 4000, 1));
@@ -169,6 +176,12 @@ public final class EditorWindow extends JFrame {
         form.add(gravityToggle);
         form.add(new JLabel("重力强度"));
         form.add(gravityStrengthSpinner);
+        form.add(new JLabel("胜利条件"));
+        form.add(winConditionSelector);
+        form.add(new JLabel("击杀目标"));
+        form.add(targetKillsSpinner);
+        form.add(new JLabel("收集目标"));
+        form.add(targetItemsSpinner);
 
         panel.add(form, BorderLayout.CENTER);
         return panel;
@@ -253,16 +266,20 @@ public final class EditorWindow extends JFrame {
         JButton saveButton = new JButton("保存");
         JButton loadButton = new JButton("加载");
         JButton deleteButton = new JButton("删除");
+        JButton duplicateButton = new JButton("复制");
         JButton applyButton = new JButton("应用属性");
         JButton undoButton = new JButton("撤销");
         JButton redoButton = new JButton("重做");
+        JButton scanButton = new JButton("扫描");
         JButton importButton = new JButton("导入");
         JButton exportButton = new JButton("导出");
         footer.add(saveButton);
         footer.add(loadButton);
         footer.add(importButton);
         footer.add(exportButton);
+        footer.add(scanButton);
         footer.add(deleteButton);
+        footer.add(duplicateButton);
         footer.add(applyButton);
         footer.add(undoButton);
         footer.add(redoButton);
@@ -271,7 +288,9 @@ public final class EditorWindow extends JFrame {
         loadButton.addActionListener(event -> loadMap());
         importButton.addActionListener(event -> importMap());
         exportButton.addActionListener(event -> exportMap());
+        scanButton.addActionListener(event -> showScanReport("手动扫描结果", LevelAutoScanner.scan(world), true));
         deleteButton.addActionListener(event -> controller.deleteSelected());
+        duplicateButton.addActionListener(event -> controller.duplicateSelected());
         applyButton.addActionListener(event -> applyPropertyChanges());
         undoButton.addActionListener(event -> controller.undo());
         redoButton.addActionListener(event -> controller.redo());
@@ -322,6 +341,7 @@ public final class EditorWindow extends JFrame {
                 return;
             }
             world.setSize((int) widthSpinner.getValue(), world.getHeight());
+            normalizeWorldObjectsWithinBounds();
             syncPreviewSize();
         });
         heightSpinner.addChangeListener(event -> {
@@ -329,6 +349,7 @@ public final class EditorWindow extends JFrame {
                 return;
             }
             world.setSize(world.getWidth(), (int) heightSpinner.getValue());
+            normalizeWorldObjectsWithinBounds();
             syncPreviewSize();
         });
         gravityToggle.addActionListener(event -> {
@@ -343,6 +364,26 @@ public final class EditorWindow extends JFrame {
                 return;
             }
             world.setGravityStrength((int) gravityStrengthSpinner.getValue());
+        });
+        winConditionSelector.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            WinConditionType selected = (WinConditionType) winConditionSelector.getSelectedItem();
+            world.setWinCondition(selected);
+            previewPanel.repaint();
+        });
+        targetKillsSpinner.addChangeListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            world.setTargetKills((int) targetKillsSpinner.getValue());
+        });
+        targetItemsSpinner.addChangeListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            world.setTargetItems((int) targetItemsSpinner.getValue());
         });
         gridToggle.addActionListener(event -> {
             if (updatingControls) {
@@ -487,6 +528,9 @@ public final class EditorWindow extends JFrame {
         try {
             gravityToggle.setSelected(world.isGravityEnabled());
             gravityStrengthSpinner.setValue(world.getGravityStrength());
+            winConditionSelector.setSelectedItem(world.getWinCondition());
+            targetKillsSpinner.setValue(world.getTargetKills());
+            targetItemsSpinner.setValue(world.getTargetItems());
             gridToggle.setSelected(overlay.isShowGrid());
             snapToggle.setSelected(controller.isGridSnap());
             gridSizeSpinner.setValue(controller.getGridSize());
@@ -503,8 +547,20 @@ public final class EditorWindow extends JFrame {
             JOptionPane.showMessageDialog(this, "未选中对象", "提示", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        selected.setPosition((int) xSpinner.getValue(), (int) ySpinner.getValue());
-        selected.setSize((int) wSpinner.getValue(), (int) hSpinner.getValue());
+        EditorBounds.Rect normalizedRect = EditorBounds.normalizeRect(
+            (int) xSpinner.getValue(),
+            (int) ySpinner.getValue(),
+            (int) wSpinner.getValue(),
+            (int) hSpinner.getValue(),
+            world.getWidth(),
+            world.getHeight()
+        );
+        selected.setPosition(normalizedRect.x(), normalizedRect.y());
+        selected.setSize(normalizedRect.width(), normalizedRect.height());
+        xSpinner.setValue(normalizedRect.x());
+        ySpinner.setValue(normalizedRect.y());
+        wSpinner.setValue(normalizedRect.width());
+        hSpinner.setValue(normalizedRect.height());
         Color color = colorButton.getBackground();
         if (color != null) {
             selected.setColor(color);
@@ -550,10 +606,12 @@ public final class EditorWindow extends JFrame {
                 String content = java.nio.file.Files.readString(chooser.getSelectedFile().toPath());
                 var mapData = MapDataMapper.importFromJson(new org.json.JSONObject(content));
                 MapDataMapper.applyToWorld(world, mapData);
+                normalizeWorldObjectsWithinBounds();
                 mapNameField.setText(mapData.getName());
                 updateWorldControlsFromWorld();
                 previewPanel.repaint();
                 JOptionPane.showMessageDialog(this, "导入成功");
+                showScanReport("导入后自动扫描", LevelAutoScanner.scan(world), false);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "导入失败: " + ex.getMessage());
             }
@@ -575,9 +633,26 @@ public final class EditorWindow extends JFrame {
     }
 
     private void saveMap() {
+        normalizeWorldObjectsWithinBounds();
+        List<LevelAutoScanner.ScanIssue> issues = LevelAutoScanner.scan(world);
+        if (hasSeverity(issues, LevelAutoScanner.Severity.ERROR)) {
+            int result = JOptionPane.showConfirmDialog(
+                this,
+                buildScanMessage(issues),
+                "自动扫描发现错误，是否继续保存？",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+            if (result != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
         repository.saveMap(MapDataMapper.fromWorld(world, mapNameField.getText()));
         refreshLevelSelector();
         JOptionPane.showMessageDialog(this, "保存完成", "提示", JOptionPane.INFORMATION_MESSAGE);
+        if (!issues.isEmpty()) {
+            showScanReport("保存后自动扫描", issues, false);
+        }
     }
 
     private void loadMap() {
@@ -588,6 +663,7 @@ public final class EditorWindow extends JFrame {
             return;
         }
         MapDataMapper.applyToWorld(world, mapData);
+        normalizeWorldObjectsWithinBounds();
         mapNameField.setText(mapData.getName());
         widthSpinner.setValue(world.getWidth());
         heightSpinner.setValue(world.getHeight());
@@ -599,6 +675,7 @@ public final class EditorWindow extends JFrame {
         refreshLevelSelector();
         syncPreviewSize();
         previewPanel.repaint();
+        showScanReport("加载后自动扫描", LevelAutoScanner.scan(world), false);
     }
 
     private void refreshLevelSelector() {
@@ -630,6 +707,77 @@ public final class EditorWindow extends JFrame {
         previewPanel.setPreferredSize(new Dimension(world.getWidth(), world.getHeight()));
         previewPanel.revalidate();
         previewPanel.repaint();
+    }
+
+    private void normalizeWorldObjectsWithinBounds() {
+        GameObject selected = controller.getSelectedObject();
+        for (GameObject object : world.getObjects()) {
+            EditorBounds.Rect normalizedRect = EditorBounds.normalizeRect(
+                object.getX(),
+                object.getY(),
+                object.getWidth(),
+                object.getHeight(),
+                world.getWidth(),
+                world.getHeight(),
+                1
+            );
+            if (normalizedRect.x() != object.getX() || normalizedRect.y() != object.getY()) {
+                object.setPosition(normalizedRect.x(), normalizedRect.y());
+            }
+            if (normalizedRect.width() != object.getWidth() || normalizedRect.height() != object.getHeight()) {
+                object.setSize(normalizedRect.width(), normalizedRect.height());
+            }
+        }
+        if (selected != null) {
+            updateInspectorFromSelection(selected);
+        }
+    }
+
+    private void showScanReport(String title, List<LevelAutoScanner.ScanIssue> issues, boolean showCleanMessage) {
+        if (issues == null || issues.isEmpty()) {
+            if (showCleanMessage) {
+                JOptionPane.showMessageDialog(this, "自动扫描未发现问题。", title, JOptionPane.INFORMATION_MESSAGE);
+            }
+            return;
+        }
+        boolean hasError = hasSeverity(issues, LevelAutoScanner.Severity.ERROR);
+        boolean hasWarning = hasSeverity(issues, LevelAutoScanner.Severity.WARNING);
+        if (!showCleanMessage && !hasError && !hasWarning) {
+            return;
+        }
+        int type = hasError ? JOptionPane.ERROR_MESSAGE : (hasWarning ? JOptionPane.WARNING_MESSAGE : JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, buildScanMessage(issues), title, type);
+    }
+
+    private boolean hasSeverity(List<LevelAutoScanner.ScanIssue> issues, LevelAutoScanner.Severity severity) {
+        if (issues == null || severity == null) {
+            return false;
+        }
+        for (LevelAutoScanner.ScanIssue issue : issues) {
+            if (issue.severity() == severity) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String buildScanMessage(List<LevelAutoScanner.ScanIssue> issues) {
+        StringBuilder builder = new StringBuilder();
+        int maxLines = 14;
+        int count = 0;
+        for (LevelAutoScanner.ScanIssue issue : issues) {
+            builder.append('[')
+                .append(issue.severity().name())
+                .append("] ")
+                .append(issue.message())
+                .append('\n');
+            count++;
+            if (count >= maxLines && issues.size() > maxLines) {
+                builder.append("... 其余 ").append(issues.size() - maxLines).append(" 条已省略");
+                break;
+            }
+        }
+        return builder.toString();
     }
 
     private MapEditorController.EditMode parseEditMode(String value) {

@@ -565,7 +565,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             graphics2d.setClip(0, 0, viewW, viewH);
 
             world.render(graphics2d);
-            hintsOverlay.render(graphics2d, viewW, viewH, aiTestManager.isEnabled());
+            hintsOverlay.render(graphics2d, viewW, viewH, world, aiTestManager.isEnabled());
             
             if (debugEnabled) {
                 debugManager.render(graphics2d, world, viewW, viewH);

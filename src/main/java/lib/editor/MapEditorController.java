@@ -168,6 +168,41 @@ public final class MapEditorController {
         panel.repaint();
     }
 
+    public void duplicateSelected() {
+        if (selectedObject == null) {
+            return;
+        }
+        ObjectData sourceData = GameObjectFactory.toObjectData(selectedObject);
+        if (sourceData == null) {
+            return;
+        }
+        int offset = gridSnap ? Math.max(1, gridSize) : 10;
+        sourceData.setName(sourceData.getName() + "-copy-" + System.currentTimeMillis());
+        sourceData.setX(sourceData.getX() + offset);
+        sourceData.setY(sourceData.getY() + offset);
+        EditorBounds.Rect normalized = EditorBounds.normalizeRect(
+            sourceData.getX(),
+            sourceData.getY(),
+            sourceData.getWidth(),
+            sourceData.getHeight(),
+            world.getWidth(),
+            world.getHeight()
+        );
+        sourceData.setX(normalized.x());
+        sourceData.setY(normalized.y());
+        sourceData.setWidth(normalized.width());
+        sourceData.setHeight(normalized.height());
+        GameObject duplicated = GameObjectFactory.fromObjectData(sourceData);
+        if (duplicated == null) {
+            return;
+        }
+        world.addObject(duplicated);
+        selectedObject = duplicated;
+        notifySelectionChanged();
+        pushCommand(new AddCommand(duplicated));
+        panel.repaint();
+    }
+
     public void toggleGrid() {
         overlay.setShowGrid(!overlay.isShowGrid());
         panel.repaint();
@@ -242,7 +277,14 @@ public final class MapEditorController {
             targetX = snap(targetX, gridSize);
             targetY = snap(targetY, gridSize);
         }
-        MoveCommand command = new MoveCommand(selectedObject, selectedObject.getX(), selectedObject.getY(), targetX, targetY);
+        EditorBounds.Rect normalized = EditorBounds.normalizePosition(selectedObject, targetX, targetY, world.getWidth(), world.getHeight());
+        MoveCommand command = new MoveCommand(
+            selectedObject,
+            selectedObject.getX(),
+            selectedObject.getY(),
+            normalized.x(),
+            normalized.y()
+        );
         command.redo();
         pushCommand(command);
         panel.repaint();
@@ -284,6 +326,10 @@ public final class MapEditorController {
     }
 
     private void handleKeyPressed(KeyEvent event) {
+        if (event.isControlDown() && event.getKeyCode() == KeyEvent.VK_D) {
+            duplicateSelected();
+            return;
+        }
         if (event.getKeyCode() == KeyEvent.VK_DELETE) {
             deleteSelected();
             return;
@@ -294,6 +340,15 @@ public final class MapEditorController {
         }
         if (event.isControlDown() && event.getKeyCode() == KeyEvent.VK_Y) {
             redo();
+            return;
+        }
+        switch (event.getKeyCode()) {
+            case KeyEvent.VK_LEFT -> moveSelectedBy(-getNudgeStep(event), 0);
+            case KeyEvent.VK_RIGHT -> moveSelectedBy(getNudgeStep(event), 0);
+            case KeyEvent.VK_UP -> moveSelectedBy(0, -getNudgeStep(event));
+            case KeyEvent.VK_DOWN -> moveSelectedBy(0, getNudgeStep(event));
+            default -> {
+            }
         }
     }
 
@@ -357,6 +412,18 @@ public final class MapEditorController {
             data.setSolid(true);
             data.setBackground(false);
         }
+        EditorBounds.Rect normalized = EditorBounds.normalizeRect(
+            data.getX(),
+            data.getY(),
+            data.getWidth(),
+            data.getHeight(),
+            world.getWidth(),
+            world.getHeight()
+        );
+        data.setX(normalized.x());
+        data.setY(normalized.y());
+        data.setWidth(normalized.width());
+        data.setHeight(normalized.height());
         GameObject object = GameObjectFactory.fromObjectData(data);
         if (object instanceof MenuObject menu) {
             menu.setFontSize(defaultFontSize);
@@ -383,6 +450,35 @@ public final class MapEditorController {
         }
         undoStack.push(command);
         redoStack.clear();
+    }
+
+    private int getNudgeStep(KeyEvent event) {
+        if (event != null && event.isShiftDown()) {
+            return gridSnap ? Math.max(1, gridSize) : 10;
+        }
+        return gridSnap ? Math.max(1, gridSize / 2) : 1;
+    }
+
+    private void moveSelectedBy(int dx, int dy) {
+        if (selectedObject == null || (dx == 0 && dy == 0)) {
+            return;
+        }
+        int targetX = selectedObject.getX() + dx;
+        int targetY = selectedObject.getY() + dy;
+        if (gridSnap) {
+            targetX = snap(targetX, gridSize);
+            targetY = snap(targetY, gridSize);
+        }
+        EditorBounds.Rect normalized = EditorBounds.normalizePosition(selectedObject, targetX, targetY, world.getWidth(), world.getHeight());
+        targetX = normalized.x();
+        targetY = normalized.y();
+        if (targetX == selectedObject.getX() && targetY == selectedObject.getY()) {
+            return;
+        }
+        MoveCommand command = new MoveCommand(selectedObject, selectedObject.getX(), selectedObject.getY(), targetX, targetY);
+        command.redo();
+        pushCommand(command);
+        panel.repaint();
     }
 
     private void notifySelectionChanged() {

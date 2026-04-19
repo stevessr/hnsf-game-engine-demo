@@ -219,6 +219,50 @@ class DefaultGameStateMachineTest {
         assertFalse(levelMenu.isActive(), "选中关卡后关卡选择菜单应隐藏");
     }
 
+    @Test
+    void settlementNextLevelShouldRequestRuntimeNextLevel() {
+        GameWorld world = new GameWorld(320, 200);
+        MenuObject victoryMenu = new MenuObject(
+            "victory-menu",
+            10,
+            10,
+            200,
+            120,
+            "Victory",
+            List.of("Next Level", "Back to Menu")
+        );
+        victoryMenu.setSelectedIndex(0);
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(GameState.SETTLEMENT);
+        GameInputController inputController = GameInputController.createDefault();
+        AtomicBoolean nextRequested = new AtomicBoolean(false);
+        GameRuntimeActions actions = new GameRuntimeActions() {
+            @Override
+            public void requestExit() {
+            }
+
+            @Override
+            public void requestLoadNextLevel() {
+                nextRequested.set(true);
+            }
+
+            @Override
+            public boolean hasNextLevel() {
+                return true;
+            }
+        };
+        GameStateContext context = new GameStateContext(world, inputController, actions);
+
+        world.addObject(victoryMenu);
+        world.setStateMachine(stateMachine);
+
+        tapKey(inputController, KeyEvent.VK_ENTER);
+        stateMachine.processInput(context);
+        inputController.finishFrame();
+
+        assertTrue(nextRequested.get(), "结算菜单选择 Next Level 时应请求下一关");
+        assertEquals(GameState.PLAYING, stateMachine.getCurrentState(), "进入下一关后应切回 PLAYING");
+    }
+
     private static void tapKey(GameInputController inputController, int keyCode) {
         inputController.getKeyboardManager().releaseKey(keyCode);
         inputController.getKeyboardManager().pressKey(keyCode);

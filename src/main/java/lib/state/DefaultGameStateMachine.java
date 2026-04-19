@@ -398,11 +398,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         String selected = menu.getSelectedOption();
         removeMenu(context.getWorld(), VICTORY_MENU_NAME);
         if (selected.equals("Next Level")) {
-            context.getRuntimeActions().requestLoadLevel(null); // LevelManager handles "next" logic usually
-            // To ensure we load the NEXT level specifically:
-            // Since requestLoadLevel(null) usually means current, we might need to improve this.
-            // Let's assume we can trigger "Next" via runtime actions or just load the next one.
-            context.getRuntimeActions().requestLoadLevel("NEXT_LEVEL_PLACEHOLDER");
+            context.getRuntimeActions().requestLoadNextLevel();
             transitionTo(GameState.PLAYING);
         } else {
             activateMainMenu(context.getWorld());
@@ -720,7 +716,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             for (GameObject other : world.getCollisions(player)) {
                 if (other.getType() == GameObjectType.GOAL && other.isActive()) {
                     transitionTo(GameState.SETTLEMENT);
-                    createVictoryMenu(world, context.getSettings(), true); 
+                    createVictoryMenu(world, context.getSettings(), context.getRuntimeActions().hasNextLevel());
                     return;
                 }
             }
@@ -728,7 +724,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
         if (world.isComplete()) {
             transitionTo(GameState.SETTLEMENT);
-            createVictoryMenu(world, context.getSettings(), true);
+            createVictoryMenu(world, context.getSettings(), context.getRuntimeActions().hasNextLevel());
             return;
         }
 

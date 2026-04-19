@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -69,20 +70,28 @@ public class App {
         MapRepository repository = new MapRepository();
         LevelManager levelManager = new LevelManager();
         ensureBuiltinLevels(repository, levelManager);
+        AtomicReference<String> activeLevelName = new AtomicReference<>(DEFAULT_START_MAP);
 
         GameWorld world = loadGameWorld(repository, levelManager, DEFAULT_START_MAP, 18);
         SwingGamePanel panel = new SwingGamePanel(world);
         JFrame frame = new JFrame("Primary Software Game Demo");
         
-        setupMainFrame(frame, panel, world, repository, levelManager);
+        setupMainFrame(frame, panel, world, repository, levelManager, activeLevelName);
         frame.setVisible(true);
         panel.start();
 
         log.info("Game window started with {} objects", world.getObjects().size());
     }
 
-    private static void setupMainFrame(JFrame frame, SwingGamePanel panel, GameWorld world, MapRepository repository, LevelManager levelManager) {
-        panel.setRuntimeActions(createRuntimeActions(frame, panel, world, repository, levelManager));
+    private static void setupMainFrame(
+        JFrame frame,
+        SwingGamePanel panel,
+        GameWorld world,
+        MapRepository repository,
+        LevelManager levelManager,
+        AtomicReference<String> activeLevelName
+    ) {
+        panel.setRuntimeActions(createRuntimeActions(frame, panel, world, repository, levelManager, activeLevelName));
 
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.addWindowListener(new WindowAdapter() {
@@ -92,22 +101,36 @@ public class App {
             }
         });
         frame.setContentPane(panel);
-        frame.setJMenuBar(createMenuBar(frame, world, repository, levelManager, panel));
+        frame.setJMenuBar(createMenuBar(frame, world, repository, levelManager, panel, activeLevelName));
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setResizable(false);
     }
 
-    private static JMenuBar createMenuBar(JFrame frame, GameWorld world, MapRepository repository, LevelManager levelManager, SwingGamePanel panel) {
+    private static JMenuBar createMenuBar(
+        JFrame frame,
+        GameWorld world,
+        MapRepository repository,
+        LevelManager levelManager,
+        SwingGamePanel panel,
+        AtomicReference<String> activeLevelName
+    ) {
         JMenuBar menuBar = new JMenuBar();
         
         // 游戏菜单
         JMenu gameMenu = new JMenu("游戏 (Game)");
         JMenuItem restartItem = new JMenuItem("重置 (Restart)");
-        restartItem.addActionListener(e -> reloadGameWorld(world, repository, levelManager, DEFAULT_START_MAP, panel));
+        restartItem.addActionListener(e -> {
+            String currentLevel = normalizeLevelName(activeLevelName.get());
+            String targetLevel = currentLevel == null ? DEFAULT_START_MAP : currentLevel;
+            String loadedLevel = reloadGameWorld(world, repository, levelManager, targetLevel, panel);
+            if (loadedLevel != null) {
+                activeLevelName.set(loadedLevel);
+            }
+        });
         
         JMenuItem importItem = new JMenuItem("导入地图 (Import Map)");
-        importItem.addActionListener(e -> handleImportMap(frame, world, repository, levelManager, panel));
+        importItem.addActionListener(e -> handleImportMap(frame, world, repository, levelManager, panel, activeLevelName));
 
         JMenuItem exportItem = new JMenuItem("导出当前地图 (Export Map)");
         exportItem.addActionListener(e -> handleExportMap(frame, world));
@@ -147,14 +170,24 @@ public class App {
         return menuBar;
     }
 
-    private static void handleImportMap(JFrame frame, GameWorld world, MapRepository repository, LevelManager levelManager, SwingGamePanel panel) {
+    private static void handleImportMap(
+        JFrame frame,
+        GameWorld world,
+        MapRepository repository,
+        LevelManager levelManager,
+        SwingGamePanel panel,
+        AtomicReference<String> activeLevelName
+    ) {
         JFileChooser chooser = new JFileChooser();
         if (chooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
             try {
                 String content = Files.readString(chooser.getSelectedFile().toPath());
                 var mapData = MapDataMapper.importFromJson(new JSONObject(content));
                 repository.saveMap(mapData);
-                reloadGameWorld(world, repository, levelManager, mapData.getName(), panel);
+                String loadedLevel = reloadGameWorld(world, repository, levelManager, mapData.getName(), panel);
+                if (loadedLevel != null) {
+                    activeLevelName.set(loadedLevel);
+                }
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(frame, "导入失败: " + ex.getMessage());
             }
@@ -188,7 +221,8 @@ public class App {
         SwingGamePanel panel,
         GameWorld world,
         MapRepository repository,
-        LevelManager levelManager
+        LevelManager levelManager,
+        AtomicReference<String> activeLevelName
     ) {
         return new GameRuntimeActions() {
             @Override
@@ -198,15 +232,40 @@ public class App {
 
             @Override
             public void requestLoadLevel(String levelName) {
+                String normalizedRequested = normalizeLevelName(levelName);
+                String fallbackCurrent = normalizeLevelName(activeLevelName.get());
+                String targetLevel = normalizedRequested == null ? fallbackCurrent : normalizedRequested;
+                if (targetLevel == null) {
+                    targetLevel = DEFAULT_START_MAP;
+                }
+                String levelToLoad = targetLevel;
                 Runnable action = () -> {
-                    if ("NEXT_LEVEL_PLACEHOLDER".equals(levelName)) {
-                        levelManager.loadNextLevel();
-                        reloadGameWorld(world, repository, levelManager, levelManager.getCurrentLevelName(), panel);
-                    } else {
-                        reloadGameWorld(world, repository, levelManager, levelName, panel);
+                    String loadedLevel = reloadGameWorld(world, repository, levelManager, levelToLoad, panel);
+                    if (loadedLevel != null) {
+                        activeLevelName.set(loadedLevel);
                     }
                 };
                 runOnEdt(action);
+            }
+
+            @Override
+            public void requestLoadNextLevel() {
+                Runnable action = () -> {
+                    String nextLevel = resolveNextLevelName(repository, levelManager, activeLevelName.get());
+                    if (nextLevel == null) {
+                        return;
+                    }
+                    String loadedLevel = reloadGameWorld(world, repository, levelManager, nextLevel, panel);
+                    if (loadedLevel != null) {
+                        activeLevelName.set(loadedLevel);
+                    }
+                };
+                runOnEdt(action);
+            }
+
+            @Override
+            public boolean hasNextLevel() {
+                return resolveNextLevelName(repository, levelManager, activeLevelName.get()) != null;
             }
 
             @Override
@@ -249,6 +308,9 @@ public class App {
     private static GameWorld loadGameWorld(MapRepository repository, LevelManager levelManager, String levelName, int uiFontSize) {
         MapData mapData = loadLevelData(repository, levelManager, levelName);
         GameWorld world = mapData == null ? createFallbackWorld() : MapDataMapper.toWorld(mapData);
+        if (mapData != null) {
+            levelManager.setCurrentLevel(mapData.getName());
+        }
         removeShellMenus(world);
         installGameShell(world, resolveLevelNames(repository, levelManager), true, uiFontSize);
         ensureMainMenuSelection(world);
@@ -265,16 +327,23 @@ public class App {
         return world;
     }
 
-    private static void reloadGameWorld(GameWorld world, MapRepository repository, LevelManager levelManager, String levelName, SwingGamePanel panel) {
+    private static String reloadGameWorld(
+        GameWorld world,
+        MapRepository repository,
+        LevelManager levelManager,
+        String levelName,
+        SwingGamePanel panel
+    ) {
         if (world == null || panel == null) {
-            return;
+            return null;
         }
         MapData mapData = loadLevelData(repository, levelManager, levelName);
         if (mapData == null) {
-            return;
+            return null;
         }
         
         MapDataMapper.applyToWorld(world, mapData);
+        levelManager.setCurrentLevel(mapData.getName());
         removeShellMenus(world);
         installGameShell(world, resolveLevelNames(repository, levelManager), false, panel.getUIFontSize());
         
@@ -285,6 +354,7 @@ public class App {
         panel.getInputController().getKeyboardManager().reset();
         panel.getInputController().getMouseManager().reset();
         panel.repaint();
+        return mapData.getName();
     }
 
     private static MapData loadLevelData(MapRepository repository, LevelManager levelManager, String levelName) {
@@ -322,6 +392,25 @@ public class App {
             names.add(DEFAULT_START_MAP);
         }
         return new ArrayList<>(names);
+    }
+
+    private static String resolveNextLevelName(MapRepository repository, LevelManager levelManager, String currentLevelName) {
+        List<String> names = resolveLevelNames(repository, levelManager);
+        if (names.isEmpty()) {
+            return null;
+        }
+        String normalizedCurrent = normalizeLevelName(currentLevelName);
+        if (normalizedCurrent == null) {
+            return null;
+        }
+        int currentIndex = names.indexOf(normalizedCurrent);
+        if (currentIndex < 0) {
+            return null;
+        }
+        if (currentIndex + 1 >= names.size()) {
+            return null;
+        }
+        return names.get(currentIndex + 1);
     }
 
     private static boolean isPlayableLevelName(String name) {
