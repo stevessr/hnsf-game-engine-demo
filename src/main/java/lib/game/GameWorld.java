@@ -359,6 +359,7 @@ public final class GameWorld {
         }
         updateScreenShake(deltaSeconds);
         entityManager.updateAll(this, deltaSeconds);
+        updateInactiveObjects(deltaSeconds);
     }
 
     public void render(Graphics2D graphics) {
@@ -390,6 +391,14 @@ public final class GameWorld {
             screenShakeMagnitude = 0.0;
             screenShakeDuration = 0.0;
             screenShakeElapsed = 0.0;
+        }
+    }
+
+    private void updateInactiveObjects(double deltaSeconds) {
+        for (GameObject object : entityManager.getObjects()) {
+            if (!object.isActive()) {
+                object.updateInactive(this, deltaSeconds);
+            }
         }
     }
 }

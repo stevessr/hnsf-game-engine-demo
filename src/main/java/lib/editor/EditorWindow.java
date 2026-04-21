@@ -79,6 +79,8 @@ public final class EditorWindow extends JFrame {
     private final JSpinner shootRangeSpinner;
     private final JSpinner projectileSpeedSpinner;
     private final JSpinner shootCooldownSpinner;
+    private final JCheckBox monsterRevivableToggle;
+    private final JSpinner monsterReviveDelaySpinner;
     private final JCheckBox destructibleToggle;
     private final JSpinner durabilitySpinner;
     private final JCheckBox collapseToggle;
@@ -130,6 +132,8 @@ public final class EditorWindow extends JFrame {
         this.shootRangeSpinner = new JSpinner(new SpinnerNumberModel(360, 40, 4000, 10));
         this.projectileSpeedSpinner = new JSpinner(new SpinnerNumberModel(320, 80, 4000, 10));
         this.shootCooldownSpinner = new JSpinner(new SpinnerNumberModel(1.2, 0.1, 10.0, 0.1));
+        this.monsterRevivableToggle = new JCheckBox("可复活", false);
+        this.monsterReviveDelaySpinner = new JSpinner(new SpinnerNumberModel(6.0, 0.0, 3600.0, 0.5));
         this.destructibleToggle = new JCheckBox("可破坏", false);
         this.durabilitySpinner = new JSpinner(new SpinnerNumberModel(100, 1, 9999, 1));
         this.collapseToggle = new JCheckBox("失去支撑后倒塌", false);
@@ -260,6 +264,10 @@ public final class EditorWindow extends JFrame {
         form.add(projectileSpeedSpinner);
         form.add(new JLabel("射击冷却"));
         form.add(shootCooldownSpinner);
+        form.add(new JLabel("可复活"));
+        form.add(monsterRevivableToggle);
+        form.add(new JLabel("复活延迟（秒）"));
+        form.add(monsterReviveDelaySpinner);
 
         form.add(new JLabel("--- 建筑属性 ---"));
         form.add(new JLabel(""));
@@ -487,6 +495,12 @@ public final class EditorWindow extends JFrame {
             projectileSpeedSpinner.setEnabled(enabled);
             shootCooldownSpinner.setEnabled(enabled);
         });
+        monsterRevivableToggle.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            monsterReviveDelaySpinner.setEnabled(monsterRevivableToggle.isSelected() && controller.getSelectedObject() instanceof MonsterObject);
+        });
         collapseToggle.addActionListener(event -> {
             if (updatingControls) {
                 return;
@@ -565,6 +579,10 @@ public final class EditorWindow extends JFrame {
                 shootRangeSpinner.setValue(monster.getShootRange());
                 projectileSpeedSpinner.setValue(monster.getProjectileSpeed());
                 shootCooldownSpinner.setValue(monster.getShootCooldown());
+                monsterRevivableToggle.setEnabled(true);
+                monsterRevivableToggle.setSelected(monster.isRevivable());
+                monsterReviveDelaySpinner.setEnabled(monster.isRevivable());
+                monsterReviveDelaySpinner.setValue(monster.getReviveDelaySeconds());
             } else {
                 monsterHealDropSpinner.setEnabled(false);
                 monsterHealDropSpinner.setValue(0);
@@ -576,6 +594,10 @@ public final class EditorWindow extends JFrame {
                 shootRangeSpinner.setValue(360);
                 projectileSpeedSpinner.setValue(320);
                 shootCooldownSpinner.setValue(1.2);
+                monsterRevivableToggle.setEnabled(false);
+                monsterRevivableToggle.setSelected(false);
+                monsterReviveDelaySpinner.setEnabled(false);
+                monsterReviveDelaySpinner.setValue(6.0);
             }
 
             if (selected instanceof SceneObject scene) {
@@ -641,6 +663,9 @@ public final class EditorWindow extends JFrame {
         shootRangeSpinner.setEnabled(false);
         projectileSpeedSpinner.setEnabled(false);
         shootCooldownSpinner.setEnabled(false);
+        monsterRevivableToggle.setEnabled(false);
+        monsterRevivableToggle.setSelected(false);
+        monsterReviveDelaySpinner.setEnabled(false);
         destructibleToggle.setEnabled(false);
         destructibleToggle.setSelected(false);
         durabilitySpinner.setEnabled(false);
@@ -735,6 +760,8 @@ public final class EditorWindow extends JFrame {
             monster.setShootRange((int) shootRangeSpinner.getValue());
             monster.setProjectileSpeed((int) projectileSpeedSpinner.getValue());
             monster.setShootCooldown(((Number) shootCooldownSpinner.getValue()).doubleValue());
+            monster.setRevivable(monsterRevivableToggle.isSelected());
+            monster.setReviveDelaySeconds(((Number) monsterReviveDelaySpinner.getValue()).doubleValue());
         }
 
         if (selected instanceof SceneObject scene) {

@@ -10,6 +10,7 @@ import lib.physics.MovementResult;
 
 public final class MonsterObject extends ActorObject {
     private static final int DEFAULT_HEAL_DROP_SIZE = 28;
+    private static final double DEFAULT_REVIVE_DELAY_SECONDS = 6.0;
     private static final Color PROJECTILE_COLOR = new Color(255, 120, 80);
     private static final double JUMP_VELOCITY = 650.0;
     private static final double JUMP_COOLDOWN_SECONDS = 0.75;
@@ -42,6 +43,9 @@ public final class MonsterObject extends ActorObject {
     private boolean airborne = false;
     private boolean bomber = false;
     private int bombRadius = 72;
+    private boolean revivable = false;
+    private double reviveDelaySeconds = DEFAULT_REVIVE_DELAY_SECONDS;
+    private double reviveTimer = 0.0;
     private double jumpCooldownRemaining = 0.0;
     private double dodgeTimeRemaining = 0.0;
     private double dodgeCooldownRemaining = 0.0;
@@ -155,6 +159,25 @@ public final class MonsterObject extends ActorObject {
         this.bombRadius = Math.max(20, bombRadius);
     }
 
+    public boolean isRevivable() {
+        return revivable;
+    }
+
+    public void setRevivable(boolean revivable) {
+        this.revivable = revivable;
+        if (!revivable) {
+            reviveTimer = 0.0;
+        }
+    }
+
+    public double getReviveDelaySeconds() {
+        return reviveDelaySeconds;
+    }
+
+    public void setReviveDelaySeconds(double reviveDelaySeconds) {
+        this.reviveDelaySeconds = Math.max(0.0, reviveDelaySeconds);
+    }
+
     @Override
     public void update(GameWorld world, double deltaSeconds) {
         if (isDying()) {
@@ -235,6 +258,24 @@ public final class MonsterObject extends ActorObject {
         }
 
         tryAttackAtPlayer(world);
+    }
+
+    @Override
+    public void updateInactive(GameWorld world, double deltaSeconds) {
+        if (world == null || isActive() || !isDying() || !revivable || deltaSeconds <= 0.0) {
+            return;
+        }
+        if (reviveTimer <= 0.0) {
+            reviveTimer = reviveDelaySeconds;
+        }
+        if (reviveTimer <= 0.0) {
+            reviveFromDormantState();
+            return;
+        }
+        reviveTimer = Math.max(0.0, reviveTimer - deltaSeconds);
+        if (reviveTimer <= 0.0) {
+            reviveFromDormantState();
+        }
     }
 
     @Override
@@ -581,6 +622,21 @@ public final class MonsterObject extends ActorObject {
             healDropAmount
         );
         world.addObject(drop);
+    }
+
+    private void reviveFromDormantState() {
+        revive();
+        setHealth(getMaxHealth());
+        setVelocityY(0.0);
+        shootCooldownRemaining = 0.0;
+        jumpCooldownRemaining = 0.0;
+        dodgeTimeRemaining = 0.0;
+        dodgeCooldownRemaining = 0.0;
+        dodgeDirectionX = 0;
+        strafeTimer = STRAFE_INTERVAL_SECONDS;
+        strafeDirection = 1;
+        killRecorded = false;
+        reviveTimer = 0.0;
     }
 
     private void tryAttackAtPlayer(GameWorld world) {

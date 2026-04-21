@@ -41,6 +41,8 @@ public class GameObjectFactoryTest {
         monster.setAirborne(true);
         monster.setBomber(true);
         monster.setBombRadius(96);
+        monster.setRevivable(true);
+        monster.setReviveDelaySeconds(7.5);
         monster.setMaterial("plane");
         monster.setSize(96, 40);
         
@@ -59,6 +61,8 @@ public class GameObjectFactoryTest {
         assertTrue(restored.isAirborne());
         assertTrue(restored.isBomber());
         assertEquals(96, restored.getBombRadius());
+        assertTrue(restored.isRevivable());
+        assertEquals(7.5, restored.getReviveDelaySeconds());
     }
 
     @Test
@@ -72,6 +76,17 @@ public class GameObjectFactoryTest {
         assertEquals("gold", restored.getKind());
         assertEquals(50, restored.getValue());
         assertEquals("You found gold!", restored.getMessage());
+    }
+
+    @Test
+    public void testLightSourceItemSerialization() {
+        ItemObject item = new ItemObject("Orb", 50, 50, 32, 32, "lightorb", 50, "Vision!");
+
+        ObjectData data = GameObjectFactory.toObjectData(item);
+        ItemObject restored = (ItemObject) GameObjectFactory.fromObjectData(data);
+
+        assertTrue(restored.isRenewable());
+        assertEquals(15.0, restored.getRespawnDelaySeconds());
     }
 
     @Test

@@ -154,6 +154,58 @@ class GameObjectModelTest {
     }
 
     @Test
+    void lightOrbShouldRespawnAfterBeingCollected() {
+        GameWorld world = new GameWorld(220, 160);
+        PlayerObject player = new PlayerObject("hero", 64, 48);
+        ItemObject lightOrb = new ItemObject("orb", 64, 48, 28, 28, "lightorb", 25, "Orb");
+
+        world.addObject(player);
+        world.addObject(lightOrb);
+
+        int originalRadius = player.getLightRadius();
+        world.update(1.0 / 60.0);
+
+        assertFalse(lightOrb.isActive(), "光源应在拾取后暂时失活");
+        assertTrue(lightOrb.isRenewable(), "光源应默认可再生");
+        assertTrue(player.getLightRadius() > originalRadius, "拾取光源后视野应扩大");
+        assertEquals(1, world.getItemsCollected(), "拾取光源应计入收集进度");
+
+        world.update(14.0);
+        assertFalse(lightOrb.isActive(), "再生冷却未结束前光源不应重新出现");
+
+        world.update(1.0);
+        assertTrue(lightOrb.isActive(), "光源应在延迟结束后重新出现");
+    }
+
+    @Test
+    void revivableMonsterShouldReturnAfterDelay() {
+        GameWorld world = new GameWorld(240, 180);
+        MonsterObject monster = new MonsterObject("slime", 96, 64, 30);
+        monster.setRevivable(true);
+        monster.setReviveDelaySeconds(1.0);
+
+        world.addObject(monster);
+
+        monster.takeDamage(world, monster.getHealth());
+        monster.update(world, 1.0);
+
+        assertTrue(monster.isDying(), "怪物死亡后应进入死亡动画状态");
+        assertFalse(monster.isActive(), "死亡动画结束后怪物应失活");
+        assertEquals(1, world.getKills(), "怪物死亡应计入击杀进度");
+
+        world.update(0.5);
+
+        assertTrue(monster.isDying(), "复活冷却期间怪物仍应处于死亡状态");
+        assertFalse(monster.isActive(), "复活冷却期间怪物不应重新激活");
+
+        world.update(0.6);
+
+        assertTrue(monster.isActive(), "到达复活延迟后怪物应重新激活");
+        assertFalse(monster.isDying(), "复活后怪物不应继续保持死亡状态");
+        assertEquals(monster.getMaxHealth(), monster.getHealth(), "复活后怪物生命值应恢复满值");
+    }
+
+    @Test
     void monsterShouldPatrolWithinWorldBounds() {
         GameWorld world = new GameWorld(120, 90);
         MonsterObject monster = new MonsterObject("slime", 60, 10, 25);
