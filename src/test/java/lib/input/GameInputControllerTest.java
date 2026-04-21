@@ -37,7 +37,7 @@ class GameInputControllerTest {
     }
 
     @Test
-    void shiftShouldIncreaseMovementAcceleration() {
+    void shiftShouldIncreaseMovementAccelerationAndConsumeStamina() {
         GameInputController normalInput = GameInputController.createDefault();
         GameWorld normalWorld = new GameWorld(200, 160);
         PlayerObject normalPlayer = new PlayerObject("normal", 10, 20);
@@ -63,6 +63,34 @@ class GameInputControllerTest {
 
         assertTrue(sprintPlayer.getVelocityX() > normalPlayer.getVelocityX(), "按住 Shift 时应有更高的水平速度");
         assertTrue(sprintPlayer.getX() > normalPlayer.getX(), "按住 Shift 时角色应移动得更远");
+        assertTrue(sprintPlayer.getStamina() < sprintPlayer.getMaxStamina(), "冲刺应消耗体力");
+    }
+
+    @Test
+    void staminaShouldRecoverWhenPlayerStopsMoving() {
+        GameInputController inputController = GameInputController.createDefault();
+        GameWorld world = new GameWorld(200, 160);
+        PlayerObject player = new PlayerObject("runner", 10, 20);
+        player.setDeceleration(1.0);
+        player.setStamina(40.0);
+        world.addObject(player);
+
+        inputController.getKeyboardManager().pressKey(KeyEvent.VK_D);
+        inputController.getKeyboardManager().pressKey(KeyEvent.VK_SHIFT);
+        inputController.applyInputs(world);
+        world.update(1.0 / 60.0);
+        inputController.finishFrame();
+
+        double staminaAfterSprint = player.getStamina();
+        assertTrue(staminaAfterSprint < 40.0, "冲刺应减少体力");
+
+        inputController.getKeyboardManager().releaseKey(KeyEvent.VK_D);
+        inputController.getKeyboardManager().releaseKey(KeyEvent.VK_SHIFT);
+        inputController.applyInputs(world);
+        world.update(1.0 / 60.0);
+        inputController.finishFrame();
+
+        assertTrue(player.getStamina() > staminaAfterSprint, "停止移动后体力应恢复");
     }
 
     @Test

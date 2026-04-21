@@ -134,8 +134,9 @@ public abstract class ActorObject extends BaseObject {
         
         int barW = 60;
         int barH = 6;
+        boolean showStaminaBar = this instanceof PlayerObject;
         int barX = getX() + (getWidth() - barW) / 2;
-        int barY = getY() - 12;
+        int barY = getY() - (showStaminaBar ? 22 : 12);
         
         // 血条背景
         graphics.setColor(new Color(0, 0, 0, 180));
@@ -146,6 +147,16 @@ public abstract class ActorObject extends BaseObject {
         Color healthColor = Color.getHSBColor(healthPercent * 0.33f, 0.9f, 0.9f); // 绿到红
         graphics.setColor(healthColor);
         graphics.fillRoundRect(barX, barY, (int) (barW * healthPercent), barH, 4, 4);
+
+        if (this instanceof PlayerObject player) {
+            int staminaBarY = barY + barH + 4;
+            float staminaPercent = (float) player.getStaminaRatio();
+            Color staminaColor = Color.getHSBColor(0.05f + 0.55f * staminaPercent, 0.9f, 0.95f);
+            graphics.setColor(new Color(0, 0, 0, 180));
+            graphics.fillRoundRect(barX - 1, staminaBarY - 1, barW + 2, barH + 2, 4, 4);
+            graphics.setColor(staminaColor);
+            graphics.fillRoundRect(barX, staminaBarY, (int) (barW * staminaPercent), barH, 4, 4);
+        }
         
         // 名字文本
         graphics.setFont(graphics.getFont().deriveFont(Font.BOLD, (float) fontSize - 4));

@@ -15,8 +15,6 @@ import lib.state.GameSettings;
 import lib.state.GameStateContext;
 
 public final class GameInputController {
-    private static final double SHIFT_ACCELERATION_MULTIPLIER = 1.75;
-
     private final KeyboardManager keyboardManager;
     private final MouseManager mouseManager;
     private final InputActionMapper actionMapper;
@@ -116,11 +114,22 @@ public final class GameInputController {
             ay /= mag;
         }
 
-        double accelerationMultiplier = actionMapper.isKeyboardActive(InputAction.SPRINT, keyboardManager)
-            ? SHIFT_ACCELERATION_MULTIPLIER
-            : 1.0;
+        double deltaSeconds = settings != null && settings.getTargetFPS() > 0
+            ? 1.0 / Math.max(1, settings.getTargetFPS())
+            : 1.0 / 60.0;
+        boolean movingInput = ax != 0.0 || ay != 0.0;
+        boolean sprintHeld = actionMapper.isKeyboardActive(InputAction.SPRINT, keyboardManager);
 
-        player.accelerate(ax * accelerationMultiplier, ay * accelerationMultiplier, 1.0 / 60.0);
+        if (sprintHeld && movingInput) {
+            boolean burstBoost = actionMapper.isKeyboardJustActivated(InputAction.SPRINT, keyboardManager);
+            if (!player.sprintAccelerate(ax, ay, deltaSeconds, burstBoost)) {
+                player.accelerate(ax, ay, deltaSeconds);
+            }
+        } else if (movingInput) {
+            player.accelerate(ax, ay, deltaSeconds);
+        } else {
+            player.recoverStamina(deltaSeconds);
+        }
     }
 
     public void applyVoxelSystem(GameWorld world) {

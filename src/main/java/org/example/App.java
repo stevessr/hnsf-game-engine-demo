@@ -163,7 +163,7 @@ public class App {
             "Primary Software Game Engine Prototype\n\n" +
             "Controls:\n" +
             "- WASD/Arrows: Move\n" +
-            "- Shift: Sprint\n" +
+            "- Shift: Sprint (uses stamina; stop moving to recover)\n" +
             "- Space: Jump\n" +
             "- K: Shoot\n" +
             "- T: Cycle Throttle\n" +

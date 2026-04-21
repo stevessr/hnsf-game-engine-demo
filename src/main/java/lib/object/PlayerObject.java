@@ -27,6 +27,12 @@ public final class PlayerObject extends ActorObject {
     private double walkingTimer = 0;
     private int lightRadius = 200;
     private double lightOrbTimer = 0;
+    private double maxStamina = 100.0;
+    private double stamina = 100.0;
+    private double staminaRecoveryPerSecond = 24.0;
+    private double sprintDrainPerSecond = 36.0;
+    private double sprintAccelerationMultiplier = 4.0;
+    private double sprintBurstMultiplier = 1.35;
     private static final long INVULNERABILITY_DURATION_NANOS = 1_000_000_000L; // 1秒
     private static final String REASON_MONSTER_PREFIX = "被怪物击败：";
     private static final String REASON_COLOR_CONFLICT = "接触到互补色危险方块";
@@ -93,6 +99,66 @@ public final class PlayerObject extends ActorObject {
         return (int) throttlePower;
     }
 
+    public double getStamina() {
+        return stamina;
+    }
+
+    public double getMaxStamina() {
+        return maxStamina;
+    }
+
+    public double getStaminaRatio() {
+        if (maxStamina <= 0.0) {
+            return 0.0;
+        }
+        return Math.max(0.0, Math.min(1.0, stamina / maxStamina));
+    }
+
+    public int getStaminaPercent() {
+        return (int) Math.round(getStaminaRatio() * 100.0);
+    }
+
+    public void setMaxStamina(double maxStamina) {
+        this.maxStamina = Math.max(1.0, maxStamina);
+        this.stamina = Math.min(this.stamina, this.maxStamina);
+    }
+
+    public void setStamina(double stamina) {
+        this.stamina = Math.max(0.0, Math.min(maxStamina, stamina));
+    }
+
+    public double getStaminaRecoveryPerSecond() {
+        return staminaRecoveryPerSecond;
+    }
+
+    public void setStaminaRecoveryPerSecond(double staminaRecoveryPerSecond) {
+        this.staminaRecoveryPerSecond = Math.max(0.0, staminaRecoveryPerSecond);
+    }
+
+    public double getSprintDrainPerSecond() {
+        return sprintDrainPerSecond;
+    }
+
+    public void setSprintDrainPerSecond(double sprintDrainPerSecond) {
+        this.sprintDrainPerSecond = Math.max(0.0, sprintDrainPerSecond);
+    }
+
+    public double getSprintAccelerationMultiplier() {
+        return sprintAccelerationMultiplier;
+    }
+
+    public void setSprintAccelerationMultiplier(double sprintAccelerationMultiplier) {
+        this.sprintAccelerationMultiplier = Math.max(1.0, sprintAccelerationMultiplier);
+    }
+
+    public double getSprintBurstMultiplier() {
+        return sprintBurstMultiplier;
+    }
+
+    public void setSprintBurstMultiplier(double sprintBurstMultiplier) {
+        this.sprintBurstMultiplier = Math.max(1.0, sprintBurstMultiplier);
+    }
+
     public void setDeceleration(double deceleration) {
         this.deceleration = Math.max(0.0, Math.min(1.0, deceleration));
     }
@@ -114,12 +180,40 @@ public final class PlayerObject extends ActorObject {
     }
 
     public void accelerate(double ax, double ay, double deltaSeconds) {
+        applyAcceleration(ax, ay, deltaSeconds, 1.0);
+    }
+
+    public boolean sprintAccelerate(double ax, double ay, double deltaSeconds) {
+        return sprintAccelerate(ax, ay, deltaSeconds, false);
+    }
+
+    public boolean sprintAccelerate(double ax, double ay, double deltaSeconds, boolean burstBoost) {
+        if (deltaSeconds <= 0.0 || (ax == 0.0 && ay == 0.0) || stamina <= 0.0) {
+            return false;
+        }
+        double staminaCost = sprintDrainPerSecond * deltaSeconds * (burstBoost ? sprintBurstMultiplier : 1.0);
+        if (staminaCost <= 0.0 || stamina < staminaCost) {
+            return false;
+        }
+        applyAcceleration(ax, ay, deltaSeconds, sprintAccelerationMultiplier * (burstBoost ? sprintBurstMultiplier : 1.0));
+        setStamina(stamina - staminaCost);
+        return true;
+    }
+
+    public void recoverStamina(double deltaSeconds) {
+        if (deltaSeconds <= 0.0 || stamina >= maxStamina) {
+            return;
+        }
+        setStamina(stamina + (staminaRecoveryPerSecond * deltaSeconds));
+    }
+
+    private void applyAcceleration(double ax, double ay, double deltaSeconds, double multiplier) {
         if (ax != 0 || ay != 0) {
             lastDirX = ax;
             lastDirY = ay;
         }
-        velocityX += ax * throttlePower * deltaSeconds;
-        setVelocityY(getVelocityYDouble() + ay * throttlePower * deltaSeconds);
+        velocityX += ax * throttlePower * multiplier * deltaSeconds;
+        setVelocityY(getVelocityYDouble() + ay * throttlePower * multiplier * deltaSeconds);
     }
 
     public void setVelocity(double vx, double vy) {
