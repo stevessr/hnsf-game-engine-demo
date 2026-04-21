@@ -144,6 +144,16 @@ public interface GameSettings {
      */
     void setLightingIntensity(float intensity);
     /**
+     * 获取音效音量 (0.0 - 1.0)。
+     */
+    float getVolume();
+
+    /**
+     * 设置音效音量。
+     */
+    void setVolume(float volume);
+
+    /**
      * 手动触发一次设置的持久化保存。
      */
     void savePersistentSettings();

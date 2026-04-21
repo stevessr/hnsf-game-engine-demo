@@ -20,33 +20,45 @@ public final class SoundManager {
     private float volume = 1.0f; // 0.0 to 1.0
 
     public void playSound(String soundName) {
+        if (volume <= 0.0f) {
+            return;
+        }
         String path = "/audio/" + soundName + ".wav";
-        try (InputStream is = getClass().getResourceAsStream(path)) {
+        try {
+            InputStream is = getClass().getResourceAsStream(path);
             if (is == null) {
                 log.warn("Sound file not found: {}", path);
                 return;
             }
             
             // 使用 javax.sound.sampled 播放
-            try (AudioInputStream ais = AudioSystem.getAudioInputStream(new BufferedInputStream(is))) {
-                Clip clip = AudioSystem.getClip();
-                clip.open(ais);
-                
-                // 设置音量
-                if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-                    FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-                    float dB = (float) (Math.log(volume) / Math.log(10.0) * 20.0);
-                    gainControl.setValue(dB);
-                }
-                
-                clip.start();
-                // 自动关闭 Clip 的资源
-                clip.addLineListener(event -> {
-                    if (event.getType() == javax.sound.sampled.LineEvent.Type.STOP) {
-                        clip.close();
-                    }
-                });
+            BufferedInputStream bis = new BufferedInputStream(is);
+            AudioInputStream ais = AudioSystem.getAudioInputStream(bis);
+            Clip clip = AudioSystem.getClip();
+            clip.open(ais);
+            
+            // 设置音量
+            if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+                FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+                float dB = (float) (Math.log(volume) / Math.log(10.0) * 20.0);
+                // 确保 dB 在有效范围内
+                float min = gainControl.getMinimum();
+                float max = gainControl.getMaximum();
+                gainControl.setValue(Math.max(min, Math.min(max, dB)));
             }
+            
+            clip.start();
+            // 自动关闭资源
+            clip.addLineListener(event -> {
+                if (event.getType() == javax.sound.sampled.LineEvent.Type.STOP) {
+                    clip.close();
+                    try {
+                        ais.close();
+                        bis.close();
+                        is.close();
+                    } catch (Exception ignored) {}
+                }
+            });
         } catch (Exception e) {
             log.error("Error playing sound: {}", soundName, e);
         }

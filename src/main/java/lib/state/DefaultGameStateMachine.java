@@ -423,6 +423,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         boolean lightingEnabled = settings != null && settings.isLightingEnabled();
         float ambient = settings != null ? settings.getAmbientLight() : 0.0f;
         float intensity = settings != null ? settings.getLightingIntensity() : 1.0f;
+        float volume = settings != null ? settings.getVolume() : 1.0f;
 
         MenuObject optionsMenu = new MenuObject(OPTIONS_MENU_NAME, 0, 0, menuWidth, menuHeight, "Options", 
             List.of("Resolution: " + (settings instanceof SwingGamePanel p ? p.getWidth() : world.getWidth()) + "x" + (settings instanceof SwingGamePanel p ? p.getHeight() : world.getHeight()), 
@@ -431,6 +432,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
                     "Lighting: " + (lightingEnabled ? "On" : "Off"), 
                     "Ambient: " + (int) (ambient * 100) + "%",
                     "Intensity: " + (int) (intensity * 100) + "%",
+                    "Audio: " + (int) (volume * 100) + "%",
                     "UI Font: " + fontSize, "Key Bindings", "Back"));
         optionsMenu.setFontSize(fontSize);
         optionsMenu.setSize(menuWidth, Math.max(menuHeight, optionsMenu.getPreferredHeight()));
@@ -457,6 +459,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             cycleAmbientLight(settings, menu);
         } else if (selected.startsWith("Intensity: ")) {
             cycleLightingIntensity(settings, menu);
+        } else if (selected.startsWith("Audio: ")) {
+            cycleVolume(settings, menu);
         } else if (selected.equals("Key Bindings")) {
             if (settings instanceof SwingGamePanel panel) {
                 KeyBindingsWindow.open(panel);
@@ -587,6 +591,25 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         for (int i = 0; i < options.size(); i++) {
             if (options.get(i).startsWith("Intensity: ")) {
                 options.set(i, "Intensity: " + (int) (next * 100) + "%");
+            }
+        }
+        menu.setOptions(options);
+    }
+
+    private void cycleVolume(GameSettings settings, MenuObject menu) {
+        if (settings == null) {
+            return;
+        }
+        float current = settings.getVolume();
+        float next = (current + 0.25f);
+        if (next > 1.05f) {
+            next = 0.0f;
+        }
+        settings.setVolume(next);
+        List<String> options = new ArrayList<>(menu.getOptions());
+        for (int i = 0; i < options.size(); i++) {
+            if (options.get(i).startsWith("Audio: ")) {
+                options.set(i, "Audio: " + (int) (next * 100) + "%");
             }
         }
         menu.setOptions(options);

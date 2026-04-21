@@ -48,6 +48,7 @@ public final class SettingsRepository {
         boolean debugEnabled,
         float ambientLight,
         float lightingIntensity,
+        float volume,
         JSONObject keyBindings
     ) {
         JSONObject json = new JSONObject();
@@ -62,6 +63,7 @@ public final class SettingsRepository {
         json.put("debugEnabled", debugEnabled);
         json.put("ambientLight", ambientLight);
         json.put("lightingIntensity", lightingIntensity);
+        json.put("volume", volume);
         json.put("keyBindings", keyBindings);
 
         try {

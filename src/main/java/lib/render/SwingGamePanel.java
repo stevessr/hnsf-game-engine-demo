@@ -114,6 +114,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         if (json.has("lightingIntensity")) {
             setLightingIntensity((float)json.getDouble("lightingIntensity"));
         }
+        
+        if (json.has("volume")) {
+            setVolume((float)json.getDouble("volume"));
+        }
 
         if (json.has("keyBindings")) {
             deserializeKeyBindings(json.getJSONObject("keyBindings"));
@@ -139,6 +143,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             isDebugEnabled(),
             getAmbientLight(),
             getLightingIntensity(),
+            getVolume(),
             serializeKeyBindings()
         );
     }
@@ -309,6 +314,19 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             world.getLightingManager().setIntensityMultiplier(intensity);
             savePersistentSettings();
             repaint();
+        }
+    }
+
+    @Override
+    public float getVolume() {
+        return world != null ? world.getSoundManager().getVolume() : 1.0f;
+    }
+
+    @Override
+    public void setVolume(float volume) {
+        if (world != null) {
+            world.getSoundManager().setVolume(volume);
+            savePersistentSettings();
         }
     }
 
