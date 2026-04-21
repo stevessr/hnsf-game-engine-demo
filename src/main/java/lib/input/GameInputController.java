@@ -15,9 +15,11 @@ import lib.state.GameSettings;
 import lib.state.GameStateContext;
 
 public final class GameInputController {
+    private static final long SPRINT_WIND_SOUND_COOLDOWN_NANOS = 180_000_000L;
     private final KeyboardManager keyboardManager;
     private final MouseManager mouseManager;
     private final InputActionMapper actionMapper;
+    private long lastSprintWindSoundTimeNanos;
 
     public GameInputController(KeyboardManager keyboardManager, MouseManager mouseManager, InputActionMapper actionMapper) {
         this.keyboardManager = Objects.requireNonNull(keyboardManager, "keyboardManager must not be null");
@@ -122,7 +124,9 @@ public final class GameInputController {
 
         if (sprintHeld && movingInput) {
             boolean burstBoost = actionMapper.isKeyboardJustActivated(InputAction.SPRINT, keyboardManager);
-            if (!player.sprintAccelerate(ax, ay, deltaSeconds, burstBoost)) {
+            if (player.sprintAccelerate(ax, ay, deltaSeconds, burstBoost)) {
+                playSprintWindSound(world, burstBoost);
+            } else {
                 player.accelerate(ax, ay, deltaSeconds);
             }
         } else if (movingInput) {
@@ -130,6 +134,23 @@ public final class GameInputController {
         } else {
             player.recoverStamina(deltaSeconds);
         }
+    }
+
+    private void playSprintWindSound(GameWorld world, boolean burstBoost) {
+        if (world == null
+            || !world.getSoundManager().isEnabled()
+            || world.getSoundManager().getVolume() <= 0.0f
+            || world.getSoundManager().getEffectVolume() <= 0.0f) {
+            return;
+        }
+
+        long now = System.nanoTime();
+        if (!burstBoost && now - lastSprintWindSoundTimeNanos < SPRINT_WIND_SOUND_COOLDOWN_NANOS) {
+            return;
+        }
+
+        world.getSoundManager().playSound("wind");
+        lastSprintWindSoundTimeNanos = now;
     }
 
     public void applyVoxelSystem(GameWorld world) {

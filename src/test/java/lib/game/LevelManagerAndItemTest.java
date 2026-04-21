@@ -174,6 +174,7 @@ class LevelManagerAndItemTest {
 
         assertFalse(item.isActive(), "拾取后物品应失效");
         assertTrue(player.getHealth() > 40, "治疗物品应恢复生命值");
+        assertTrue(player.isHealEffectActive(), "治疗物品应触发补血特效");
     }
 
     @Test

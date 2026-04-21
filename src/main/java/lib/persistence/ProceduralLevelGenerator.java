@@ -16,6 +16,7 @@ public final class ProceduralLevelGenerator {
     private static final int PLAYER_HEIGHT = 48;
     private static final int FOREST_SAFE_ZONE_WIDTH = 320;
     private static final int FOREST_SAFE_SURFACE_OFFSET = 80;
+    private static final int CAVE_VOID_HEIGHT = 120;
 
     private ProceduralLevelGenerator() {
     }
@@ -107,8 +108,13 @@ public final class ProceduralLevelGenerator {
         map.setGravityStrength(800);
 
         int tileSize = 60;
+        int caveVoidY = height - CAVE_VOID_HEIGHT;
+        map.addObject(createVoidZone(0, caveVoidY, width, CAVE_VOID_HEIGHT));
         for (int x = 0; x < width; x += tileSize) {
             for (int y = 0; y < height; y += tileSize) {
+                if (y + tileSize > caveVoidY) {
+                    continue;
+                }
                 double n = noise.noise(x * 0.005, y * 0.005);
                 // 使用噪音阀值生成洞穴结构
                 if (n > 0.3) {
@@ -162,6 +168,14 @@ public final class ProceduralLevelGenerator {
     private static ObjectData createItem(String name, int x, int y) {
         ObjectData data = createObject(GameObjectType.ITEM, name, x, y, 28, 28, Color.CYAN);
         data.setExtraJson("{\"kind\":\"lightorb\", \"value\":150, \"message\":\"Vision enhanced by procedurally generated orb!\"}");
+        return data;
+    }
+
+    private static ObjectData createVoidZone(int x, int y, int width, int height) {
+        ObjectData data = createObject(GameObjectType.SCENE, "cave-void", x, y, width, height, new Color(8, 8, 16, 220));
+        data.setSolid(false);
+        data.setBackground(false);
+        data.setMaterial("void");
         return data;
     }
 

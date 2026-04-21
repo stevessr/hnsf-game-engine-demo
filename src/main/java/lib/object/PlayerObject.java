@@ -27,6 +27,8 @@ public final class PlayerObject extends ActorObject {
     private double walkingTimer = 0;
     private int lightRadius = 200;
     private double lightOrbTimer = 0;
+    private static final double HEAL_EFFECT_DURATION = 0.75;
+    private double healEffectTimer = 0.0;
     private double maxStamina = 100.0;
     private double stamina = 100.0;
     private double staminaRecoveryPerSecond = 24.0;
@@ -258,6 +260,14 @@ public final class PlayerObject extends ActorObject {
         this.lightOrbTimer = Math.max(this.lightOrbTimer, duration);
     }
 
+    public void triggerHealEffect() {
+        this.healEffectTimer = HEAL_EFFECT_DURATION;
+    }
+
+    public boolean isHealEffectActive() {
+        return healEffectTimer > 0.0;
+    }
+
     public void jump(GameWorld world) {
         if (world == null || !world.isGravityEnabled()) {
             return;
@@ -310,6 +320,12 @@ public final class PlayerObject extends ActorObject {
                 lightOrbTimer -= deltaSeconds;
                 if (lightOrbTimer <= 0) {
                     lightRadius = 200;
+                }
+            }
+            if (healEffectTimer > 0) {
+                healEffectTimer -= deltaSeconds;
+                if (healEffectTimer < 0) {
+                    healEffectTimer = 0.0;
                 }
             }
         }
@@ -466,6 +482,7 @@ public final class PlayerObject extends ActorObject {
             return;
         }
         renderBase(graphics);
+        renderHealEffects(graphics);
         renderInfo(graphics, fontSize);
     }
 
@@ -478,8 +495,7 @@ public final class PlayerObject extends ActorObject {
         int x = getX();
         int y = getY();
         int w = getWidth();
-        int h = getHeight();
-        
+
         Color skinColor = new Color(255, 224, 189);
         Color shirtColor = getColor();
         Color pantColor = new Color(50, 50, 50);
@@ -488,16 +504,18 @@ public final class PlayerObject extends ActorObject {
         boolean isSide = Math.abs(lastDirX) > Math.abs(lastDirY);
         boolean isLeft = lastDirX < 0;
 
-        int legOffset = (int)(Math.sin(walkingTimer) * 8);
-        int armOffset = (int)(Math.cos(walkingTimer) * 6);
+        int legSwing = (int) (Math.sin(walkingTimer) * 8);
+        int armOffset = (int) (Math.cos(walkingTimer) * 6);
+        int legBaseY = y + 32;
+        int legHeight = 16;
 
         graphics.setColor(pantColor);
         if (isSide) {
-            graphics.fillRect(x + 12, y + 36, 12, 16 + legOffset/2);
-            graphics.fillRect(x + 24, y + 36, 12, 16 - legOffset/2);
+            graphics.fillRect(x + 12, legBaseY + legSwing, 12, legHeight - legSwing);
+            graphics.fillRect(x + 24, legBaseY - legSwing, 12, legHeight + legSwing);
         } else {
-            graphics.fillRect(x + 6, y + 36, 15, 16 + legOffset);
-            graphics.fillRect(x + 27, y + 36, 15, 16 - legOffset);
+            graphics.fillRect(x + 6, legBaseY + legSwing, 15, legHeight - legSwing);
+            graphics.fillRect(x + 27, legBaseY - legSwing, 15, legHeight + legSwing);
         }
 
         graphics.setColor(shirtColor);
@@ -527,6 +545,43 @@ public final class PlayerObject extends ActorObject {
         } else {
             graphics.setColor(new Color(60, 30, 20));
             graphics.fillArc(x + 8, y, 32, 32, 0, 180);
+        }
+    }
+
+    private void renderHealEffects(Graphics2D graphics) {
+        if (healEffectTimer <= 0.0) {
+            return;
+        }
+
+        double remainingRatio = Math.max(0.0, Math.min(1.0, healEffectTimer / HEAL_EFFECT_DURATION));
+        double progress = 1.0 - remainingRatio;
+        int x = getX();
+        int y = getY();
+        int w = getWidth();
+        int h = getHeight();
+        int expansion = 4 + (int) Math.round(progress * 12.0);
+        float alpha = (float) (0.55 * remainingRatio + 0.15);
+
+        Graphics2D g2d = (Graphics2D) graphics.create();
+        try {
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+            g2d.setColor(new Color(112, 255, 156));
+            g2d.fillOval(x - expansion, y - expansion, w + expansion * 2, h + expansion * 2);
+
+            g2d.setStroke(new BasicStroke(3f));
+            g2d.setColor(new Color(220, 255, 228));
+            int ringExpansion = expansion + 4;
+            g2d.drawOval(x - ringExpansion, y - ringExpansion, w + ringExpansion * 2, h + ringExpansion * 2);
+
+            int cx = x + (w / 2);
+            int sparkleSize = 6 + (int) Math.round(progress * 4.0);
+            g2d.setColor(new Color(245, 255, 248));
+            g2d.fillRect(cx - 1, y - 18 - sparkleSize, 2, 10 + sparkleSize);
+            g2d.fillRect(cx - 5 - sparkleSize / 2, y - 14 - sparkleSize / 2, 10 + sparkleSize, 2);
+            g2d.fillRect(x + 6, y - 8, 2, 2);
+            g2d.fillRect(x + w - 8, y - 10, 2, 2);
+        } finally {
+            g2d.dispose();
         }
     }
 

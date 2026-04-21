@@ -3,6 +3,7 @@ package lib.manager;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -39,5 +40,15 @@ class SoundManagerTest {
 
         soundManager.setEnabled(false);
         assertDoesNotThrow(() -> soundManager.playSound("menu_click"));
+    }
+
+    @Test
+    void windSoundResourceShouldBePackaged() {
+        assertNotNull(getClass().getResource("/audio/wind.wav"));
+    }
+
+    @Test
+    void healSoundResourceShouldBePackaged() {
+        assertNotNull(getClass().getResource("/audio/heal.wav"));
     }
 }

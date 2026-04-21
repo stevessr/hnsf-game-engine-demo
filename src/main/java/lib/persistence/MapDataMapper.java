@@ -186,6 +186,8 @@ public final class MapDataMapper {
         world.setTargetItems(mapData.getTargetItems());
         world.setFailureReason(null);
         world.getEntityManager().clear();
+        world.getLightingManager().clearLights();
+        world.getLightingManager().resetExploration();
         for (ObjectData objectData : mapData.getObjects()) {
             GameObject object = GameObjectFactory.fromObjectData(objectData);
             if (object != null) {

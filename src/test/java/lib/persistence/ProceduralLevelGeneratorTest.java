@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import lib.object.dto.MapData;
 import lib.object.GameObjectType;
 import lib.object.PlayerObject;
+import lib.object.SceneObject;
 import lib.persistence.MapDataMapper;
 
 public class ProceduralLevelGeneratorTest {
@@ -43,5 +44,22 @@ public class ProceduralLevelGeneratorTest {
         MapData map = ProceduralLevelGenerator.generateCave("test-cave", 67890L);
         assertNotNull(map);
         assertTrue(map.getObjects().size() > 50, "Cave should have many wall objects");
+    }
+
+    @Test
+    public void testCaveGenerationShouldIncludeDeadlyVoidZone() {
+        MapData map = ProceduralLevelGenerator.generateCave("test-cave", 67890L);
+        GameWorld world = MapDataMapper.toWorld(map);
+
+        SceneObject voidZone = world.getObjects().stream()
+            .filter(SceneObject.class::isInstance)
+            .map(SceneObject.class::cast)
+            .filter(object -> "void".equalsIgnoreCase(object.getMaterial()))
+            .findFirst()
+            .orElseThrow();
+
+        assertFalse(voidZone.isSolid(), "洞穴底部虚空不应是可碰撞方块");
+        assertEquals(world.getHeight() - 120, voidZone.getY(), "虚空应位于关卡底部");
+        assertEquals(world.getWidth(), voidZone.getWidth(), "虚空应覆盖整个洞穴底部");
     }
 }

@@ -2,6 +2,7 @@ package lib.object;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.util.List;
 import java.util.Locale;
 
 import lib.game.GameWorld;
@@ -144,6 +145,11 @@ public class SceneObject extends BaseObject {
             return;
         }
 
+        if (isVoidLike()) {
+            handleVoid(world);
+            return;
+        }
+
         PlayerObject player = world.findPlayer().orElse(null);
         handleStepBreak(world, player);
         if (!isActive()) {
@@ -154,6 +160,10 @@ public class SceneObject extends BaseObject {
 
     @Override
     public void render(Graphics2D graphics) {
+        if (isVoidLike()) {
+            renderVoid(graphics);
+            return;
+        }
         if (isCloudLike()) {
             renderCloud(graphics);
             return;
@@ -183,6 +193,48 @@ public class SceneObject extends BaseObject {
         if (breakAfterSteps > 0) {
             graphics.setColor(new Color(255, 245, 180, 180));
             graphics.drawString(stepCount + "/" + breakAfterSteps, getX() + 4, getY() + Math.min(14, Math.max(12, getHeight() - 4)));
+        }
+    }
+
+    private boolean isVoidLike() {
+        String material = getMaterial();
+        if (material != null && "void".equalsIgnoreCase(material)) {
+            return true;
+        }
+        String name = getName();
+        return name != null && name.toLowerCase(Locale.ROOT).contains("void");
+    }
+
+    private void renderVoid(Graphics2D graphics) {
+        Color base = getColor() == null ? new Color(6, 6, 12, 230) : getColor();
+        graphics.setColor(base);
+        graphics.fillRect(getX(), getY(), getWidth(), getHeight());
+        graphics.setColor(new Color(18, 18, 32, Math.min(255, base.getAlpha() + 18)));
+        graphics.drawLine(getX(), getY() + getHeight() / 3, getX() + getWidth(), getY() + getHeight() / 3);
+        graphics.drawLine(getX(), getY() + getHeight() * 2 / 3, getX() + getWidth(), getY() + getHeight() * 2 / 3);
+    }
+
+    private void handleVoid(GameWorld world) {
+        String failureReason = "坠入虚空：" + getName();
+        for (GameObject other : List.copyOf(world.getActiveObjects())) {
+            if (other == this || other == null || !other.isActive()) {
+                continue;
+            }
+            if (!overlaps(other)) {
+                continue;
+            }
+            if (other instanceof PlayerObject player) {
+                if (world.getFailureReason() == null) {
+                    world.setFailureReason(failureReason);
+                }
+                player.takeDamage(world, Math.max(1, player.getHealth()));
+                continue;
+            }
+            if (other instanceof ActorObject actor) {
+                actor.takeDamage(world, Math.max(1, actor.getHealth()));
+                continue;
+            }
+            other.setActive(false);
         }
     }
 

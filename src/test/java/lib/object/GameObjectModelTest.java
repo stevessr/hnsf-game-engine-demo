@@ -91,6 +91,69 @@ class GameObjectModelTest {
     }
 
     @Test
+    void playerShouldKeepLegsInsideItsBoundingBox() {
+        PlayerObject player = new PlayerObject("hero", 20, 20);
+
+        BufferedImage image = new BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            player.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        int legAlpha = (image.getRGB(player.getX() + 14, player.getY() + player.getHeight() - 2) >>> 24) & 0xFF;
+        int belowFeetAlpha = (image.getRGB(player.getX() + player.getWidth() / 2, player.getY() + player.getHeight() + 2) >>> 24) & 0xFF;
+        assertTrue(legAlpha > 0, "玩家腿部应被正常渲染");
+        assertEquals(0, belowFeetAlpha, "玩家渲染不应超出自身碰撞框底部");
+    }
+
+    @Test
+    void playerShouldRenderHealEffectAfterHealing() {
+        PlayerObject player = new PlayerObject("hero", 30, 30);
+        player.setHealth(50);
+        player.heal(20);
+
+        assertTrue(player.isHealEffectActive(), "回血后应触发补血特效");
+
+        BufferedImage image = new BufferedImage(140, 140, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            player.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color effectPixel = new Color(image.getRGB(player.getX() + player.getWidth() / 2, player.getY() - 4), true);
+        assertTrue(effectPixel.getAlpha() > 0, "补血特效应在角色上方形成可见光效");
+        assertTrue(effectPixel.getGreen() >= effectPixel.getRed(), "补血特效应偏向绿色");
+    }
+
+    @Test
+    void voidSceneShouldKillActorsAndDeactivateOtherEntities() {
+        GameWorld world = new GameWorld(220, 160);
+        SceneObject voidZone = new SceneObject("cave-void", 0, 96, 220, 64, false, false);
+        voidZone.setColor(new Color(8, 8, 16, 220));
+        voidZone.setMaterial("void");
+        PlayerObject player = new PlayerObject("hero", 24, 104);
+        MonsterObject monster = new MonsterObject("slime", 80, 104, 20);
+        ItemObject item = new ItemObject("orb", 140, 104, 28, 28, "lightorb", 5, "Orb");
+
+        world.addObject(voidZone);
+        world.addObject(player);
+        world.addObject(monster);
+        world.addObject(item);
+
+        world.update(1.0);
+        world.update(1.0);
+
+        assertFalse(player.isActive(), "虚空应杀死玩家");
+        assertFalse(monster.isActive(), "虚空应杀死怪物");
+        assertFalse(item.isActive(), "虚空应清除其他实体");
+        assertTrue(world.getFailureReason() != null && world.getFailureReason().contains("虚空"), "玩家坠入虚空应记录失败原因");
+    }
+
+    @Test
     void monsterShouldPatrolWithinWorldBounds() {
         GameWorld world = new GameWorld(120, 90);
         MonsterObject monster = new MonsterObject("slime", 60, 10, 25);

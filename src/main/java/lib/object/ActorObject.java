@@ -123,10 +123,25 @@ public abstract class ActorObject extends BaseObject {
     }
 
     public final void heal(int amount) {
+        heal(null, amount);
+    }
+
+    public final void heal(GameWorld world, int amount) {
         if (amount <= 0 || dying) {
             return;
         }
+        int previousHealth = health;
         setHealth(health + amount);
+        int healedAmount = health - previousHealth;
+        if (healedAmount <= 0) {
+            return;
+        }
+        if (world != null) {
+            world.getSoundManager().playSound("heal");
+        }
+        if (this instanceof PlayerObject player) {
+            player.triggerHealEffect();
+        }
     }
 
     protected final void renderInfo(Graphics2D graphics, int fontSize) {

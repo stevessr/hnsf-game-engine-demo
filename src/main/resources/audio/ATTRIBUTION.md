@@ -22,6 +22,12 @@ The following sound effects were downloaded from Wikimedia Commons and stored in
   - Commons page lists the source as Freesound / LloydEvans09 and the license
     details on the file page.
 
+- `heal.wav`
+  - Wikimedia Commons file page: https://commons.wikimedia.org/wiki/File:Magical_appearance.ogg
+  - Direct audio URL: https://upload.wikimedia.org/wikipedia/commons/f/fb/Magical_appearance.ogg
+  - Used for healing / recovery feedback. The source asset was downloaded as an
+    OGG file and converted locally to WAV so it can be played by Java Sound.
+
 - `menu_click.wav`
   - Wikimedia Commons file page: https://commons.wikimedia.org/wiki/File:Clicking_%28Gravity_Sound%29.wav
   - Direct audio URL: https://upload.wikimedia.org/wikipedia/commons/b/b5/Clicking_%28Gravity_Sound%29.wav
@@ -80,6 +86,7 @@ external audio sources:
 
 - `bomb_drop.wav`
 - `explosion.wav`
+- `wind.wav`
 
 If you redistribute the game, please review the linked Commons pages for the
 exact license terms and attribution requirements.
