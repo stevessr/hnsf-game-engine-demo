@@ -168,6 +168,7 @@ public final class PlayerObject extends ActorObject {
         
         if (onGround && getVelocityYDouble() >= 0) {
             setVelocityY(-650.0);
+            world.getSoundManager().playSound("jump");
         }
     }
 
@@ -270,7 +271,7 @@ public final class PlayerObject extends ActorObject {
 
         for (GameObject other : world.getCollisions(this)) {
             if (other instanceof MonsterObject monster && monster.isActive()) {
-                takeDamage(monster.getAttack());
+                takeDamage(world, monster.getAttack());
                 lastDamageTimeNanos = now;
                 
                 int pushDirectionX = Integer.compare(getX(), monster.getX());
@@ -301,7 +302,7 @@ public final class PlayerObject extends ActorObject {
                 continue;
             }
             if (isColorConflict(other)) {
-                takeDamage(complementaryColorDamage);
+                takeDamage(world, complementaryColorDamage);
                 lastDamageTimeNanos = now;
                 return;
             }
@@ -319,7 +320,7 @@ public final class PlayerObject extends ActorObject {
         GameObject blockedX = movementResult.getBlockedByX();
         GameObject blockedY = movementResult.getBlockedByY();
         if (isColorConflict(blockedX) || isColorConflict(blockedY)) {
-            takeDamage(complementaryColorDamage);
+            takeDamage(world, complementaryColorDamage);
             lastDamageTimeNanos = now;
         }
     }

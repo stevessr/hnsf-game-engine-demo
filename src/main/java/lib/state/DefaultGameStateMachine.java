@@ -731,6 +731,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             for (GameObject other : world.getCollisions(player)) {
                 if (other.getType() == GameObjectType.GOAL && other.isActive()) {
                     transitionTo(GameState.SETTLEMENT);
+                    world.getSoundManager().playSound("victory");
                     createVictoryMenu(world, context.getSettings(), context.getRuntimeActions().hasNextLevel());
                     return;
                 }
@@ -739,6 +740,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
         if (world.isComplete()) {
             transitionTo(GameState.SETTLEMENT);
+            world.getSoundManager().playSound("victory");
             createVictoryMenu(world, context.getSettings(), context.getRuntimeActions().hasNextLevel());
             return;
         }

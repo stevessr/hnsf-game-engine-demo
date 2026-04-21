@@ -7,6 +7,8 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 
+import lib.game.GameWorld;
+
 /**
  * 具有生命值、攻击力和死亡动画的实体基类。
  */
@@ -98,11 +100,14 @@ public abstract class ActorObject extends BaseObject {
         g2d.dispose();
     }
 
-    public final void takeDamage(int amount) {
+    public final void takeDamage(GameWorld world, int amount) {
         if (amount <= 0 || dying) {
             return;
         }
         setHealth(health - amount);
+        if (world != null) {
+            world.getSoundManager().playSound("hurt");
+        }
     }
 
     public final void heal(int amount) {

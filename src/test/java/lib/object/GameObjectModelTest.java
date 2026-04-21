@@ -31,7 +31,7 @@ class GameObjectModelTest {
     void monsterShouldDeactivateAfterTakingFatalDamage() {
         MonsterObject monster = new MonsterObject("slime", 3, 4, 25);
 
-        monster.takeDamage(1000);
+        monster.takeDamage(null, 1000);
 
         assertEquals(0, monster.getHealth());
         assertTrue(monster.isDying());

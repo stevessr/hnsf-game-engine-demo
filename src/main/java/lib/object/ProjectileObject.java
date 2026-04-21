@@ -42,10 +42,11 @@ public final class ProjectileObject extends BaseObject {
             }
             
             if (other instanceof ActorObject actor) {
-                actor.takeDamage(damage);
+                actor.takeDamage(world, damage);
                 setActive(false);
                 return;
-            } else if (other.getType() == GameObjectType.WALL || other.getType() == GameObjectType.VOXEL) {
+            }
+ else if (other.getType() == GameObjectType.WALL || other.getType() == GameObjectType.VOXEL) {
                 setActive(false);
                 return;
             }

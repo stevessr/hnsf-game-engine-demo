@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 import lib.manager.EntityManager;
+import lib.manager.SoundManager;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
 import lib.object.PlayerObject;
@@ -22,6 +23,7 @@ public final class GameWorld {
     private final EntityManager entityManager;
     private final PhysicsEngine physicsEngine;
     private final LightingManager lightingManager;
+    private final SoundManager soundManager;
     private Camera camera;
     private GameStateMachine stateMachine;
     private int width;
@@ -38,6 +40,10 @@ public final class GameWorld {
 
     public GameWorld(int width, int height) {
         this(width, height, new Color(32, 36, 48));
+    }
+
+    public SoundManager getSoundManager() {
+        return soundManager;
     }
 
     public WinConditionType getWinCondition() {
@@ -106,6 +112,7 @@ public final class GameWorld {
         this.entityManager = new EntityManager();
         this.physicsEngine = new PhysicsEngine();
         this.lightingManager = new LightingManager();
+        this.soundManager = new SoundManager();
         this.width = Math.max(0, width);
         this.height = Math.max(0, height);
         this.backgroundColor = backgroundColor == null ? new Color(32, 36, 48) : backgroundColor;
