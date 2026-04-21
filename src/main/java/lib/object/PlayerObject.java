@@ -282,6 +282,40 @@ public final class PlayerObject extends ActorObject {
     }
 
     public void shoot(GameWorld world) {
+        if (world == null) {
+            return;
+        }
+        shootTowards(world, lastDirX, lastDirY);
+    }
+
+    public void shoot(GameWorld world, double targetX, double targetY) {
+        if (world == null) {
+            return;
+        }
+        double centerX = getX() + getWidth() / 2.0;
+        double centerY = getY() + getHeight() / 2.0;
+        double dx = targetX - centerX;
+        double dy = targetY - centerY;
+        double length = Math.hypot(dx, dy);
+        if (length <= 0.0001) {
+            dx = lastDirX;
+            dy = lastDirY;
+            length = Math.hypot(dx, dy);
+        }
+        if (length <= 0.0001) {
+            dx = 1.0;
+            dy = 0.0;
+            length = 1.0;
+        }
+        lastDirX = dx / length;
+        lastDirY = dy / length;
+        shootTowards(world, lastDirX, lastDirY);
+    }
+
+    private void shootTowards(GameWorld world, double dirX, double dirY) {
+        if (world == null) {
+            return;
+        }
         double now = System.currentTimeMillis() / 1000.0;
         if (now - lastShootTime < shootCooldown) {
             return;
@@ -290,8 +324,8 @@ public final class PlayerObject extends ActorObject {
         lastShootTime = now;
         double px = getX() + getWidth() / 2.0;
         double py = getY() + getHeight() / 2.0;
-        
-        ProjectileObject p = new ProjectileObject("bullet", (int)px, (int)py, lastDirX * 600, lastDirY * 600, getAttack(), this);
+
+        ProjectileObject p = new ProjectileObject("bullet", (int) px, (int) py, dirX * 600, dirY * 600, getAttack(), this);
         world.addObject(p);
         world.getSoundManager().playSound("shoot");
     }

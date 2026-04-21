@@ -11,8 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import lib.game.GameWorld;
 import lib.object.DialogObject;
+import lib.object.GameObjectType;
 import lib.object.MenuObject;
 import lib.object.PlayerObject;
+import lib.object.ProjectileObject;
 
 class GameInputControllerTest {
     @Test
@@ -117,5 +119,36 @@ class GameInputControllerTest {
         assertEquals(2, menu.getSelectedIndex());
         assertTrue(dialog.getMessage().contains("已确认"));
         assertTrue(dialog.getMessage().contains("Exit"));
+    }
+
+    @Test
+    void leftMouseClickShouldShootDuringGameplay() {
+        GameInputController inputController = GameInputController.createDefault();
+        GameWorld world = new GameWorld(240, 180);
+        PlayerObject player = new PlayerObject("hero", 100, 100);
+        world.addObject(player);
+
+        inputController.getMouseManager().moveTo(200, 200);
+        inputController.getMouseManager().pressButton(MouseEvent.BUTTON1, 200, 200);
+        inputController.applyInputs(world);
+        inputController.finishFrame();
+
+        assertEquals(1, world.getObjectsByType(GameObjectType.PROJECTILE).size(), "左键点击应发射子弹");
+        ProjectileObject projectile = (ProjectileObject) world.getObjectsByType(GameObjectType.PROJECTILE).get(0);
+        assertTrue(projectile.getVelocityX() > 0, "子弹应朝鼠标所在方向水平发射");
+        assertTrue(projectile.getVelocityY() > 0, "子弹应朝鼠标所在方向垂直发射");
+        assertTrue(world.getObjectsByType(GameObjectType.VOXEL).isEmpty(), "左键点击不应再创建方块");
+    }
+
+    @Test
+    void middleMouseClickShouldBuildVoxelDuringGameplay() {
+        GameInputController inputController = GameInputController.createDefault();
+        GameWorld world = new GameWorld(240, 180);
+
+        inputController.getMouseManager().pressButton(MouseEvent.BUTTON2, 40, 40);
+        inputController.applyInputs(world);
+        inputController.finishFrame();
+
+        assertEquals(1, world.getObjectsByType(GameObjectType.VOXEL).size(), "中键点击应创建方块");
     }
 }

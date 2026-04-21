@@ -90,7 +90,7 @@ public final class KeyBindingsWindow extends JFrame {
             return;
         }
 
-        mapper.clearBindings(pendingAction);
+        mapper.clearKeyBindings(pendingAction);
         mapper.bindKey(pendingAction, keyCode);
         
         gamePanel.syncInputMap();

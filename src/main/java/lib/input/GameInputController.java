@@ -61,7 +61,7 @@ public final class GameInputController {
     }
 
     public void applyPlayerMovement(GameWorld world, GameSettings settings, PlayerObject player) {
-        if (player == null || !player.isActive()) {
+        if (player == null || !player.isActive() || hasActiveUiOverlay(world)) {
             return;
         }
 
@@ -73,7 +73,9 @@ public final class GameInputController {
             player.jump(world);
         }
 
-        if (actionMapper.isJustActivated(InputAction.SHOOT, keyboardManager, mouseManager)) {
+        if (actionMapper.isMouseJustActivated(InputAction.SHOOT, mouseManager)) {
+            player.shoot(world, mouseManager.getMouseX(), mouseManager.getMouseY());
+        } else if (actionMapper.isKeyboardJustActivated(InputAction.SHOOT, keyboardManager)) {
             player.shoot(world);
         }
 
@@ -154,6 +156,9 @@ public final class GameInputController {
     }
 
     public void applyVoxelSystem(GameWorld world) {
+        if (hasActiveUiOverlay(world)) {
+            return;
+        }
         if (actionMapper.isMouseJustActivated(InputAction.VOXEL_BUILD, mouseManager)) {
             int mx = mouseManager.getMouseX();
             int my = mouseManager.getMouseY();
@@ -253,5 +258,18 @@ public final class GameInputController {
             return;
         }
         dialog.setMessage(prefix + "菜单项：" + selectedOption);
+    }
+
+    private boolean hasActiveUiOverlay(GameWorld world) {
+        if (world == null) {
+            return false;
+        }
+        boolean hasActiveMenu = world.getObjectsByType(GameObjectType.MENU).stream()
+            .anyMatch(object -> object instanceof MenuObject menu && menu.isActive());
+        if (hasActiveMenu) {
+            return true;
+        }
+        return world.getObjectsByType(GameObjectType.DIALOG).stream()
+            .anyMatch(object -> object instanceof DialogObject dialog && dialog.isActive());
     }
 }
