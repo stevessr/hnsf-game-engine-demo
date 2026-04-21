@@ -43,6 +43,8 @@ public final class MapEditorController {
     private Point lastPaintPoint;
     private Consumer<GameObject> selectionListener = object -> {
     };
+    private Consumer<EditMode> modeChangeListener = mode -> {
+    };
     private final Deque<EditorCommand> undoStack = new ArrayDeque<>();
     private final Deque<EditorCommand> redoStack = new ArrayDeque<>();
 
@@ -51,11 +53,17 @@ public final class MapEditorController {
         this.panel = Objects.requireNonNull(panel, "panel must not be null");
         this.overlay = Objects.requireNonNull(overlay, "overlay must not be null");
         this.selectedType = GameObjectType.SCENE;
+        overlay.setModeInfo(editMode.name());
     }
 
     public void setSelectionListener(Consumer<GameObject> selectionListener) {
         this.selectionListener = selectionListener == null ? object -> {
         } : selectionListener;
+    }
+
+    public void setModeChangeListener(Consumer<EditMode> modeChangeListener) {
+        this.modeChangeListener = modeChangeListener == null ? mode -> {
+        } : modeChangeListener;
     }
 
     public void bind() {
@@ -131,6 +139,9 @@ public final class MapEditorController {
             this.editMode = editMode;
             dragOffset = null;
             lastPaintPoint = null;
+            overlay.setModeInfo(editMode.name());
+            modeChangeListener.accept(editMode);
+            panel.repaint();
         }
     }
 
@@ -343,6 +354,10 @@ public final class MapEditorController {
             return;
         }
         switch (event.getKeyCode()) {
+            case KeyEvent.VK_G -> toggleGrid();
+            case KeyEvent.VK_S -> setEditMode(EditMode.SELECT);
+            case KeyEvent.VK_B -> setEditMode(EditMode.BUILD);
+            case KeyEvent.VK_E -> setEditMode(EditMode.ERASE);
             case KeyEvent.VK_LEFT -> moveSelectedBy(-getNudgeStep(event), 0);
             case KeyEvent.VK_RIGHT -> moveSelectedBy(getNudgeStep(event), 0);
             case KeyEvent.VK_UP -> moveSelectedBy(0, -getNudgeStep(event));

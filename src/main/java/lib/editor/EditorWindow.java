@@ -120,6 +120,11 @@ public final class EditorWindow extends JFrame {
         initLayout();
         initActions();
         controller.setSelectionListener(this::updateInspectorFromSelection);
+        controller.setModeChangeListener(mode -> {
+            updatingControls = true;
+            modeSelector.setSelectedItem(formatEditMode(mode));
+            updatingControls = false;
+        });
         refreshLevelSelector();
         updateWorldControlsFromWorld();
         updateInspectorFromSelection(null);
@@ -534,11 +539,22 @@ public final class EditorWindow extends JFrame {
             gridToggle.setSelected(overlay.isShowGrid());
             snapToggle.setSelected(controller.isGridSnap());
             gridSizeSpinner.setValue(controller.getGridSize());
+            modeSelector.setSelectedItem(formatEditMode(controller.getEditMode()));
         } finally {
             updatingControls = false;
         }
         overlay.setGridSize(controller.getGridSize());
         previewPanel.repaint();
+    }
+
+    private String formatEditMode(MapEditorController.EditMode mode) {
+        if (mode == MapEditorController.EditMode.BUILD) {
+            return "建造";
+        }
+        if (mode == MapEditorController.EditMode.ERASE) {
+            return "破坏";
+        }
+        return "选择";
     }
 
     private void applyPropertyChanges() {
