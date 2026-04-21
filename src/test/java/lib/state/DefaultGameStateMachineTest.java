@@ -237,6 +237,54 @@ class DefaultGameStateMachineTest {
     }
 
     @Test
+    void playingInputShouldRespectFrameDeltaSeconds() {
+        GameWorld slowWorld = new GameWorld(240, 180);
+        PlayerObject slowPlayer = new PlayerObject("slow", 10, 20);
+        slowPlayer.setDeceleration(1.0);
+        slowPlayer.setThrottlePower(600);
+        DefaultGameStateMachine slowStateMachine = new DefaultGameStateMachine(GameState.PLAYING);
+        GameInputController slowInputController = GameInputController.createDefault();
+        GameStateContext slowContext = new GameStateContext(
+            slowWorld,
+            slowInputController,
+            null,
+            GameRuntimeActions.noOp(),
+            1.0 / 60.0
+        );
+
+        slowWorld.addObject(slowPlayer);
+        slowWorld.setStateMachine(slowStateMachine);
+        tapKey(slowInputController, KeyEvent.VK_D);
+        slowInputController.processInputs(slowContext);
+        slowInputController.finishFrame();
+
+        GameWorld fastWorld = new GameWorld(240, 180);
+        PlayerObject fastPlayer = new PlayerObject("fast", 10, 20);
+        fastPlayer.setDeceleration(1.0);
+        fastPlayer.setThrottlePower(600);
+        DefaultGameStateMachine fastStateMachine = new DefaultGameStateMachine(GameState.PLAYING);
+        GameInputController fastInputController = GameInputController.createDefault();
+        GameStateContext fastContext = new GameStateContext(
+            fastWorld,
+            fastInputController,
+            null,
+            GameRuntimeActions.noOp(),
+            1.0
+        );
+
+        fastWorld.addObject(fastPlayer);
+        fastWorld.setStateMachine(fastStateMachine);
+        tapKey(fastInputController, KeyEvent.VK_D);
+        fastInputController.processInputs(fastContext);
+        fastInputController.finishFrame();
+
+        assertTrue(
+            fastPlayer.getVelocityX() > slowPlayer.getVelocityX(),
+            "更大的帧时间应带来更强的加速度"
+        );
+    }
+
+    @Test
     void pauseMenuRestartShouldRequestReloadAndReturnToPlaying() {
         GameWorld world = new GameWorld(240, 180);
         PlayerObject player = new PlayerObject("hero", 10, 20);

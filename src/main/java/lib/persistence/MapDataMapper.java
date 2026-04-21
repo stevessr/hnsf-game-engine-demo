@@ -8,6 +8,7 @@ import lib.game.GameWorld;
 import lib.game.WinConditionType;
 import lib.object.GameObject;
 import lib.object.GameObjectFactory;
+import lib.object.PlayerObject;
 import lib.object.dto.MapData;
 import lib.object.dto.ObjectData;
 
@@ -164,6 +165,7 @@ public final class MapDataMapper {
                 world.addObject(object);
             }
         }
+        world.findPlayer().ifPresent(player -> world.setRespawnPoint(player.getX(), player.getY()));
         return world;
     }
 
@@ -177,6 +179,10 @@ public final class MapDataMapper {
         if (world == null || mapData == null) {
             return;
         }
+        PlayerObject existingPlayer = world.findPlayer().orElse(null);
+        int preservedThrottlePower = existingPlayer != null ? existingPlayer.getThrottlePower() : -1;
+        int preservedDeceleration = existingPlayer != null ? existingPlayer.getDecelerationPercent() : -1;
+
         world.setSize(mapData.getWidth(), mapData.getHeight());
         world.setBackgroundColor(mapData.getBackgroundColor());
         world.setGravityEnabled(mapData.isGravityEnabled());
@@ -193,6 +199,18 @@ public final class MapDataMapper {
             if (object != null) {
                 world.addObject(object);
             }
+        }
+        world.findPlayer().ifPresent(player -> world.setRespawnPoint(player.getX(), player.getY()));
+
+        if (preservedThrottlePower >= 0 || preservedDeceleration >= 0) {
+            world.findPlayer().ifPresent(player -> {
+                if (preservedThrottlePower >= 0) {
+                    player.setThrottlePower(preservedThrottlePower);
+                }
+                if (preservedDeceleration >= 0) {
+                    player.setDeceleration(preservedDeceleration / 100.0);
+                }
+            });
         }
     }
 }

@@ -517,7 +517,7 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             deltaSeconds = 0.1;
         }
         
-        inputController.processInputs(new GameStateContext(world, inputController, this, runtimeActions));
+        inputController.processInputs(new GameStateContext(world, inputController, this, runtimeActions, deltaSeconds));
         if (aiTestManager.isEnabled()) {
             aiTestManager.update(world, deltaSeconds);
         }

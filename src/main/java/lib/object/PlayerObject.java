@@ -268,6 +268,18 @@ public final class PlayerObject extends ActorObject {
         return healEffectTimer > 0.0;
     }
 
+    public void respawnAt(int x, int y) {
+        revive();
+        setPosition(x, y);
+        setVelocity(0.0, 0.0);
+        setHealth(getMaxHealth());
+        setStamina(getMaxStamina());
+        walkingTimer = 0.0;
+        healEffectTimer = 0.0;
+        lastDamageTimeNanos = System.nanoTime();
+        lastShootTime = 0.0;
+    }
+
     public void jump(GameWorld world) {
         if (world == null || !world.isGravityEnabled()) {
             return;

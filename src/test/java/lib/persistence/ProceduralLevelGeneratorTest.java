@@ -37,6 +37,8 @@ public class ProceduralLevelGeneratorTest {
         PlayerObject player = world.findPlayer().orElseThrow();
 
         assertFalse(world.collidesWithSolid(player, player.getX(), player.getY()), "程序化森林出生点不应嵌在地面里");
+        assertEquals(48, player.getWidth(), "森林玩家宽度应与标准角色渲染一致");
+        assertEquals(48, player.getHeight(), "森林玩家高度应与标准角色渲染一致");
     }
 
     @Test
@@ -50,6 +52,7 @@ public class ProceduralLevelGeneratorTest {
     public void testCaveGenerationShouldIncludeDeadlyVoidZone() {
         MapData map = ProceduralLevelGenerator.generateCave("test-cave", 67890L);
         GameWorld world = MapDataMapper.toWorld(map);
+        PlayerObject player = world.findPlayer().orElseThrow();
 
         SceneObject voidZone = world.getObjects().stream()
             .filter(SceneObject.class::isInstance)
@@ -61,5 +64,7 @@ public class ProceduralLevelGeneratorTest {
         assertFalse(voidZone.isSolid(), "洞穴底部虚空不应是可碰撞方块");
         assertEquals(world.getHeight() - 120, voidZone.getY(), "虚空应位于关卡底部");
         assertEquals(world.getWidth(), voidZone.getWidth(), "虚空应覆盖整个洞穴底部");
+        assertEquals(48, player.getWidth(), "洞穴玩家宽度应与标准角色渲染一致");
+        assertEquals(48, player.getHeight(), "洞穴玩家高度应与标准角色渲染一致");
     }
 }

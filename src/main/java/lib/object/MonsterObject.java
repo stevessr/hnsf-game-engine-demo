@@ -11,6 +11,22 @@ import lib.physics.MovementResult;
 public final class MonsterObject extends ActorObject {
     private static final int DEFAULT_HEAL_DROP_SIZE = 28;
     private static final Color PROJECTILE_COLOR = new Color(255, 120, 80);
+    private static final double JUMP_VELOCITY = 650.0;
+    private static final double JUMP_COOLDOWN_SECONDS = 0.75;
+    private static final double DODGE_DURATION_SECONDS = 0.28;
+    private static final double DODGE_COOLDOWN_SECONDS = 1.0;
+    private static final double DODGE_SPEED_MULTIPLIER = 2.2;
+    private static final double DODGE_MIN_SPEED = 160.0;
+    private static final double DODGE_TRIGGER_DISTANCE = 220.0;
+    private static final double SMART_DETECTION_RANGE = 560.0;
+    private static final double RANGED_KEEP_DISTANCE_MIN = 180.0;
+    private static final double RANGED_KEEP_DISTANCE_MAX = 360.0;
+    private static final double LOW_HEALTH_RETREAT_RATIO = 0.30;
+    private static final double JUMP_TARGET_VERTICAL_THRESHOLD = 16.0;
+    private static final double STRAFE_INTERVAL_SECONDS = 0.75;
+    private static final double STRAFE_SPEED_MULTIPLIER = 0.55;
+    private static final double CHASE_SPEED_MULTIPLIER = 1.15;
+    private static final double RETREAT_SPEED_MULTIPLIER = 1.35;
 
     private int rewardExperience;
     private boolean aggressive;
@@ -26,6 +42,12 @@ public final class MonsterObject extends ActorObject {
     private boolean airborne = false;
     private boolean bomber = false;
     private int bombRadius = 72;
+    private double jumpCooldownRemaining = 0.0;
+    private double dodgeTimeRemaining = 0.0;
+    private double dodgeCooldownRemaining = 0.0;
+    private int dodgeDirectionX = 0;
+    private double strafeTimer = STRAFE_INTERVAL_SECONDS;
+    private int strafeDirection = 1;
 
     public MonsterObject(String name) {
         this(name, 0, 0, 60);
@@ -146,33 +168,66 @@ public final class MonsterObject extends ActorObject {
             return;
         }
 
-        shootCooldownRemaining = Math.max(0.0, shootCooldownRemaining - deltaSeconds);
+        double frameSeconds = Math.max(0.0, deltaSeconds);
+        shootCooldownRemaining = Math.max(0.0, shootCooldownRemaining - frameSeconds);
+        jumpCooldownRemaining = Math.max(0.0, jumpCooldownRemaining - frameSeconds);
+        dodgeCooldownRemaining = Math.max(0.0, dodgeCooldownRemaining - frameSeconds);
+        if (dodgeTimeRemaining > 0.0) {
+            dodgeTimeRemaining = Math.max(0.0, dodgeTimeRemaining - frameSeconds);
+            if (dodgeTimeRemaining <= 0.0) {
+                dodgeDirectionX = 0;
+            }
+        }
+
+        if (world == null) {
+            int deltaX = (int) Math.round(getSpeed() * directionX * frameSeconds);
+            if (deltaX == 0 && getSpeed() > 0) {
+                deltaX = directionX;
+            }
+            int deltaY = (int) Math.round(getVelocityYDouble() * frameSeconds);
+            setPosition(getX() + deltaX, getY() + deltaY);
+            return;
+        }
 
         if (airborne) {
             setVelocityY(0.0);
-        } else if (world != null && world.isGravityEnabled()) {
-            setVelocityY(getVelocityYDouble() + world.getGravityStrength() * deltaSeconds);
+        } else if (world.isGravityEnabled()) {
+            setVelocityY(getVelocityYDouble() + world.getGravityStrength() * frameSeconds);
         }
 
-        int deltaX = (int) Math.round(getSpeed() * directionX * deltaSeconds);
-        if (deltaX == 0 && getSpeed() > 0) {
-            deltaX = directionX;
+        PlayerObject player = world.findPlayer().orElse(null);
+        boolean dodging = maybeStartDodge(world);
+        MovementPlan plan = dodging ? MovementPlan.dodge(dodgeDirectionX) : resolveMovementPlan(world, player, frameSeconds);
+        if (plan.faceDirectionX != 0) {
+            directionX = plan.faceDirectionX;
         }
-        
-        int deltaY = (int) Math.round(getVelocityYDouble() * deltaSeconds);
+
+        if (plan.shouldJump) {
+            setVelocityY(-JUMP_VELOCITY);
+            jumpCooldownRemaining = JUMP_COOLDOWN_SECONDS;
+            world.getSoundManager().playSound("jump");
+        }
+
+        int moveDirection = dodgeDirectionX != 0 ? dodgeDirectionX : plan.moveDirectionX;
+        double moveSpeed = dodgeDirectionX != 0
+            ? Math.max(getSpeed(), DODGE_MIN_SPEED) * DODGE_SPEED_MULTIPLIER
+            : getSpeed() * plan.speedMultiplier;
+        int deltaX = (int) Math.round(moveSpeed * moveDirection * frameSeconds);
+        if (deltaX == 0 && moveSpeed > 0) {
+            deltaX = moveDirection;
+        }
+
+        int deltaY = (int) Math.round(getVelocityYDouble() * frameSeconds);
 
         int nextX = getX() + deltaX;
         int nextY = getY() + deltaY;
-
-        if (world == null) {
-            setPosition(nextX, nextY);
-            return;
-        }
 
         MovementResult movementResult = world.moveObject(this, nextX, nextY);
         setPosition(movementResult.getResolvedX(), movementResult.getResolvedY());
 
         if (movementResult.isBlockedX()) {
+            dodgeDirectionX = 0;
+            dodgeTimeRemaining = 0.0;
             directionX *= -1;
         }
         if (movementResult.isBlockedY()) {
@@ -278,6 +333,234 @@ public final class MonsterObject extends ActorObject {
         return name != null && name.toLowerCase(Locale.ROOT).contains("plane");
     }
 
+    private boolean maybeStartDodge(GameWorld world) {
+        if (world == null || dodgeTimeRemaining > 0.0 || dodgeCooldownRemaining > 0.0) {
+            return false;
+        }
+
+        ProjectileObject threat = findThreateningProjectile(world);
+        if (threat == null) {
+            return false;
+        }
+
+        int dodgeDirection = chooseDodgeDirection(world, threat);
+        if (dodgeDirection == 0) {
+            return false;
+        }
+
+        dodgeDirectionX = dodgeDirection;
+        dodgeTimeRemaining = DODGE_DURATION_SECONDS;
+        dodgeCooldownRemaining = DODGE_COOLDOWN_SECONDS;
+        directionX = dodgeDirection;
+        return true;
+    }
+
+    private ProjectileObject findThreateningProjectile(GameWorld world) {
+        if (world == null) {
+            return null;
+        }
+
+        double monsterCenterX = getX() + getWidth() / 2.0;
+        double monsterCenterY = getY() + getHeight() / 2.0;
+        ProjectileObject bestThreat = null;
+        double bestTimeToImpact = Double.MAX_VALUE;
+
+        for (GameObject object : world.getObjectsByType(GameObjectType.PROJECTILE)) {
+            if (!(object instanceof ProjectileObject projectile) || !projectile.isActive()) {
+                continue;
+            }
+            if (projectile.getShooter() != null && !(projectile.getShooter() instanceof PlayerObject)) {
+                continue;
+            }
+
+            double projectileCenterX = projectile.getX() + projectile.getWidth() / 2.0;
+            double projectileCenterY = projectile.getY() + projectile.getHeight() / 2.0;
+            double dx = monsterCenterX - projectileCenterX;
+            double dy = monsterCenterY - projectileCenterY;
+            double distance = Math.hypot(dx, dy);
+            if (distance > DODGE_TRIGGER_DISTANCE) {
+                continue;
+            }
+
+            double velocityX = projectile.getVelocityX();
+            double velocityY = projectile.getVelocityY();
+            double speed = Math.hypot(velocityX, velocityY);
+            if (speed <= 0.0) {
+                continue;
+            }
+
+            double closingSpeed = dx * velocityX + dy * velocityY;
+            if (closingSpeed <= 0.0) {
+                continue;
+            }
+
+            double timeToImpact = distance / speed;
+            if (timeToImpact >= bestTimeToImpact || timeToImpact > 1.0) {
+                continue;
+            }
+
+            bestThreat = projectile;
+            bestTimeToImpact = timeToImpact;
+        }
+
+        return bestThreat;
+    }
+
+    private MovementPlan resolveMovementPlan(GameWorld world, PlayerObject player, double frameSeconds) {
+        if (world == null) {
+            return MovementPlan.patrol(directionX, true);
+        }
+        if (!aggressive || player == null || !player.isActive() || player.isDying()) {
+            return MovementPlan.patrol(directionX, shouldJumpForTerrain(world, directionX, false));
+        }
+
+        double monsterCenterX = getX() + getWidth() / 2.0;
+        double monsterCenterY = getY() + getHeight() / 2.0;
+        double playerCenterX = player.getX() + player.getWidth() / 2.0;
+        double playerCenterY = player.getY() + player.getHeight() / 2.0;
+        double dx = playerCenterX - monsterCenterX;
+        double dy = playerCenterY - monsterCenterY;
+        double distance = Math.hypot(dx, dy);
+        if (distance > SMART_DETECTION_RANGE) {
+            return MovementPlan.patrol(directionX, shouldJumpForTerrain(world, directionX, false));
+        }
+
+        int faceDirection = dx >= 0.0 ? 1 : -1;
+        boolean lowHealth = getHealth() <= Math.max(1, (int) Math.round(getMaxHealth() * LOW_HEALTH_RETREAT_RATIO));
+        boolean playerAbove = dy < -JUMP_TARGET_VERTICAL_THRESHOLD && Math.abs(dx) < 300.0;
+
+        if (rangedAttacker) {
+            if (lowHealth && distance < shootRange) {
+                int retreatDirection = -faceDirection;
+                return new MovementPlan(
+                    retreatDirection,
+                    RETREAT_SPEED_MULTIPLIER,
+                    shouldJumpForTerrain(world, retreatDirection, playerAbove)
+                );
+            }
+            if (distance < RANGED_KEEP_DISTANCE_MIN) {
+                int retreatDirection = -faceDirection;
+                return new MovementPlan(
+                    retreatDirection,
+                    RETREAT_SPEED_MULTIPLIER,
+                    shouldJumpForTerrain(world, retreatDirection, playerAbove)
+                );
+            }
+            if (distance > RANGED_KEEP_DISTANCE_MAX) {
+                return new MovementPlan(
+                    faceDirection,
+                    CHASE_SPEED_MULTIPLIER,
+                    shouldJumpForTerrain(world, faceDirection, playerAbove)
+                );
+            }
+
+            strafeTimer -= frameSeconds;
+            if (strafeTimer <= 0.0) {
+                strafeDirection *= -1;
+                strafeTimer = STRAFE_INTERVAL_SECONDS;
+            }
+            int strafeMoveDirection = faceDirection * strafeDirection;
+            return new MovementPlan(strafeMoveDirection, STRAFE_SPEED_MULTIPLIER, faceDirection, false);
+        }
+
+        if (lowHealth && distance < 260.0) {
+            int retreatDirection = -faceDirection;
+            return new MovementPlan(
+                retreatDirection,
+                RETREAT_SPEED_MULTIPLIER,
+                shouldJumpForTerrain(world, retreatDirection, playerAbove)
+            );
+        }
+
+        return new MovementPlan(
+            faceDirection,
+            CHASE_SPEED_MULTIPLIER,
+            shouldJumpForTerrain(world, faceDirection, playerAbove)
+        );
+    }
+
+    private boolean shouldJumpForTerrain(GameWorld world, int moveDirection, boolean targetAbove) {
+        if (world == null || moveDirection == 0 || airborne || !world.isGravityEnabled()
+            || jumpCooldownRemaining > 0.0 || getVelocityYDouble() < 0.0 || !isStandingOnGround(world)) {
+            return false;
+        }
+        if (hasObstacleAhead(world, moveDirection) || hasGapAhead(world, moveDirection)) {
+            return true;
+        }
+        return targetAbove;
+    }
+
+    private int chooseDodgeDirection(GameWorld world, ProjectileObject threat) {
+        if (world == null || threat == null) {
+            return 0;
+        }
+
+        int monsterCenterX = getX() + getWidth() / 2;
+        int threatCenterX = threat.getX() + threat.getWidth() / 2;
+        int preferredDirection = threatCenterX <= monsterCenterX ? 1 : -1;
+
+        if (canMoveSafely(world, preferredDirection)) {
+            return preferredDirection;
+        }
+
+        int alternateDirection = -preferredDirection;
+        if (canMoveSafely(world, alternateDirection)) {
+            return alternateDirection;
+        }
+
+        return 0;
+    }
+
+    private boolean isStandingOnGround(GameWorld world) {
+        return world != null && world.collidesWithSolid(this, getX(), getY() + 1);
+    }
+
+    private boolean hasObstacleAhead(GameWorld world, int direction) {
+        if (world == null || direction == 0) {
+            return false;
+        }
+
+        int probeX = getX() + (direction > 0 ? getWidth() + 4 : -4);
+        int footProbeY = getY() + getHeight() - 10;
+        int chestProbeY = getY() + Math.max(8, getHeight() / 2);
+        return isSolidAt(world, probeX, footProbeY, 6, 8) || isSolidAt(world, probeX, chestProbeY, 6, 8);
+    }
+
+    private boolean hasGapAhead(GameWorld world, int direction) {
+        if (world == null || direction == 0) {
+            return false;
+        }
+
+        int probeX = getX() + (direction > 0 ? getWidth() + 4 : -4);
+        int supportProbeY = getY() + getHeight() - 4;
+        return !isSolidAt(world, probeX, supportProbeY, 6, 8);
+    }
+
+    private boolean canMoveSafely(GameWorld world, int direction) {
+        if (world == null || direction == 0) {
+            return false;
+        }
+
+        return !hasObstacleAhead(world, direction) && !hasGapAhead(world, direction);
+    }
+
+    private boolean isSolidAt(GameWorld world, int x, int y, int width, int height) {
+        if (world == null) {
+            return false;
+        }
+
+        for (SceneObject solid : world.getSolidObjects()) {
+            if (solid != null && rectanglesOverlap(x, y, width, height, solid.getX(), solid.getY(), solid.getWidth(), solid.getHeight())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean rectanglesOverlap(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
+        return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
+    }
+
     private int getFacingDirection() {
         return directionX >= 0 ? 1 : -1;
     }
@@ -357,5 +640,35 @@ public final class MonsterObject extends ActorObject {
         world.addObject(bomb);
         world.getSoundManager().playSound("bomb_drop");
         shootCooldownRemaining = shootCooldown;
+    }
+
+    private static final class MovementPlan {
+        private final int moveDirectionX;
+        private final double speedMultiplier;
+        private final int faceDirectionX;
+        private final boolean shouldJump;
+
+        private MovementPlan(int moveDirectionX, double speedMultiplier, int faceDirectionX, boolean shouldJump) {
+            this.moveDirectionX = moveDirectionX;
+            this.speedMultiplier = speedMultiplier;
+            this.faceDirectionX = faceDirectionX;
+            this.shouldJump = shouldJump;
+        }
+
+        private static MovementPlan idle(int faceDirectionX, boolean shouldJump) {
+            return new MovementPlan(0, 0.0, faceDirectionX, shouldJump);
+        }
+
+        private static MovementPlan patrol(int directionX, boolean shouldJump) {
+            return new MovementPlan(directionX, 1.0, directionX, shouldJump);
+        }
+
+        private static MovementPlan dodge(int dodgeDirectionX) {
+            return new MovementPlan(dodgeDirectionX, 1.0, dodgeDirectionX, false);
+        }
+
+        private MovementPlan(int moveDirectionX, double speedMultiplier, boolean shouldJump) {
+            this(moveDirectionX, speedMultiplier, moveDirectionX == 0 ? 0 : moveDirectionX, shouldJump);
+        }
     }
 }

@@ -173,6 +173,117 @@ class GameObjectModelTest {
     }
 
     @Test
+    void worldRespawnShouldRestoreDeadPlayerWithoutResettingProgress() {
+        GameWorld world = new GameWorld(240, 180);
+        PlayerObject player = new PlayerObject("hero", 64, 48);
+        player.setLevel(4);
+        player.gainExperience(120);
+        player.setThrottlePower(1000);
+        world.addObject(player);
+        world.setRespawnPoint(24, 36);
+        world.recordKill();
+        world.recordItemCollection();
+
+        player.takeDamage(world, player.getHealth());
+        player.update(world, 1.0);
+
+        assertTrue(player.isDying(), "玩家死亡后应进入死亡动画状态");
+        assertFalse(player.isActive(), "死亡动画结束后玩家应失活");
+
+        boolean respawned = world.respawnPlayer();
+
+        assertTrue(respawned, "世界应能重生当前玩家");
+        assertTrue(player.isActive(), "重生后玩家应重新激活");
+        assertFalse(player.isDying(), "重生后玩家不应继续保持死亡状态");
+        assertEquals(24, player.getX(), "重生后玩家应回到出生点 X");
+        assertEquals(36, player.getY(), "重生后玩家应回到出生点 Y");
+        assertEquals(4, player.getLevel(), "重生不应重置玩家等级");
+        assertEquals(120, player.getExperience(), "重生不应重置玩家经验");
+        assertEquals(1, world.getKills(), "重生不应重置击杀进度");
+        assertEquals(1, world.getItemsCollected(), "重生不应重置收集进度");
+    }
+
+    @Test
+    void monsterShouldJumpOverObstacleAhead() {
+        GameWorld world = new GameWorld(220, 160);
+        world.setGravityEnabled(true);
+        world.setGravityStrength(900);
+
+        SceneObject ground = new SceneObject("ground", 0, 120, 220, 40, true, false);
+        WallObject obstacle = new WallObject("wall", 90, 76, 20, 44);
+        MonsterObject monster = new MonsterObject("slime", 40, 76, 25);
+        monster.setSpeed(0);
+
+        world.addObject(ground);
+        world.addObject(obstacle);
+        world.addObject(monster);
+
+        int originalY = monster.getY();
+        world.update(1.0 / 60.0);
+
+        assertTrue(monster.getY() < originalY, "怪物应会尝试跳跃越过前方障碍");
+    }
+
+    @Test
+    void monsterShouldDodgeIncomingProjectile() {
+        GameWorld world = new GameWorld(320, 180);
+        SceneObject ground = new SceneObject("ground", 0, 114, 320, 66, true, false);
+        PlayerObject player = new PlayerObject("hero", 20, 70);
+        MonsterObject monster = new MonsterObject("slime", 160, 70, 25);
+        monster.setSpeed(0);
+        ProjectileObject projectile = new ProjectileObject("bullet", 40, 88, 360, 0, 10, player);
+
+        world.addObject(ground);
+        world.addObject(player);
+        world.addObject(monster);
+        world.addObject(projectile);
+
+        int originalX = monster.getX();
+        world.update(1.0 / 60.0);
+
+        assertTrue(monster.getX() > originalX, "怪物应向远离来袭投射物的方向闪躲");
+    }
+
+    @Test
+    void monsterShouldChaseVisiblePlayerWhenHealthy() {
+        GameWorld world = new GameWorld(320, 180);
+        SceneObject ground = new SceneObject("ground", 0, 114, 320, 66, true, false);
+        PlayerObject player = new PlayerObject("hero", 220, 70);
+        MonsterObject monster = new MonsterObject("slime", 80, 70, 25);
+        monster.setSpeed(30);
+
+        world.addObject(ground);
+        world.addObject(player);
+        world.addObject(monster);
+
+        int originalX = monster.getX();
+        world.update(1.0 / 60.0);
+
+        assertTrue(monster.getX() > originalX, "怪物应主动追向可见玩家");
+    }
+
+    @Test
+    void lowHealthRangedMonsterShouldRetreatFromPlayer() {
+        GameWorld world = new GameWorld(320, 180);
+        SceneObject ground = new SceneObject("ground", 0, 114, 320, 66, true, false);
+        PlayerObject player = new PlayerObject("hero", 100, 70);
+        MonsterObject monster = new MonsterObject("archer", 140, 70, 25);
+        monster.setSpeed(30);
+        monster.setRangedAttacker(true);
+        monster.setShootRange(420);
+        monster.setHealth(10);
+
+        world.addObject(ground);
+        world.addObject(player);
+        world.addObject(monster);
+
+        int originalX = monster.getX();
+        world.update(1.0 / 60.0);
+
+        assertTrue(monster.getX() > originalX, "残血远程怪应优先拉开距离");
+    }
+
+    @Test
     void airborneMonsterShouldKeepAltitudeWhenWorldHasGravity() {
         GameWorld world = new GameWorld(400, 240);
         world.setGravityEnabled(true);

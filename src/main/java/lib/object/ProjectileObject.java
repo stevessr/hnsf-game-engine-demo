@@ -38,6 +38,10 @@ public final class ProjectileObject extends BaseObject {
         return velocityY;
     }
 
+    public GameObject getShooter() {
+        return shooter;
+    }
+
     public static ProjectileObject createBomb(
         String name,
         int x,
