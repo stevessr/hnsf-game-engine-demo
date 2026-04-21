@@ -38,6 +38,10 @@ public final class GameWorld {
     private int itemsCollected = 0;
     private boolean showGoals = true;
     private String failureReason;
+    private double screenShakeMagnitude = 0.0;
+    private double screenShakeDuration = 0.0;
+    private double screenShakeRemaining = 0.0;
+    private double screenShakeElapsed = 0.0;
 
     public GameWorld(int width, int height) {
         this(width, height, new Color(32, 36, 48));
@@ -101,6 +105,40 @@ public final class GameWorld {
             return;
         }
         this.failureReason = failureReason.trim();
+    }
+
+    public void triggerScreenShake(double magnitude, double durationSeconds) {
+        if (magnitude <= 0.0 || durationSeconds <= 0.0) {
+            return;
+        }
+        screenShakeMagnitude = Math.max(screenShakeMagnitude, magnitude);
+        screenShakeDuration = Math.max(screenShakeDuration, durationSeconds);
+        screenShakeRemaining = Math.max(screenShakeRemaining, durationSeconds);
+        screenShakeElapsed = 0.0;
+    }
+
+    public boolean isScreenShaking() {
+        return screenShakeRemaining > 0.0;
+    }
+
+    public int getScreenShakeOffsetX() {
+        if (!isScreenShaking() || screenShakeDuration <= 0.0) {
+            return 0;
+        }
+        double progress = screenShakeRemaining / screenShakeDuration;
+        double amplitude = screenShakeMagnitude * progress * progress;
+        double wave = Math.sin(screenShakeElapsed * 56.0 + 0.7);
+        return (int) Math.round(wave * amplitude);
+    }
+
+    public int getScreenShakeOffsetY() {
+        if (!isScreenShaking() || screenShakeDuration <= 0.0) {
+            return 0;
+        }
+        double progress = screenShakeRemaining / screenShakeDuration;
+        double amplitude = screenShakeMagnitude * progress * progress * 0.75;
+        double wave = Math.cos(screenShakeElapsed * 63.0 + 1.9);
+        return (int) Math.round(wave * amplitude);
     }
 
     public void setShowGoals(boolean showGoals) {
@@ -281,6 +319,7 @@ public final class GameWorld {
         if (!getCurrentState().allowsWorldUpdate()) {
             return;
         }
+        updateScreenShake(deltaSeconds);
         entityManager.updateAll(this, deltaSeconds);
     }
 
@@ -290,7 +329,7 @@ public final class GameWorld {
         
         Graphics2D worldGraphics = (Graphics2D) graphics.create();
         if (camera != null) {
-            worldGraphics.translate(-camera.getX(), -camera.getY());
+            worldGraphics.translate(-camera.getX() + getScreenShakeOffsetX(), -camera.getY() + getScreenShakeOffsetY());
         }
         
         entityManager.renderWorld(worldGraphics);
@@ -298,5 +337,21 @@ public final class GameWorld {
         worldGraphics.dispose();
         
         entityManager.renderUI(graphics);
+    }
+
+    private void updateScreenShake(double deltaSeconds) {
+        if (screenShakeRemaining <= 0.0) {
+            screenShakeMagnitude = 0.0;
+            screenShakeDuration = 0.0;
+            screenShakeElapsed = 0.0;
+            return;
+        }
+        screenShakeElapsed += deltaSeconds;
+        screenShakeRemaining = Math.max(0.0, screenShakeRemaining - deltaSeconds);
+        if (screenShakeRemaining <= 0.0) {
+            screenShakeMagnitude = 0.0;
+            screenShakeDuration = 0.0;
+            screenShakeElapsed = 0.0;
+        }
     }
 }
