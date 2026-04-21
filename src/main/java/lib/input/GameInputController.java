@@ -15,9 +15,11 @@ import lib.state.GameSettings;
 import lib.state.GameStateContext;
 
 public final class GameInputController {
+    private static final long SPRINT_WIND_SOUND_COOLDOWN_NANOS = 180_000_000L;
     private final KeyboardManager keyboardManager;
     private final MouseManager mouseManager;
     private final InputActionMapper actionMapper;
+    private long lastSprintWindSoundTimeNanos;
 
     public GameInputController(KeyboardManager keyboardManager, MouseManager mouseManager, InputActionMapper actionMapper) {
         this.keyboardManager = Objects.requireNonNull(keyboardManager, "keyboardManager must not be null");
@@ -114,7 +116,41 @@ public final class GameInputController {
             ay /= mag;
         }
 
-        player.accelerate(ax, ay, 1.0 / 60.0);
+        double deltaSeconds = settings != null && settings.getTargetFPS() > 0
+            ? 1.0 / Math.max(1, settings.getTargetFPS())
+            : 1.0 / 60.0;
+        boolean movingInput = ax != 0.0 || ay != 0.0;
+        boolean sprintHeld = actionMapper.isKeyboardActive(InputAction.SPRINT, keyboardManager);
+
+        if (sprintHeld && movingInput) {
+            boolean burstBoost = actionMapper.isKeyboardJustActivated(InputAction.SPRINT, keyboardManager);
+            if (player.sprintAccelerate(ax, ay, deltaSeconds, burstBoost)) {
+                playSprintWindSound(world, burstBoost);
+            } else {
+                player.accelerate(ax, ay, deltaSeconds);
+            }
+        } else if (movingInput) {
+            player.accelerate(ax, ay, deltaSeconds);
+        } else {
+            player.recoverStamina(deltaSeconds);
+        }
+    }
+
+    private void playSprintWindSound(GameWorld world, boolean burstBoost) {
+        if (world == null
+            || !world.getSoundManager().isEnabled()
+            || world.getSoundManager().getVolume() <= 0.0f
+            || world.getSoundManager().getEffectVolume() <= 0.0f) {
+            return;
+        }
+
+        long now = System.nanoTime();
+        if (!burstBoost && now - lastSprintWindSoundTimeNanos < SPRINT_WIND_SOUND_COOLDOWN_NANOS) {
+            return;
+        }
+
+        world.getSoundManager().playSound("wind");
+        lastSprintWindSoundTimeNanos = now;
     }
 
     public void applyVoxelSystem(GameWorld world) {
@@ -160,8 +196,10 @@ public final class GameInputController {
             if (hoveredIndex >= 0) {
                 menu.setSelectedIndex(hoveredIndex);
             }
+            world.getSoundManager().playSound("menu_click");
             syncDialog(dialog, "已确认", menu.getSelectedOption());
         } else if (actionMapper.isKeyboardJustActivated(InputAction.MENU_CONFIRM, keyboardManager)) {
+            world.getSoundManager().playSound("menu_click");
             syncDialog(dialog, "已确认", menu.getSelectedOption());
         }
     }

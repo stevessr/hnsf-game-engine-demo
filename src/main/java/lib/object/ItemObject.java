@@ -69,7 +69,7 @@ public final class ItemObject extends BaseObject {
         if (!world.getCollisions(this).contains(player)) {
             return;
         }
-        applyEffect(player);
+        applyEffect(world, player);
         world.recordItemCollection();
         setActive(false);
     }
@@ -85,14 +85,14 @@ public final class ItemObject extends BaseObject {
         graphics.drawString(symbol, getX() + Math.max(4, getWidth() / 3), getY() + Math.max(12, getHeight() / 2));
     }
 
-    private void applyEffect(PlayerObject player) {
+    private void applyEffect(GameWorld world, PlayerObject player) {
         String normalizedKind = kind.toLowerCase(Locale.ROOT);
         switch (normalizedKind) {
-            case "health", "heal", "heart" -> player.heal(value);
+            case "health", "heal", "heart" -> player.heal(world, value);
             case "speed", "boost", "dash" -> player.setThrottlePower(player.getThrottlePower() + value);
             case "lightorb", "vision", "light" -> player.addLightOrbEffect(value, 15.0);
             case "coin", "gem", "xp", "experience" -> player.gainExperience(value);
-            case "shield" -> player.heal(Math.max(1, value / 2));
+            case "shield" -> player.heal(world, Math.max(1, value / 2));
             default -> player.gainExperience(Math.max(1, value));
         }
     }

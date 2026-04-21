@@ -37,6 +37,13 @@ public final class GameObjectFactory {
         }
 
         JSONObject extra = new JSONObject();
+        if (object instanceof SceneObject sceneObject) {
+            extra.put("destructible", sceneObject.isDestructible());
+            extra.put("durability", sceneObject.getDurability());
+            extra.put("collapseWhenUnsupported", sceneObject.isCollapseWhenUnsupported());
+            extra.put("collapseDamage", sceneObject.getCollapseDamage());
+            extra.put("breakAfterSteps", sceneObject.getBreakAfterSteps());
+        }
         if (object instanceof PlayerObject player) {
             extra.put("level", player.getLevel());
             extra.put("experience", player.getExperience());
@@ -51,12 +58,23 @@ public final class GameObjectFactory {
             extra.put("health", monster.getHealth());
             extra.put("attack", monster.getAttack());
             extra.put("speed", monster.getSpeed());
+            extra.put("healDropAmount", monster.getHealDropAmount());
+            extra.put("rangedAttacker", monster.isRangedAttacker());
+            extra.put("shootRange", monster.getShootRange());
+            extra.put("projectileSpeed", monster.getProjectileSpeed());
+            extra.put("shootCooldown", monster.getShootCooldown());
+            extra.put("airborne", monster.isAirborne());
+            extra.put("bomber", monster.isBomber());
+            extra.put("bombRadius", monster.getBombRadius());
         } else if (object instanceof ItemObject item) {
             extra.put("kind", item.getKind());
             extra.put("value", item.getValue());
             extra.put("message", item.getMessage());
         } else if (object instanceof MenuObject menu) {
             extra.put("title", menu.getTitle());
+            if (menu.getSubtitle() != null) {
+                extra.put("subtitle", menu.getSubtitle());
+            }
             extra.put("selectedIndex", menu.getSelectedIndex());
             extra.put("fontSize", menu.getFontSize());
             JSONArray options = new JSONArray();
@@ -69,6 +87,8 @@ public final class GameObjectFactory {
             extra.put("message", dialog.getMessage());
             extra.put("fontSize", dialog.getFontSize());
         }
+
+        extra.put("active", object.isActive());
 
         data.setExtraJson(extra.isEmpty() ? "{}" : extra.toString());
         return data;
@@ -111,6 +131,13 @@ public final class GameObjectFactory {
         object.setPosition(data.getX(), data.getY());
         object.setSize(data.getWidth(), data.getHeight());
         object.setColor(resolveColor(data.getColor()));
+        JSONObject extra = parseExtra(data.getExtraJson());
+        if (object instanceof SceneObject scene) {
+            applySceneExtra(scene, extra);
+        }
+        if (extra.has("active")) {
+            object.setActive(extra.optBoolean("active", object.isActive()));
+        }
         return object;
     }
 
@@ -151,6 +178,9 @@ public final class GameObjectFactory {
         JSONObject extra = parseExtra(data.getExtraJson());
         int rewardExperience = extra.optInt("rewardExperience", 0);
         MonsterObject monster = new MonsterObject(data.getName(), data.getX(), data.getY(), rewardExperience);
+        if (isPlaneLike(data)) {
+            monster.setAirborne(true);
+        }
         if (extra.has("aggressive")) {
             monster.setAggressive(extra.optBoolean("aggressive", monster.isAggressive()));
         }
@@ -162,6 +192,30 @@ public final class GameObjectFactory {
         }
         if (extra.has("speed")) {
             monster.setSpeed(extra.optInt("speed", monster.getSpeed()));
+        }
+        if (extra.has("healDropAmount")) {
+            monster.setHealDropAmount(extra.optInt("healDropAmount", monster.getHealDropAmount()));
+        }
+        if (extra.has("rangedAttacker")) {
+            monster.setRangedAttacker(extra.optBoolean("rangedAttacker", monster.isRangedAttacker()));
+        }
+        if (extra.has("shootRange")) {
+            monster.setShootRange(extra.optInt("shootRange", monster.getShootRange()));
+        }
+        if (extra.has("projectileSpeed")) {
+            monster.setProjectileSpeed(extra.optInt("projectileSpeed", monster.getProjectileSpeed()));
+        }
+        if (extra.has("shootCooldown")) {
+            monster.setShootCooldown(extra.optDouble("shootCooldown", monster.getShootCooldown()));
+        }
+        if (extra.has("airborne")) {
+            monster.setAirborne(extra.optBoolean("airborne", monster.isAirborne()));
+        }
+        if (extra.has("bomber")) {
+            monster.setBomber(extra.optBoolean("bomber", monster.isBomber()));
+        }
+        if (extra.has("bombRadius")) {
+            monster.setBombRadius(extra.optInt("bombRadius", monster.getBombRadius()));
         }
         return monster;
     }
@@ -222,6 +276,9 @@ public final class GameObjectFactory {
         if (extra.has("selectedIndex")) {
             menu.setSelectedIndex(extra.optInt("selectedIndex", menu.getSelectedIndex()));
         }
+        if (extra.has("subtitle")) {
+            menu.setSubtitle(extra.optString("subtitle", menu.getSubtitle()));
+        }
         if (extra.has("fontSize")) {
             menu.setFontSize(extra.optInt("fontSize", menu.getFontSize()));
         }
@@ -249,6 +306,42 @@ public final class GameObjectFactory {
 
     private static Color resolveColor(Color color) {
         return color == null ? Color.WHITE : color;
+    }
+
+    private static void applySceneExtra(SceneObject scene, JSONObject extra) {
+        if (scene == null || extra == null) {
+            return;
+        }
+        if (extra.has("destructible")) {
+            scene.setDestructible(extra.optBoolean("destructible", scene.isDestructible()));
+        }
+        if (extra.has("durability")) {
+            scene.setDurability(extra.optInt("durability", scene.getDurability()));
+        }
+        if (extra.has("collapseWhenUnsupported")) {
+            scene.setCollapseWhenUnsupported(extra.optBoolean("collapseWhenUnsupported", scene.isCollapseWhenUnsupported()));
+        }
+        if (extra.has("collapseDamage")) {
+            scene.setCollapseDamage(extra.optInt("collapseDamage", scene.getCollapseDamage()));
+        }
+        if (extra.has("breakAfterSteps")) {
+            scene.setBreakAfterSteps(extra.optInt("breakAfterSteps", scene.getBreakAfterSteps()));
+        }
+    }
+
+    private static boolean isPlaneLike(ObjectData data) {
+        if (data == null) {
+            return false;
+        }
+        String material = data.getMaterial();
+        if (material != null) {
+            String normalizedMaterial = material.toLowerCase();
+            if (normalizedMaterial.contains("plane") || normalizedMaterial.contains("aircraft")) {
+                return true;
+            }
+        }
+        String name = data.getName();
+        return name != null && name.toLowerCase().contains("plane");
     }
 
     private static JSONObject parseExtra(String extraJson) {

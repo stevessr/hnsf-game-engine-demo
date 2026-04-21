@@ -154,6 +154,56 @@ public interface GameSettings {
     void setVolume(float volume);
 
     /**
+     * 判断音效是否启用。
+     */
+    boolean isSoundEnabled();
+
+    /**
+     * 设置音效是否启用。
+     */
+    void setSoundEnabled(boolean enabled);
+
+    /**
+     * 获取受伤/受击类音效音量。
+     */
+    float getDamageVolume();
+
+    /**
+     * 设置受伤/受击类音效音量。
+     */
+    void setDamageVolume(float volume);
+
+    /**
+     * 获取开火类音效音量。
+     */
+    float getShootVolume();
+
+    /**
+     * 设置开火类音效音量。
+     */
+    void setShootVolume(float volume);
+
+    /**
+     * 获取菜单类音效音量。
+     */
+    float getMenuVolume();
+
+    /**
+     * 设置菜单类音效音量。
+     */
+    void setMenuVolume(float volume);
+
+    /**
+     * 获取环境/交互类音效音量。
+     */
+    float getEffectVolume();
+
+    /**
+     * 设置环境/交互类音效音量。
+     */
+    void setEffectVolume(float volume);
+
+    /**
      * 手动触发一次设置的持久化保存。
      */
     void savePersistentSettings();

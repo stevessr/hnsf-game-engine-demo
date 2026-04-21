@@ -118,6 +118,21 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         if (json.has("volume")) {
             setVolume((float)json.getDouble("volume"));
         }
+        if (json.has("soundEnabled")) {
+            setSoundEnabled(json.getBoolean("soundEnabled"));
+        }
+        if (json.has("damageVolume")) {
+            setDamageVolume((float) json.getDouble("damageVolume"));
+        }
+        if (json.has("shootVolume")) {
+            setShootVolume((float) json.getDouble("shootVolume"));
+        }
+        if (json.has("menuVolume")) {
+            setMenuVolume((float) json.getDouble("menuVolume"));
+        }
+        if (json.has("effectVolume")) {
+            setEffectVolume((float) json.getDouble("effectVolume"));
+        }
 
         if (json.has("keyBindings")) {
             deserializeKeyBindings(json.getJSONObject("keyBindings"));
@@ -134,8 +149,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         settingsRepository.saveSettings(
             targetFPS,
             uiFontSize,
-            getWidth(),
-            getHeight(),
+            resolveSavedPanelWidth(),
+            resolveSavedPanelHeight(),
             getThrottlePower(),
             getDeceleration(),
             isGravityEnabled(),
@@ -144,6 +159,11 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             getAmbientLight(),
             getLightingIntensity(),
             getVolume(),
+            isSoundEnabled(),
+            getDamageVolume(),
+            getShootVolume(),
+            getMenuVolume(),
+            getEffectVolume(),
             serializeKeyBindings()
         );
     }
@@ -331,6 +351,71 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     }
 
     @Override
+    public boolean isSoundEnabled() {
+        return world != null ? world.getSoundManager().isEnabled() : true;
+    }
+
+    @Override
+    public void setSoundEnabled(boolean enabled) {
+        if (world != null) {
+            world.getSoundManager().setEnabled(enabled);
+            savePersistentSettings();
+        }
+    }
+
+    @Override
+    public float getDamageVolume() {
+        return world != null ? world.getSoundManager().getDamageVolume() : 1.0f;
+    }
+
+    @Override
+    public void setDamageVolume(float volume) {
+        if (world != null) {
+            world.getSoundManager().setDamageVolume(volume);
+            savePersistentSettings();
+        }
+    }
+
+    @Override
+    public float getShootVolume() {
+        return world != null ? world.getSoundManager().getShootVolume() : 1.0f;
+    }
+
+    @Override
+    public void setShootVolume(float volume) {
+        if (world != null) {
+            world.getSoundManager().setShootVolume(volume);
+            savePersistentSettings();
+        }
+    }
+
+    @Override
+    public float getMenuVolume() {
+        return world != null ? world.getSoundManager().getMenuVolume() : 1.0f;
+    }
+
+    @Override
+    public void setMenuVolume(float volume) {
+        if (world != null) {
+            world.getSoundManager().setMenuVolume(volume);
+            savePersistentSettings();
+        }
+    }
+
+    @Override
+    public float getEffectVolume() {
+        return world != null ? world.getSoundManager().getEffectVolume() : 1.0f;
+    }
+
+    @Override
+    public void setEffectVolume(float volume) {
+        if (world != null) {
+            world.getSoundManager().setEffectVolume(volume);
+            savePersistentSettings();
+        }
+    }
+
+    @Override
     public boolean isDebugEnabled() {
         return debugEnabled;
     }
@@ -479,8 +564,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             public void mousePressed(MouseEvent event) {
                 requestFocusInWindow();
                 double scale = getScale();
-                int offsetX = (int) ((getWidth() - 960 * scale) / 2);
-                int offsetY = (int) ((getHeight() - 540 * scale) / 2);
+                int viewW = getViewportWidth();
+                int viewH = getViewportHeight();
+                int offsetX = (int) ((getWidth() - viewW * scale) / 2);
+                int offsetY = (int) ((getHeight() - viewH * scale) / 2);
                 
                 int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
                 int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
@@ -491,8 +578,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             @Override
             public void mouseReleased(MouseEvent event) {
                 double scale = getScale();
-                int offsetX = (int) ((getWidth() - 960 * scale) / 2);
-                int offsetY = (int) ((getHeight() - 540 * scale) / 2);
+                int viewW = getViewportWidth();
+                int viewH = getViewportHeight();
+                int offsetX = (int) ((getWidth() - viewW * scale) / 2);
+                int offsetY = (int) ((getHeight() - viewH * scale) / 2);
                 int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
                 int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
                 inputController.getMouseManager().releaseButton(event.getButton(), logicalX, logicalY);
@@ -501,8 +590,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             @Override
             public void mouseMoved(MouseEvent event) {
                 double scale = getScale();
-                int offsetX = (int) ((getWidth() - 960 * scale) / 2);
-                int offsetY = (int) ((getHeight() - 540 * scale) / 2);
+                int viewW = getViewportWidth();
+                int viewH = getViewportHeight();
+                int offsetX = (int) ((getWidth() - viewW * scale) / 2);
+                int offsetY = (int) ((getHeight() - viewH * scale) / 2);
                 int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
                 int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
                 inputController.getMouseManager().moveTo(logicalX, logicalY);
@@ -531,9 +622,41 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     }
 
     private double getScale() {
-        double scaleX = (double) getWidth() / 960;
-        double scaleY = (double) getHeight() / 540;
+        double scaleX = (double) getWidth() / getViewportWidth();
+        double scaleY = (double) getHeight() / getViewportHeight();
         return Math.min(scaleX, scaleY);
+    }
+
+    private int getViewportWidth() {
+        return camera == null ? 960 : camera.getViewportWidth();
+    }
+
+    private int getViewportHeight() {
+        return camera == null ? 540 : camera.getViewportHeight();
+    }
+
+    private int resolveSavedPanelWidth() {
+        int currentWidth = getWidth();
+        if (currentWidth > 0) {
+            return currentWidth;
+        }
+        Dimension preferredSize = getPreferredSize();
+        if (preferredSize != null && preferredSize.width > 0) {
+            return preferredSize.width;
+        }
+        return 960;
+    }
+
+    private int resolveSavedPanelHeight() {
+        int currentHeight = getHeight();
+        if (currentHeight > 0) {
+            return currentHeight;
+        }
+        Dimension preferredSize = getPreferredSize();
+        if (preferredSize != null && preferredSize.height > 0) {
+            return preferredSize.height;
+        }
+        return 540;
     }
 
     public void syncInputMap() {
@@ -577,8 +700,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         try {
             int panelWidth = getWidth();
             int panelHeight = getHeight();
-            int viewW = 960;
-            int viewH = 540;
+            int viewW = getViewportWidth();
+            int viewH = getViewportHeight();
             double scale = getScale();
             int offsetX = (int) ((panelWidth - viewW * scale) / 2);
             int offsetY = (int) ((panelHeight - viewH * scale) / 2);

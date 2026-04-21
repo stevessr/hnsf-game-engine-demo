@@ -43,7 +43,11 @@ public final class LightingManager {
     }
 
     public void setExplorationMode(boolean explorationMode) {
+        boolean wasEnabled = this.explorationMode;
         this.explorationMode = explorationMode;
+        if (!wasEnabled && explorationMode) {
+            resetExploration();
+        }
     }
 
     public float getAmbientLight() {
@@ -68,6 +72,10 @@ public final class LightingManager {
 
     public void clearLights() {
         lights.clear();
+    }
+
+    public void resetExploration() {
+        visibilityBuffer = null;
     }
 
     public void render(Graphics2D graphics, GameWorld world) {
@@ -115,8 +123,13 @@ public final class LightingManager {
             // 更新探索层
             if (explorationMode) {
                 Graphics2D gVis = visibilityBuffer.createGraphics();
-                gVis.setComposite(AlphaComposite.DstOut); // 挖洞
-                drawLight(gVis, player.getX() + player.getWidth() / 2, player.getY() + player.getHeight() / 2, radius, 1.0f);
+                gVis.setComposite(AlphaComposite.Clear);
+                gVis.fillOval(
+                    player.getX() + player.getWidth() / 2 - radius,
+                    player.getY() + player.getHeight() / 2 - radius,
+                    radius * 2,
+                    radius * 2
+                );
                 gVis.dispose();
             }
         });

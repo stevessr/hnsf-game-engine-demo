@@ -6,6 +6,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
+import java.util.function.Consumer;
 
 import lib.game.GameWorld;
 
@@ -82,8 +83,15 @@ public abstract class ActorObject extends BaseObject {
         }
     }
 
-    protected final void renderDeathAnimation(Graphics2D graphics, Runnable baseRender) {
-        double progress = deathTimer / DEATH_ANIMATION_DURATION;
+    protected final double getDeathAnimationProgress() {
+        if (!dying) {
+            return 0.0;
+        }
+        return Math.max(0.0, Math.min(1.0, deathTimer / DEATH_ANIMATION_DURATION));
+    }
+
+    protected final void renderDeathAnimation(Graphics2D graphics, Consumer<Graphics2D> baseRender) {
+        double progress = getDeathAnimationProgress();
         Graphics2D g2d = (Graphics2D) graphics.create();
         
         int cx = getX() + getWidth() / 2;
@@ -96,7 +104,7 @@ public abstract class ActorObject extends BaseObject {
         
         g2d.transform(at);
         g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (1.0 - progress)));
-        baseRender.run();
+        baseRender.accept(g2d);
         g2d.dispose();
     }
 
@@ -106,15 +114,34 @@ public abstract class ActorObject extends BaseObject {
         }
         setHealth(health - amount);
         if (world != null) {
-            world.getSoundManager().playSound("hurt");
+            if (this instanceof PlayerObject) {
+                world.getSoundManager().playSound("damage");
+            } else {
+                world.getSoundManager().playSound("hurt");
+            }
         }
     }
 
     public final void heal(int amount) {
+        heal(null, amount);
+    }
+
+    public final void heal(GameWorld world, int amount) {
         if (amount <= 0 || dying) {
             return;
         }
+        int previousHealth = health;
         setHealth(health + amount);
+        int healedAmount = health - previousHealth;
+        if (healedAmount <= 0) {
+            return;
+        }
+        if (world != null) {
+            world.getSoundManager().playSound("heal");
+        }
+        if (this instanceof PlayerObject player) {
+            player.triggerHealEffect();
+        }
     }
 
     protected final void renderInfo(Graphics2D graphics, int fontSize) {
@@ -122,8 +149,9 @@ public abstract class ActorObject extends BaseObject {
         
         int barW = 60;
         int barH = 6;
+        boolean showStaminaBar = this instanceof PlayerObject;
         int barX = getX() + (getWidth() - barW) / 2;
-        int barY = getY() - 12;
+        int barY = getY() - (showStaminaBar ? 22 : 12);
         
         // 血条背景
         graphics.setColor(new Color(0, 0, 0, 180));
@@ -134,6 +162,16 @@ public abstract class ActorObject extends BaseObject {
         Color healthColor = Color.getHSBColor(healthPercent * 0.33f, 0.9f, 0.9f); // 绿到红
         graphics.setColor(healthColor);
         graphics.fillRoundRect(barX, barY, (int) (barW * healthPercent), barH, 4, 4);
+
+        if (this instanceof PlayerObject player) {
+            int staminaBarY = barY + barH + 4;
+            float staminaPercent = (float) player.getStaminaRatio();
+            Color staminaColor = Color.getHSBColor(0.05f + 0.55f * staminaPercent, 0.9f, 0.95f);
+            graphics.setColor(new Color(0, 0, 0, 180));
+            graphics.fillRoundRect(barX - 1, staminaBarY - 1, barW + 2, barH + 2, 4, 4);
+            graphics.setColor(staminaColor);
+            graphics.fillRoundRect(barX, staminaBarY, (int) (barW * staminaPercent), barH, 4, 4);
+        }
         
         // 名字文本
         graphics.setFont(graphics.getFont().deriveFont(Font.BOLD, (float) fontSize - 4));

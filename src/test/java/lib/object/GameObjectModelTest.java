@@ -7,6 +7,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
@@ -90,6 +91,69 @@ class GameObjectModelTest {
     }
 
     @Test
+    void playerShouldKeepLegsInsideItsBoundingBox() {
+        PlayerObject player = new PlayerObject("hero", 20, 20);
+
+        BufferedImage image = new BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            player.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        int legAlpha = (image.getRGB(player.getX() + 14, player.getY() + player.getHeight() - 2) >>> 24) & 0xFF;
+        int belowFeetAlpha = (image.getRGB(player.getX() + player.getWidth() / 2, player.getY() + player.getHeight() + 2) >>> 24) & 0xFF;
+        assertTrue(legAlpha > 0, "玩家腿部应被正常渲染");
+        assertEquals(0, belowFeetAlpha, "玩家渲染不应超出自身碰撞框底部");
+    }
+
+    @Test
+    void playerShouldRenderHealEffectAfterHealing() {
+        PlayerObject player = new PlayerObject("hero", 30, 30);
+        player.setHealth(50);
+        player.heal(20);
+
+        assertTrue(player.isHealEffectActive(), "回血后应触发补血特效");
+
+        BufferedImage image = new BufferedImage(140, 140, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            player.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color effectPixel = new Color(image.getRGB(player.getX() + player.getWidth() / 2, player.getY() - 4), true);
+        assertTrue(effectPixel.getAlpha() > 0, "补血特效应在角色上方形成可见光效");
+        assertTrue(effectPixel.getGreen() >= effectPixel.getRed(), "补血特效应偏向绿色");
+    }
+
+    @Test
+    void voidSceneShouldKillActorsAndDeactivateOtherEntities() {
+        GameWorld world = new GameWorld(220, 160);
+        SceneObject voidZone = new SceneObject("cave-void", 0, 96, 220, 64, false, false);
+        voidZone.setColor(new Color(8, 8, 16, 220));
+        voidZone.setMaterial("void");
+        PlayerObject player = new PlayerObject("hero", 24, 104);
+        MonsterObject monster = new MonsterObject("slime", 80, 104, 20);
+        ItemObject item = new ItemObject("orb", 140, 104, 28, 28, "lightorb", 5, "Orb");
+
+        world.addObject(voidZone);
+        world.addObject(player);
+        world.addObject(monster);
+        world.addObject(item);
+
+        world.update(1.0);
+        world.update(1.0);
+
+        assertFalse(player.isActive(), "虚空应杀死玩家");
+        assertFalse(monster.isActive(), "虚空应杀死怪物");
+        assertFalse(item.isActive(), "虚空应清除其他实体");
+        assertTrue(world.getFailureReason() != null && world.getFailureReason().contains("虚空"), "玩家坠入虚空应记录失败原因");
+    }
+
+    @Test
     void monsterShouldPatrolWithinWorldBounds() {
         GameWorld world = new GameWorld(120, 90);
         MonsterObject monster = new MonsterObject("slime", 60, 10, 25);
@@ -106,6 +170,75 @@ class GameObjectModelTest {
 
         assertTrue(monster.getX() >= 0);
         assertTrue(monster.getX() <= world.getWidth() - monster.getWidth());
+    }
+
+    @Test
+    void airborneMonsterShouldKeepAltitudeWhenWorldHasGravity() {
+        GameWorld world = new GameWorld(400, 240);
+        world.setGravityEnabled(true);
+        MonsterObject plane = new MonsterObject("enemy-plane", 80, 70, 80);
+        plane.setAirborne(true);
+        plane.setMaterial("plane");
+        plane.setSize(100, 40);
+        plane.setSpeed(0);
+
+        world.addObject(plane);
+        world.update(1.0 / 60.0);
+        world.update(1.0 / 60.0);
+
+        assertEquals(70, plane.getY(), "空中敌机不应受重力坠落");
+    }
+
+    @Test
+    void airborneMonsterShouldRenderAircraftShape() {
+        MonsterObject plane = new MonsterObject("enemy-plane", 30, 30, 80);
+        plane.setAirborne(true);
+        plane.setMaterial("plane");
+        plane.setSize(100, 40);
+        plane.setColor(new Color(208, 216, 228));
+
+        BufferedImage image = new BufferedImage(180, 120, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            plane.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color wingPixel = new Color(image.getRGB(76, 39), true);
+        Color nosePixel = new Color(image.getRGB(108, 50), true);
+
+        assertTrue(wingPixel.getAlpha() > 0, "飞机机翼区域应被绘制");
+        assertTrue(nosePixel.getAlpha() > 0, "飞机机头区域应被绘制");
+    }
+
+    @Test
+    void bomberMonsterShouldDropBombsInsteadOfBullets() {
+        GameWorld world = new GameWorld(640, 360);
+        world.setGravityEnabled(true);
+        PlayerObject player = new PlayerObject("hero", 280, 160);
+        MonsterObject plane = new MonsterObject("enemy-plane", 100, 60, 80);
+        plane.setAirborne(true);
+        plane.setBomber(true);
+        plane.setMaterial("plane");
+        plane.setSize(100, 40);
+        plane.setSpeed(0);
+        plane.setRangedAttacker(true);
+        plane.setShootRange(1000);
+        plane.setShootCooldown(0.1);
+        plane.setProjectileSpeed(160);
+
+        world.addObject(player);
+        world.addObject(plane);
+        world.update(0.2);
+
+        assertTrue(
+            world.getObjectsByType(GameObjectType.PROJECTILE).stream()
+                .filter(ProjectileObject.class::isInstance)
+                .map(ProjectileObject.class::cast)
+                .anyMatch(projectile -> projectile.isActive() && projectile.getName().contains("-bomb-")),
+            "敌机应在攻击范围内投放炸弹"
+        );
     }
 
     @Test
@@ -128,6 +261,28 @@ class GameObjectModelTest {
     }
 
     @Test
+    void treeSceneObjectShouldRenderFoliageInsteadOfBareTrunk() {
+        SceneObject tree = new SceneObject("tree", 30, 12, 30, 120, false, true);
+        tree.setColor(new Color(92, 60, 34));
+        tree.setMaterial("tree");
+
+        BufferedImage image = new BufferedImage(140, 160, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            tree.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color canopyPixel = new Color(image.getRGB(45, 28), true);
+        Color trunkPixel = new Color(image.getRGB(43, 112), true);
+
+        assertTrue(canopyPixel.getAlpha() > 0, "树冠区域应被绘制");
+        assertTrue(canopyPixel.getGreen() > canopyPixel.getRed(), "树冠区域应显示绿色树叶，而不是光秃秃的树干");
+        assertTrue(trunkPixel.getRed() > trunkPixel.getGreen(), "树干区域仍应保留褐色树干");
+    }
+
+    @Test
     void wallAndBoundaryShouldExposeDedicatedTypes() {
         WallObject wall = new WallObject("wall", 8, 9, 24, 26);
         BoundaryObject boundary = BoundaryObject.right(120, 90, 10);
@@ -138,6 +293,146 @@ class GameObjectModelTest {
         assertTrue(boundary.isSolid());
         assertEquals(110, boundary.getX());
         assertEquals(10, boundary.getWidth());
+    }
+
+    @Test
+    void monsterShouldSpawnHealingDropWhenConfigured() {
+        GameWorld world = new GameWorld(200, 160);
+        MonsterObject monster = new MonsterObject("slime", 40, 50, 25);
+        monster.setHealDropAmount(18);
+        world.addObject(monster);
+
+        monster.takeDamage(world, 1000);
+        world.update(1.0 / 60.0);
+
+        assertEquals(1, world.getObjectsByType(GameObjectType.ITEM).size());
+        GameObject dropObject = world.getObjectsByType(GameObjectType.ITEM).get(0);
+        ItemObject drop = assertInstanceOf(ItemObject.class, dropObject);
+        assertEquals("health", drop.getKind());
+        assertEquals(18, drop.getValue());
+    }
+
+    @Test
+    void projectileShouldBreakDestructibleSceneObject() {
+        GameWorld world = new GameWorld(160, 120);
+        SceneObject crate = new SceneObject("crate", 35, 0, 24, 24, true, false);
+        crate.setDestructible(true);
+        crate.setDurability(10);
+        ProjectileObject projectile = new ProjectileObject("bullet", 0, 0, 200, 0, 10, null);
+        world.addObject(crate);
+        world.addObject(projectile);
+
+        world.update(0.2);
+
+        assertFalse(crate.isActive(), "可破坏建筑在耐久归零后应被销毁");
+        assertFalse(projectile.isActive(), "子弹命中建筑后应消失");
+    }
+
+    @Test
+    void bombProjectileShouldExplodeAndDamageNearbyTargets() {
+        GameWorld world = new GameWorld(260, 180);
+        world.setGravityEnabled(true);
+        PlayerObject player = new PlayerObject("hero", 120, 110);
+        player.setHealth(40);
+        SceneObject bunker = new SceneObject("bunker", 140, 120, 32, 24, true, false);
+        bunker.setDestructible(true);
+        bunker.setDurability(18);
+        ProjectileObject bomb = ProjectileObject.createBomb("bomb", 120, 20, 0, 0, 12, null, 80, 24, 1.0);
+
+        world.addObject(player);
+        world.addObject(bunker);
+        world.addObject(bomb);
+
+        boolean shakeTriggered = false;
+        for (int i = 0; i < 240 && bomb.isActive(); i++) {
+            world.update(1.0 / 60.0);
+            shakeTriggered |= world.isScreenShaking();
+        }
+
+        assertTrue(shakeTriggered, "爆炸应触发屏幕震动");
+        assertFalse(bomb.isActive(), "炸弹在爆炸动画结束后应失效");
+        assertTrue(player.getHealth() < 40, "爆炸应对附近玩家造成伤害");
+        assertFalse(bunker.isActive(), "爆炸应能摧毁附近可破坏建筑");
+    }
+
+    @Test
+    void unsupportedSceneObjectShouldCollapseAndCanSetDeathReason() {
+        GameWorld world = new GameWorld(180, 220);
+        world.setGravityEnabled(true);
+        PlayerObject player = new PlayerObject("hero", 40, 140);
+        player.setHealth(20);
+        SceneObject slab = new SceneObject("slab", 40, 0, 48, 24, true, false);
+        slab.setCollapseWhenUnsupported(true);
+        slab.setCollapseDamage(30);
+        world.addObject(slab);
+        world.addObject(player);
+
+        for (int i = 0; i < 120 && world.getFailureReason() == null; i++) {
+            world.update(1.0 / 60.0);
+        }
+
+        assertTrue(slab.getY() > 0, "失去支撑的建筑应开始倒塌");
+        assertTrue(world.getFailureReason() != null && world.getFailureReason().contains("slab"), "倒塌建筑砸中玩家时应记录死因");
+    }
+
+    @Test
+    void sceneObjectShouldBreakAfterBeingSteppedOnEnoughTimes() {
+        GameWorld world = new GameWorld(180, 140);
+        PlayerObject player = new PlayerObject("hero", 30, 12);
+        SceneObject platform = new SceneObject("fragile-platform", 20, 60, 80, 12, true, false);
+        platform.setBreakAfterSteps(2);
+        world.addObject(player);
+        world.addObject(platform);
+
+        world.update(1.0 / 60.0);
+        assertEquals(1, platform.getStepCount());
+        assertTrue(platform.isActive());
+
+        player.setPosition(30, 0);
+        world.update(1.0 / 60.0);
+        player.setPosition(30, 12);
+        world.update(1.0 / 60.0);
+
+        assertFalse(platform.isActive(), "脆弱平台被踩到阈值后应损坏");
+    }
+
+    @Test
+    void rangedMonsterShouldShootProjectileTowardPlayer() {
+        GameWorld world = new GameWorld(420, 180);
+        PlayerObject player = new PlayerObject("hero", 240, 80);
+        MonsterObject monster = new MonsterObject("archer", 60, 80, 20);
+        monster.setSpeed(0);
+        monster.setRangedAttacker(true);
+        monster.setShootRange(400);
+        monster.setShootCooldown(0.1);
+        world.addObject(player);
+        world.addObject(monster);
+
+        world.update(0.2);
+
+        assertTrue(world.getObjectsByType(GameObjectType.PROJECTILE).size() >= 1, "远程怪物应生成投射物");
+    }
+
+    @Test
+    void monsterProjectileShouldRecordFailureReasonWhenItKillsPlayer() {
+        GameWorld world = new GameWorld(420, 180);
+        PlayerObject player = new PlayerObject("hero", 240, 80);
+        player.setHealth(10);
+        MonsterObject monster = new MonsterObject("archer", 60, 80, 20);
+        monster.setSpeed(0);
+        monster.setAttack(10);
+        monster.setRangedAttacker(true);
+        monster.setShootRange(400);
+        monster.setProjectileSpeed(500);
+        monster.setShootCooldown(0.1);
+        world.addObject(player);
+        world.addObject(monster);
+
+        for (int i = 0; i < 120 && world.getFailureReason() == null; i++) {
+            world.update(1.0 / 60.0);
+        }
+
+        assertTrue(world.getFailureReason() != null && world.getFailureReason().contains("archer"), "远程击杀应记录怪物射击死因");
     }
 
     @Test

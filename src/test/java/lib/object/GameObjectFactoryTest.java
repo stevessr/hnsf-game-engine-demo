@@ -33,6 +33,16 @@ public class GameObjectFactoryTest {
         MonsterObject monster = new MonsterObject("Griz", 300, 400, 100);
         monster.setAggressive(true);
         monster.setAttack(15);
+        monster.setHealDropAmount(20);
+        monster.setRangedAttacker(true);
+        monster.setShootRange(420);
+        monster.setProjectileSpeed(500);
+        monster.setShootCooldown(0.8);
+        monster.setAirborne(true);
+        monster.setBomber(true);
+        monster.setBombRadius(96);
+        monster.setMaterial("plane");
+        monster.setSize(96, 40);
         
         ObjectData data = GameObjectFactory.toObjectData(monster);
         assertEquals(GameObjectType.MONSTER, data.getType());
@@ -41,6 +51,14 @@ public class GameObjectFactoryTest {
         assertEquals(100, restored.getRewardExperience());
         assertTrue(restored.isAggressive());
         assertEquals(15, restored.getAttack());
+        assertEquals(20, restored.getHealDropAmount());
+        assertTrue(restored.isRangedAttacker());
+        assertEquals(420, restored.getShootRange());
+        assertEquals(500, restored.getProjectileSpeed());
+        assertEquals(0.8, restored.getShootCooldown());
+        assertTrue(restored.isAirborne());
+        assertTrue(restored.isBomber());
+        assertEquals(96, restored.getBombRadius());
     }
 
     @Test
@@ -60,13 +78,34 @@ public class GameObjectFactoryTest {
     public void testMenuSerialization() {
         MenuObject menu = new MenuObject("Options", 0, 0, 200, 150, "Settings", List.of("Easy", "Hard"));
         menu.setSelectedIndex(1);
+        menu.setSubtitle("Cause: demo");
         
         ObjectData data = GameObjectFactory.toObjectData(menu);
         assertEquals(GameObjectType.MENU, data.getType());
         
         MenuObject restored = (MenuObject) GameObjectFactory.fromObjectData(data);
         assertEquals("Settings", restored.getTitle());
+        assertEquals("Cause: demo", restored.getSubtitle());
         assertEquals(2, restored.getOptions().size());
         assertEquals(1, restored.getSelectedIndex());
+    }
+
+    @Test
+    public void testSceneSerialization() {
+        SceneObject scene = new SceneObject("crate", 20, 30, 48, 48, true, false);
+        scene.setDestructible(true);
+        scene.setDurability(35);
+        scene.setCollapseWhenUnsupported(true);
+        scene.setCollapseDamage(42);
+        scene.setBreakAfterSteps(3);
+
+        ObjectData data = GameObjectFactory.toObjectData(scene);
+        SceneObject restored = (SceneObject) GameObjectFactory.fromObjectData(data);
+
+        assertTrue(restored.isDestructible());
+        assertEquals(35, restored.getDurability());
+        assertTrue(restored.isCollapseWhenUnsupported());
+        assertEquals(42, restored.getCollapseDamage());
+        assertEquals(3, restored.getBreakAfterSteps());
     }
 }

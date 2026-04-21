@@ -44,6 +44,16 @@ public interface GameRuntimeActions {
     }
 
     /**
+     * 请求生成一个程序化关卡。
+     *
+     * @param templateName 程序化模板名称，例如 procedural-forest 或 procedural-cave
+     * @return true 表示已接受并开始处理生成请求
+     */
+    default boolean requestGenerateProceduralLevel(String templateName) {
+        return false;
+    }
+
+    /**
      * 获取空实现，便于在不支持运行时动作时安全降级。
      *
      * @return 空操作实现

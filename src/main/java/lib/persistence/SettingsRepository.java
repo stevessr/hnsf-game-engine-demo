@@ -49,6 +49,11 @@ public final class SettingsRepository {
         float ambientLight,
         float lightingIntensity,
         float volume,
+        boolean soundEnabled,
+        float damageVolume,
+        float shootVolume,
+        float menuVolume,
+        float effectVolume,
         JSONObject keyBindings
     ) {
         JSONObject json = new JSONObject();
@@ -64,6 +69,11 @@ public final class SettingsRepository {
         json.put("ambientLight", ambientLight);
         json.put("lightingIntensity", lightingIntensity);
         json.put("volume", volume);
+        json.put("soundEnabled", soundEnabled);
+        json.put("damageVolume", damageVolume);
+        json.put("shootVolume", shootVolume);
+        json.put("menuVolume", menuVolume);
+        json.put("effectVolume", effectVolume);
         json.put("keyBindings", keyBindings);
 
         try {

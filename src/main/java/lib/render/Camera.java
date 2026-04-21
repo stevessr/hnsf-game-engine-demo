@@ -19,9 +19,9 @@ public final class Camera {
     /** 摄像机在世界坐标系中的 Y 坐标 (视口左上角) */
     private double y;
     /** 视口的宽度 */
-    private final int viewportWidth;
+    private int viewportWidth;
     /** 视口的高度 */
-    private final int viewportHeight;
+    private int viewportHeight;
 
     /**
      * 创建一个新的摄像机实例。
@@ -30,8 +30,7 @@ public final class Camera {
      * @param viewportHeight 视口高度 (逻辑像素)
      */
     public Camera(int viewportWidth, int viewportHeight) {
-        this.viewportWidth = viewportWidth;
-        this.viewportHeight = viewportHeight;
+        setViewportSize(viewportWidth, viewportHeight);
     }
 
     /**
@@ -78,5 +77,18 @@ public final class Camera {
         if (world.getHeight() < viewportHeight) {
             y = (world.getHeight() - viewportHeight) / 2.0;
         }
+    }
+
+    public int getViewportWidth() {
+        return viewportWidth;
+    }
+
+    public int getViewportHeight() {
+        return viewportHeight;
+    }
+
+    public void setViewportSize(int viewportWidth, int viewportHeight) {
+        this.viewportWidth = Math.max(1, viewportWidth);
+        this.viewportHeight = Math.max(1, viewportHeight);
     }
 }
