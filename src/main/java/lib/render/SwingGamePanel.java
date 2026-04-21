@@ -429,6 +429,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
 
     public void setResolution(int width, int height) {
         setPreferredSize(new Dimension(width, height));
+        camera.setViewportSize(width, height);
+        if (world.getStateMachine() instanceof DefaultGameStateMachine dsm) {
+            dsm.recenterUI(world);
+        }
         
         java.awt.Window window = SwingUtilities.getWindowAncestor(this);
         if (window instanceof javax.swing.JFrame frame) {

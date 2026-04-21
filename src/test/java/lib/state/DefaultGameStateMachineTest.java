@@ -450,6 +450,21 @@ class DefaultGameStateMachineTest {
     }
 
     @Test
+    void recenterUiShouldCenterMainMenuWithoutCameraUsingViewportSize() {
+        GameWorld world = new GameWorld(4000, 800);
+        MenuObject mainMenu = new MenuObject("main-menu", 24, 24, 260, 180, "Demo Menu", List.of("Start", "Exit"));
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(GameState.MENU);
+
+        world.addObject(mainMenu);
+        world.setStateMachine(stateMachine);
+
+        stateMachine.recenterUI(world);
+
+        assertEquals((960 - mainMenu.getWidth()) / 2, mainMenu.getX(), "主菜单应按视口居中，而不是按地图尺寸居中");
+        assertEquals((540 - mainMenu.getHeight()) / 2, mainMenu.getY());
+    }
+
+    @Test
     void gameOverMenuShouldDisplayFailureReason() {
         GameWorld world = new GameWorld(240, 180);
         PlayerObject player = new PlayerObject("hero", 10, 20);

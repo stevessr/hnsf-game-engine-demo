@@ -110,6 +110,46 @@ class GameObjectModelTest {
     }
 
     @Test
+    void airborneMonsterShouldKeepAltitudeWhenWorldHasGravity() {
+        GameWorld world = new GameWorld(400, 240);
+        world.setGravityEnabled(true);
+        MonsterObject plane = new MonsterObject("enemy-plane", 80, 70, 80);
+        plane.setAirborne(true);
+        plane.setMaterial("plane");
+        plane.setSize(100, 40);
+        plane.setSpeed(0);
+
+        world.addObject(plane);
+        world.update(1.0 / 60.0);
+        world.update(1.0 / 60.0);
+
+        assertEquals(70, plane.getY(), "空中敌机不应受重力坠落");
+    }
+
+    @Test
+    void airborneMonsterShouldRenderAircraftShape() {
+        MonsterObject plane = new MonsterObject("enemy-plane", 30, 30, 80);
+        plane.setAirborne(true);
+        plane.setMaterial("plane");
+        plane.setSize(100, 40);
+        plane.setColor(new Color(208, 216, 228));
+
+        BufferedImage image = new BufferedImage(180, 120, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            plane.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color wingPixel = new Color(image.getRGB(76, 39), true);
+        Color nosePixel = new Color(image.getRGB(108, 50), true);
+
+        assertTrue(wingPixel.getAlpha() > 0, "飞机机翼区域应被绘制");
+        assertTrue(nosePixel.getAlpha() > 0, "飞机机头区域应被绘制");
+    }
+
+    @Test
     void worldShouldRenderSceneObjectOverBackground() {
         GameWorld world = new GameWorld(80, 80, Color.BLACK);
         SceneObject scene = new SceneObject("wall", 10, 10, 20, 20, true, false);
@@ -126,6 +166,28 @@ class GameObjectModelTest {
 
         assertEquals(Color.BLACK.getRGB(), image.getRGB(0, 0));
         assertEquals(scene.getColor().getRGB(), image.getRGB(15, 15));
+    }
+
+    @Test
+    void treeSceneObjectShouldRenderFoliageInsteadOfBareTrunk() {
+        SceneObject tree = new SceneObject("tree", 30, 12, 30, 120, false, true);
+        tree.setColor(new Color(92, 60, 34));
+        tree.setMaterial("tree");
+
+        BufferedImage image = new BufferedImage(140, 160, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            tree.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color canopyPixel = new Color(image.getRGB(45, 28), true);
+        Color trunkPixel = new Color(image.getRGB(43, 112), true);
+
+        assertTrue(canopyPixel.getAlpha() > 0, "树冠区域应被绘制");
+        assertTrue(canopyPixel.getGreen() > canopyPixel.getRed(), "树冠区域应显示绿色树叶，而不是光秃秃的树干");
+        assertTrue(trunkPixel.getRed() > trunkPixel.getGreen(), "树干区域仍应保留褐色树干");
     }
 
     @Test

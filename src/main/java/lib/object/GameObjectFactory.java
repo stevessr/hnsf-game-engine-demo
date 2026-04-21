@@ -63,6 +63,7 @@ public final class GameObjectFactory {
             extra.put("shootRange", monster.getShootRange());
             extra.put("projectileSpeed", monster.getProjectileSpeed());
             extra.put("shootCooldown", monster.getShootCooldown());
+            extra.put("airborne", monster.isAirborne());
         } else if (object instanceof ItemObject item) {
             extra.put("kind", item.getKind());
             extra.put("value", item.getValue());
@@ -175,6 +176,9 @@ public final class GameObjectFactory {
         JSONObject extra = parseExtra(data.getExtraJson());
         int rewardExperience = extra.optInt("rewardExperience", 0);
         MonsterObject monster = new MonsterObject(data.getName(), data.getX(), data.getY(), rewardExperience);
+        if (isPlaneLike(data)) {
+            monster.setAirborne(true);
+        }
         if (extra.has("aggressive")) {
             monster.setAggressive(extra.optBoolean("aggressive", monster.isAggressive()));
         }
@@ -201,6 +205,9 @@ public final class GameObjectFactory {
         }
         if (extra.has("shootCooldown")) {
             monster.setShootCooldown(extra.optDouble("shootCooldown", monster.getShootCooldown()));
+        }
+        if (extra.has("airborne")) {
+            monster.setAirborne(extra.optBoolean("airborne", monster.isAirborne()));
         }
         return monster;
     }
@@ -312,6 +319,21 @@ public final class GameObjectFactory {
         if (extra.has("breakAfterSteps")) {
             scene.setBreakAfterSteps(extra.optInt("breakAfterSteps", scene.getBreakAfterSteps()));
         }
+    }
+
+    private static boolean isPlaneLike(ObjectData data) {
+        if (data == null) {
+            return false;
+        }
+        String material = data.getMaterial();
+        if (material != null) {
+            String normalizedMaterial = material.toLowerCase();
+            if (normalizedMaterial.contains("plane") || normalizedMaterial.contains("aircraft")) {
+                return true;
+            }
+        }
+        String name = data.getName();
+        return name != null && name.toLowerCase().contains("plane");
     }
 
     private static JSONObject parseExtra(String extraJson) {

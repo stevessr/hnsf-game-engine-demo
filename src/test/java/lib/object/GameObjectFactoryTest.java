@@ -38,6 +38,9 @@ public class GameObjectFactoryTest {
         monster.setShootRange(420);
         monster.setProjectileSpeed(500);
         monster.setShootCooldown(0.8);
+        monster.setAirborne(true);
+        monster.setMaterial("plane");
+        monster.setSize(96, 40);
         
         ObjectData data = GameObjectFactory.toObjectData(monster);
         assertEquals(GameObjectType.MONSTER, data.getType());
@@ -51,6 +54,7 @@ public class GameObjectFactoryTest {
         assertEquals(420, restored.getShootRange());
         assertEquals(500, restored.getProjectileSpeed());
         assertEquals(0.8, restored.getShootCooldown());
+        assertTrue(restored.isAirborne());
     }
 
     @Test

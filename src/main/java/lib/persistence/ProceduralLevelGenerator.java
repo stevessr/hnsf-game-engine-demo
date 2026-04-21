@@ -67,6 +67,7 @@ public final class ProceduralLevelGenerator {
                 ObjectData tree = createObject(GameObjectType.SCENE, "tree", x + 5, currentY - treeH, 30, treeH, new Color(60, 50, 40));
                 tree.setBackground(true);
                 tree.setSolid(false);
+                tree.setMaterial("tree");
                 map.addObject(tree);
             }
 

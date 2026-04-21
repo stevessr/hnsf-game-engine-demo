@@ -2,6 +2,8 @@ package lib.object;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Polygon;
+import java.util.Locale;
 
 import lib.game.GameWorld;
 import lib.physics.MovementResult;
@@ -21,6 +23,7 @@ public final class MonsterObject extends ActorObject {
     private int projectileSpeed = 320;
     private double shootCooldown = 1.2;
     private double shootCooldownRemaining = 0.0;
+    private boolean airborne = false;
 
     public MonsterObject(String name) {
         this(name, 0, 0, 60);
@@ -101,6 +104,17 @@ public final class MonsterObject extends ActorObject {
         this.shootCooldown = Math.max(0.1, shootCooldown);
     }
 
+    public boolean isAirborne() {
+        return airborne;
+    }
+
+    public void setAirborne(boolean airborne) {
+        this.airborne = airborne;
+        if (airborne) {
+            setVelocityY(0.0);
+        }
+    }
+
     @Override
     public void update(GameWorld world, double deltaSeconds) {
         if (isDying()) {
@@ -116,7 +130,9 @@ public final class MonsterObject extends ActorObject {
 
         shootCooldownRemaining = Math.max(0.0, shootCooldownRemaining - deltaSeconds);
 
-        if (world != null && world.isGravityEnabled()) {
+        if (airborne) {
+            setVelocityY(0.0);
+        } else if (world != null && world.isGravityEnabled()) {
             setVelocityY(getVelocityYDouble() + world.getGravityStrength() * deltaSeconds);
         }
 
@@ -161,8 +177,93 @@ public final class MonsterObject extends ActorObject {
     }
 
     private void renderBase(Graphics2D graphics) {
+        if (isPlaneLike()) {
+            renderAircraft(graphics);
+            return;
+        }
         graphics.setColor(getColor());
         graphics.fillOval(getX(), getY(), getWidth(), getHeight());
+    }
+
+    private void renderAircraft(Graphics2D graphics) {
+        Graphics2D g2d = (Graphics2D) graphics.create();
+        try {
+            boolean faceLeft = getFacingDirection() < 0;
+            if (faceLeft) {
+                g2d.translate(getX() + getWidth(), getY());
+                g2d.scale(-1.0, 1.0);
+                drawAircraftFacingRight(g2d, 0, 0, getWidth(), getHeight());
+            } else {
+                g2d.translate(getX(), getY());
+                drawAircraftFacingRight(g2d, 0, 0, getWidth(), getHeight());
+            }
+        } finally {
+            g2d.dispose();
+        }
+    }
+
+    private void drawAircraftFacingRight(Graphics2D graphics, int x, int y, int width, int height) {
+        int bodyX = x + width / 10;
+        int bodyY = y + height / 4;
+        int bodyW = Math.max(30, width * 3 / 5);
+        int bodyH = Math.max(16, height / 2);
+        int midY = y + height / 2;
+
+        Color base = getColor();
+        Color body = base == null ? new Color(200, 210, 220) : base;
+        Color shadow = body.darker();
+        Color highlight = body.brighter();
+
+        graphics.setColor(new Color(0, 0, 0, 60));
+        graphics.fillOval(x + width / 12 + 4, y + height / 2 + 5, width * 3 / 4, Math.max(8, height / 3));
+
+        graphics.setColor(body);
+        graphics.fillRoundRect(bodyX, bodyY, bodyW, bodyH, bodyH, bodyH);
+
+        Polygon nose = new Polygon();
+        nose.addPoint(bodyX + bodyW, midY);
+        nose.addPoint(bodyX + bodyW - Math.max(10, width / 8), bodyY);
+        nose.addPoint(bodyX + bodyW - Math.max(10, width / 8), bodyY + bodyH);
+        graphics.fillPolygon(nose);
+
+        Polygon wing = new Polygon();
+        wing.addPoint(x + width / 3, midY);
+        wing.addPoint(x + width / 2, y + height / 8);
+        wing.addPoint(x + width * 3 / 5, midY);
+        wing.addPoint(x + width / 2, y + height * 7 / 8);
+        graphics.setColor(shadow);
+        graphics.fillPolygon(wing);
+
+        Polygon tail = new Polygon();
+        tail.addPoint(bodyX + Math.max(8, bodyW / 10), bodyY);
+        tail.addPoint(bodyX + Math.max(8, bodyW / 10) - Math.max(10, width / 12), y + height / 6);
+        tail.addPoint(bodyX + Math.max(8, bodyW / 10) + Math.max(4, width / 18), bodyY);
+        graphics.fillPolygon(tail);
+
+        graphics.setColor(highlight);
+        graphics.fillOval(bodyX + bodyW / 3, bodyY + 2, Math.max(6, bodyW / 5), Math.max(6, bodyH / 2));
+
+        graphics.setColor(new Color(30, 30, 40, 120));
+        graphics.drawLine(bodyX + 2, midY, bodyX + bodyW + Math.max(8, width / 8) - 1, midY);
+    }
+
+    private boolean isPlaneLike() {
+        if (airborne) {
+            return true;
+        }
+        String material = getMaterial();
+        if (material != null) {
+            String normalizedMaterial = material.toLowerCase(Locale.ROOT);
+            if (normalizedMaterial.contains("plane") || normalizedMaterial.contains("aircraft")) {
+                return true;
+            }
+        }
+        String name = getName();
+        return name != null && name.toLowerCase(Locale.ROOT).contains("plane");
+    }
+
+    private int getFacingDirection() {
+        return directionX >= 0 ? 1 : -1;
     }
 
     private void spawnHealingDrop(GameWorld world) {

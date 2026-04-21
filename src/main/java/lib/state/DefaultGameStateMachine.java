@@ -193,12 +193,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         if (world == null) {
             return;
         }
-        int viewW = 960;
-        int viewH = 540;
-        if (world.getCamera() == null) {
-            viewW = world.getWidth();
-            viewH = world.getHeight();
-        }
+        int viewW = resolveViewportWidth(world);
+        int viewH = resolveViewportHeight(world);
 
         for (GameObject object : world.getObjectsByType(GameObjectType.MENU)) {
             if (object instanceof MenuObject menu && menu.isActive()) {
@@ -214,6 +210,20 @@ public final class DefaultGameStateMachine implements GameStateMachine {
                 dialog.setPosition((viewW - dialogWidth) / 2, viewH - dialogHeight - 40);
             }
         }
+    }
+
+    private int resolveViewportWidth(GameWorld world) {
+        if (world != null && world.getCamera() != null) {
+            return world.getCamera().getViewportWidth();
+        }
+        return 960;
+    }
+
+    private int resolveViewportHeight(GameWorld world) {
+        if (world != null && world.getCamera() != null) {
+            return world.getCamera().getViewportHeight();
+        }
+        return 540;
     }
 
     private void removeMenu(GameWorld world, String name) {

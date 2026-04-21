@@ -2,6 +2,7 @@ package lib.object;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.util.Locale;
 
 import lib.game.GameWorld;
 
@@ -153,6 +154,14 @@ public class SceneObject extends BaseObject {
 
     @Override
     public void render(Graphics2D graphics) {
+        if (isCloudLike()) {
+            renderCloud(graphics);
+            return;
+        }
+        if (isTreeLike()) {
+            renderTree(graphics);
+            return;
+        }
         graphics.setColor(getColor());
         graphics.fillRect(getX(), getY(), getWidth(), getHeight());
         if (solid) {
@@ -175,6 +184,79 @@ public class SceneObject extends BaseObject {
             graphics.setColor(new Color(255, 245, 180, 180));
             graphics.drawString(stepCount + "/" + breakAfterSteps, getX() + 4, getY() + Math.min(14, Math.max(12, getHeight() - 4)));
         }
+    }
+
+    private boolean isCloudLike() {
+        String material = getMaterial();
+        if (material != null && "cloud".equalsIgnoreCase(material)) {
+            return true;
+        }
+        String name = getName();
+        return name != null && name.toLowerCase(Locale.ROOT).contains("cloud");
+    }
+
+    private void renderCloud(Graphics2D graphics) {
+        int x = getX();
+        int y = getY();
+        int width = Math.max(20, getWidth());
+        int height = Math.max(12, getHeight());
+        Color base = getColor() == null ? new Color(255, 255, 255, 180) : getColor();
+        Color shadow = new Color(Math.max(0, base.getRed() - 30), Math.max(0, base.getGreen() - 30), Math.max(0, base.getBlue() - 30), base.getAlpha());
+
+        graphics.setColor(shadow);
+        graphics.fillOval(x + width / 10, y + height / 5, width * 2 / 5, height * 3 / 5);
+        graphics.fillOval(x + width * 3 / 10, y, width / 2, height);
+        graphics.fillOval(x + width / 2, y + height / 6, width * 2 / 5, height * 2 / 3);
+
+        graphics.setColor(base);
+        graphics.fillOval(x, y + height / 5, width * 2 / 5, height * 3 / 5);
+        graphics.fillOval(x + width / 5, y, width / 2, height);
+        graphics.fillOval(x + width / 2, y + height / 5, width * 2 / 5, height * 3 / 5);
+    }
+
+    private boolean isTreeLike() {
+        String material = getMaterial();
+        if (material != null && "tree".equalsIgnoreCase(material)) {
+            return true;
+        }
+        String name = getName();
+        return name != null && name.toLowerCase(Locale.ROOT).contains("tree");
+    }
+
+    private void renderTree(Graphics2D graphics) {
+        int x = getX();
+        int y = getY();
+        int width = Math.max(12, getWidth());
+        int height = Math.max(24, getHeight());
+
+        int canopyWidth = Math.max(36, width * 2);
+        int canopyHeight = Math.max(28, Math.max(height / 2, 36));
+        int canopyX = x - (canopyWidth - width) / 2;
+        int canopyY = y - Math.max(4, canopyHeight / 8);
+
+        graphics.setColor(new Color(36, 84, 44));
+        graphics.fillOval(canopyX, canopyY + canopyHeight / 4, canopyWidth, canopyHeight);
+        graphics.setColor(new Color(54, 128, 60));
+        graphics.fillOval(canopyX + canopyWidth / 8, canopyY, canopyWidth * 3 / 4, canopyHeight);
+        graphics.setColor(new Color(76, 164, 76));
+        graphics.fillOval(canopyX + canopyWidth / 3, canopyY - canopyHeight / 10, canopyWidth / 3, canopyHeight * 3 / 4);
+        graphics.setColor(new Color(102, 190, 92, 220));
+        graphics.fillOval(canopyX + canopyWidth / 2 - canopyWidth / 8, canopyY + canopyHeight / 10, canopyWidth / 4, canopyHeight / 3);
+
+        int trunkWidth = Math.max(8, Math.min(width / 2, 16));
+        int trunkHeight = Math.max(24, Math.round(height * 0.4f));
+        int trunkX = x + (width - trunkWidth) / 2;
+        int trunkY = y + height - trunkHeight;
+
+        Color trunkBase = getColor() == null ? new Color(109, 69, 35) : getColor();
+        Color trunkShadow = trunkBase.darker();
+        graphics.setColor(trunkBase);
+        graphics.fillRect(trunkX, trunkY, trunkWidth, trunkHeight);
+        graphics.setColor(trunkShadow);
+        graphics.fillRect(trunkX + trunkWidth / 3, trunkY, Math.max(1, trunkWidth / 3), trunkHeight);
+        graphics.setColor(new Color(0, 0, 0, 60));
+        graphics.drawLine(trunkX, trunkY, trunkX, trunkY + trunkHeight - 1);
+        graphics.drawLine(trunkX + trunkWidth - 1, trunkY, trunkX + trunkWidth - 1, trunkY + trunkHeight - 1);
     }
 
     private void handleStepBreak(GameWorld world, PlayerObject player) {

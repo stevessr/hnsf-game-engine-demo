@@ -31,6 +31,7 @@ public final class LevelManager {
     private static final String LEVEL_4 = "level-4";
     private static final String PROC_FOREST = "procedural-forest";
     private static final String PROC_CAVE = "procedural-cave";
+    private static final String AIR_RAID_DEMO = "air-raid-demo";
 
     private final GameWorld world;
     private final List<String> levelNames;
@@ -129,6 +130,9 @@ public final class LevelManager {
         if (normalized.equals(PROC_CAVE)) {
             return createGeneratedProceduralLevel(PROC_CAVE, PROC_CAVE, System.currentTimeMillis());
         }
+        if (normalized.equals(AIR_RAID_DEMO)) {
+            return MapDataMapper.fromWorld(createAirRaidDemoWorld(), AIR_RAID_DEMO);
+        }
 
         GameWorld levelWorld = switch (normalized) {
             case TUTORIAL_LEVEL -> createTutorialLevelWorld();
@@ -183,6 +187,7 @@ public final class LevelManager {
         addLevel(LEVEL_4);
         addLevel(PROC_FOREST);
         addLevel(PROC_CAVE);
+        addLevel(AIR_RAID_DEMO);
     }
 
     private GameWorld createTutorialLevelWorld() {
@@ -261,6 +266,78 @@ public final class LevelManager {
         levelWorld.addObject(new GoalObject("demo-exit", 960 * 3 - 100, 350, 60, 70));
         levelWorld.addObject(new DialogObject("demo-guide", 150, 450, 660, 60, "Guide", "Explore the large world! Use WASD to move."));
         return levelWorld;
+    }
+
+    private GameWorld createAirRaidDemoWorld() {
+        int width = 960 * 3;
+        int height = 640;
+        GameWorld levelWorld = new GameWorld(width, height, new Color(74, 106, 168));
+        addFrame(levelWorld, width, height);
+        levelWorld.setGravityEnabled(true);
+        addGround(levelWorld, 0, 500, width, 140, new Color(88, 110, 88));
+        addPlayer(levelWorld, 100, 440);
+
+        addAirCloud(levelWorld, 160, 110, 160, 50, new Color(240, 245, 255, 180));
+        addAirCloud(levelWorld, 640, 90, 210, 60, new Color(235, 243, 252, 160));
+        addAirCloud(levelWorld, 1320, 120, 180, 52, new Color(244, 248, 255, 170));
+        addAirCloud(levelWorld, 2060, 100, 220, 58, new Color(238, 244, 255, 150));
+
+        SceneObject bunkerOne = new SceneObject("air-bunker-1", 520, 430, 150, 70, true, false);
+        bunkerOne.setColor(new Color(118, 110, 98));
+        bunkerOne.setDestructible(true);
+        bunkerOne.setDurability(30);
+        levelWorld.addObject(bunkerOne);
+
+        SceneObject bunkerTwo = new SceneObject("air-bunker-2", 1460, 430, 170, 76, true, false);
+        bunkerTwo.setColor(new Color(132, 120, 105));
+        bunkerTwo.setDestructible(true);
+        bunkerTwo.setDurability(36);
+        levelWorld.addObject(bunkerTwo);
+
+        SceneObject radarTower = new SceneObject("air-radar-tower", 2240, 360, 46, 140, true, false);
+        radarTower.setColor(new Color(92, 104, 114));
+        radarTower.setCollapseWhenUnsupported(true);
+        radarTower.setCollapseDamage(26);
+        levelWorld.addObject(radarTower);
+
+        MonsterObject plane = new MonsterObject("enemy-plane", 260, 140, 120);
+        plane.setSize(116, 42);
+        plane.setColor(new Color(208, 216, 228));
+        plane.setMaterial("plane");
+        plane.setAirborne(true);
+        plane.setAggressive(true);
+        plane.setSpeed(150);
+        plane.setAttack(20);
+        plane.setHealDropAmount(35);
+        plane.setRangedAttacker(true);
+        plane.setShootRange(1500);
+        plane.setProjectileSpeed(460);
+        plane.setShootCooldown(0.85);
+        levelWorld.addObject(plane);
+
+        levelWorld.addObject(new ItemObject("air-supply", 760, 430, 28, 28, "health", 18, "Supply Drop"));
+        levelWorld.addObject(new ItemObject("air-supply-2", 1800, 430, 28, 28, "health", 22, "Supply Drop"));
+        levelWorld.addObject(new GoalObject("air-raid-exit", width - 120, 430, 64, 72));
+        DialogObject guide = new DialogObject(
+            "air-raid-guide",
+            120,
+            70,
+            760,
+            60,
+            "Command",
+            "Hostile aircraft are bombing the airfield. Use the bunkers for cover and reach the exit."
+        );
+        guide.setActive(false);
+        levelWorld.addObject(guide);
+        return levelWorld;
+    }
+
+    private void addAirCloud(GameWorld levelWorld, int x, int y, int width, int height, Color color) {
+        SceneObject cloud = new SceneObject("cloud", x, y, width, height, false, true);
+        cloud.setColor(color);
+        cloud.setSolid(false);
+        cloud.setMaterial("cloud");
+        levelWorld.addObject(cloud);
     }
 
     private GameWorld createForestLevelWorld() {

@@ -611,6 +611,7 @@ public class App {
         menu.setSelectedIndex(0);
         menu.setFontSize(uiFontSize);
         menu.setSize(260, Math.max(180, menu.getPreferredHeight()));
+        centerMenu(menu, world);
         return menu;
     }
 
@@ -629,7 +630,31 @@ public class App {
         menu.setSelectedIndex(0);
         menu.setFontSize(uiFontSize);
         menu.setSize(menu.getWidth(), Math.max(180, menu.getPreferredHeight()));
+        centerMenu(menu, world);
         return menu;
+    }
+
+    private static void centerMenu(MenuObject menu, GameWorld world) {
+        if (menu == null) {
+            return;
+        }
+        int viewW = resolveViewportWidth(world);
+        int viewH = resolveViewportHeight(world);
+        menu.setPosition(Math.max(0, (viewW - menu.getWidth()) / 2), Math.max(0, (viewH - menu.getHeight()) / 2));
+    }
+
+    private static int resolveViewportWidth(GameWorld world) {
+        if (world != null && world.getCamera() != null) {
+            return world.getCamera().getViewportWidth();
+        }
+        return 960;
+    }
+
+    private static int resolveViewportHeight(GameWorld world) {
+        if (world != null && world.getCamera() != null) {
+            return world.getCamera().getViewportHeight();
+        }
+        return 540;
     }
 
     private static void removeShellMenus(GameWorld world) {

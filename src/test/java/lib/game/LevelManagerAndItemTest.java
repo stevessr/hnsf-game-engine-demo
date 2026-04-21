@@ -37,6 +37,7 @@ class LevelManagerAndItemTest {
         assertTrue(levelNames.contains("level-2"));
         assertTrue(levelNames.contains("level-3"));
         assertTrue(levelNames.contains("level-4"));
+        assertTrue(levelNames.contains("air-raid-demo"));
     }
 
     @Test
@@ -93,6 +94,29 @@ class LevelManagerAndItemTest {
                 .filter(monster -> monster.getHealDropAmount() > 0)
                 .count() >= 2,
             "演示关卡应至少有两个预设回血掉落的怪物"
+        );
+    }
+
+    @Test
+    void airRaidDemoShouldContainFlyingEnemyPlaneAndCover() {
+        LevelManager levelManager = new LevelManager();
+        GameWorld airRaidWorld = MapDataMapper.toWorld(levelManager.createLevelData("air-raid-demo"));
+
+        MonsterObject plane = airRaidWorld.getObjectsByType(GameObjectType.MONSTER).stream()
+            .filter(MonsterObject.class::isInstance)
+            .map(MonsterObject.class::cast)
+            .filter(MonsterObject::isAirborne)
+            .findFirst()
+            .orElseThrow();
+
+        assertTrue(plane.isRangedAttacker(), "空袭敌机应具有远程攻击能力");
+        assertTrue(plane.getShootRange() >= 1000, "空袭敌机应能在较远距离发动攻击");
+        assertTrue(
+            airRaidWorld.getObjects().stream()
+                .filter(SceneObject.class::isInstance)
+                .map(SceneObject.class::cast)
+                .anyMatch(SceneObject::isDestructible),
+            "空袭 demo 关卡应包含可被破坏的掩体"
         );
     }
 
