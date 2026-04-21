@@ -3,6 +3,8 @@ package lib.render;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -81,6 +83,12 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         setDoubleBuffered(true);
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                syncViewportToPanelSize();
+            }
+        });
         registerInputListeners();
     }
 
@@ -429,16 +437,13 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
 
     public void setResolution(int width, int height) {
         setPreferredSize(new Dimension(width, height));
-        camera.setViewportSize(width, height);
-        if (world.getStateMachine() instanceof DefaultGameStateMachine dsm) {
-            dsm.recenterUI(world);
-        }
         
         java.awt.Window window = SwingUtilities.getWindowAncestor(this);
         if (window instanceof javax.swing.JFrame frame) {
             frame.pack();
             frame.setLocationRelativeTo(null);
         }
+        syncViewportToPanelSize();
         savePersistentSettings();
         revalidate();
         repaint();
@@ -568,8 +573,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             public void mousePressed(MouseEvent event) {
                 requestFocusInWindow();
                 double scale = getScale();
-                int offsetX = (int) ((getWidth() - 960 * scale) / 2);
-                int offsetY = (int) ((getHeight() - 540 * scale) / 2);
+                int viewW = getViewportWidth();
+                int viewH = getViewportHeight();
+                int offsetX = (int) ((getWidth() - viewW * scale) / 2);
+                int offsetY = (int) ((getHeight() - viewH * scale) / 2);
                 
                 int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
                 int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
@@ -580,8 +587,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             @Override
             public void mouseReleased(MouseEvent event) {
                 double scale = getScale();
-                int offsetX = (int) ((getWidth() - 960 * scale) / 2);
-                int offsetY = (int) ((getHeight() - 540 * scale) / 2);
+                int viewW = getViewportWidth();
+                int viewH = getViewportHeight();
+                int offsetX = (int) ((getWidth() - viewW * scale) / 2);
+                int offsetY = (int) ((getHeight() - viewH * scale) / 2);
                 int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
                 int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
                 inputController.getMouseManager().releaseButton(event.getButton(), logicalX, logicalY);
@@ -590,8 +599,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             @Override
             public void mouseMoved(MouseEvent event) {
                 double scale = getScale();
-                int offsetX = (int) ((getWidth() - 960 * scale) / 2);
-                int offsetY = (int) ((getHeight() - 540 * scale) / 2);
+                int viewW = getViewportWidth();
+                int viewH = getViewportHeight();
+                int offsetX = (int) ((getWidth() - viewW * scale) / 2);
+                int offsetY = (int) ((getHeight() - viewH * scale) / 2);
                 int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
                 int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
                 inputController.getMouseManager().moveTo(logicalX, logicalY);
@@ -620,9 +631,33 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     }
 
     private double getScale() {
-        double scaleX = (double) getWidth() / 960;
-        double scaleY = (double) getHeight() / 540;
+        double scaleX = (double) getWidth() / getViewportWidth();
+        double scaleY = (double) getHeight() / getViewportHeight();
         return Math.min(scaleX, scaleY);
+    }
+
+    private int getViewportWidth() {
+        return camera == null ? 960 : camera.getViewportWidth();
+    }
+
+    private int getViewportHeight() {
+        return camera == null ? 540 : camera.getViewportHeight();
+    }
+
+    private void syncViewportToPanelSize() {
+        if (camera == null) {
+            return;
+        }
+        int viewportWidth = Math.max(1, getWidth() > 0 ? getWidth() : getPreferredSize().width);
+        int viewportHeight = Math.max(1, getHeight() > 0 ? getHeight() : getPreferredSize().height);
+        if (camera.getViewportWidth() == viewportWidth && camera.getViewportHeight() == viewportHeight) {
+            return;
+        }
+        camera.setViewportSize(viewportWidth, viewportHeight);
+        if (world.getStateMachine() instanceof DefaultGameStateMachine dsm) {
+            dsm.recenterUI(world);
+        }
+        repaint();
     }
 
     public void syncInputMap() {
@@ -662,12 +697,13 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     @Override
     protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
+        syncViewportToPanelSize();
         Graphics2D graphics2d = (Graphics2D) graphics.create();
         try {
             int panelWidth = getWidth();
             int panelHeight = getHeight();
-            int viewW = 960;
-            int viewH = 540;
+            int viewW = getViewportWidth();
+            int viewH = getViewportHeight();
             double scale = getScale();
             int offsetX = (int) ((panelWidth - viewW * scale) / 2);
             int offsetY = (int) ((panelHeight - viewH * scale) / 2);

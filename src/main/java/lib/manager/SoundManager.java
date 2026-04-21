@@ -46,6 +46,8 @@ public final class SoundManager {
         registerSoundGroup("victory", SoundCategory.MENU, "victory", "victory_alt");
         registerSoundGroup("jump", SoundCategory.EFFECT, "jump");
         registerSoundGroup("crash", SoundCategory.EFFECT, "crash", "crash_alt");
+        registerSoundGroup("bomb_drop", SoundCategory.EFFECT, "bomb_drop");
+        registerSoundGroup("explosion", SoundCategory.EFFECT, "explosion");
     }
 
     public void playSound(String soundName) {

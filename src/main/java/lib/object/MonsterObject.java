@@ -24,6 +24,8 @@ public final class MonsterObject extends ActorObject {
     private double shootCooldown = 1.2;
     private double shootCooldownRemaining = 0.0;
     private boolean airborne = false;
+    private boolean bomber = false;
+    private int bombRadius = 72;
 
     public MonsterObject(String name) {
         this(name, 0, 0, 60);
@@ -115,6 +117,22 @@ public final class MonsterObject extends ActorObject {
         }
     }
 
+    public boolean isBomber() {
+        return bomber;
+    }
+
+    public void setBomber(boolean bomber) {
+        this.bomber = bomber;
+    }
+
+    public int getBombRadius() {
+        return bombRadius;
+    }
+
+    public void setBombRadius(int bombRadius) {
+        this.bombRadius = Math.max(20, bombRadius);
+    }
+
     @Override
     public void update(GameWorld world, double deltaSeconds) {
         if (isDying()) {
@@ -161,9 +179,7 @@ public final class MonsterObject extends ActorObject {
             setVelocityY(0.0);
         }
 
-        if (world != null) {
-            tryShootAtPlayer(world);
-        }
+        tryAttackAtPlayer(world);
     }
 
     @Override
@@ -284,7 +300,7 @@ public final class MonsterObject extends ActorObject {
         world.addObject(drop);
     }
 
-    private void tryShootAtPlayer(GameWorld world) {
+    private void tryAttackAtPlayer(GameWorld world) {
         if (world == null || !rangedAttacker || !aggressive || shootCooldownRemaining > 0.0 || isDying()) {
             return;
         }
@@ -296,6 +312,10 @@ public final class MonsterObject extends ActorObject {
         double dy = (player.getY() + player.getHeight() / 2.0) - (getY() + getHeight() / 2.0);
         double distance = Math.hypot(dx, dy);
         if (distance <= 0.0 || distance > shootRange) {
+            return;
+        }
+        if (bomber) {
+            dropBomb(world, dx, dy, distance);
             return;
         }
         double vx = (dx / distance) * projectileSpeed;
@@ -312,6 +332,30 @@ public final class MonsterObject extends ActorObject {
         projectile.setColor(PROJECTILE_COLOR);
         world.addObject(projectile);
         world.getSoundManager().playSound("shoot");
+        shootCooldownRemaining = shootCooldown;
+    }
+
+    private void dropBomb(GameWorld world, double dx, double dy, double distance) {
+        int spawnX = getX() + getWidth() / 2 - 4;
+        int spawnY = getY() + getHeight() - 2;
+        double forwardDrift = Math.max(60.0, projectileSpeed * 0.45);
+        double horizontalVelocity = (dx >= 0 ? 1.0 : -1.0) * forwardDrift;
+        double verticalVelocity = Math.max(20.0, Math.min(120.0, Math.abs(dy) * 0.08 + distance * 0.02));
+        ProjectileObject bomb = ProjectileObject.createBomb(
+            getName() + "-bomb-" + System.nanoTime(),
+            spawnX,
+            spawnY,
+            horizontalVelocity,
+            verticalVelocity,
+            Math.max(8, getAttack()),
+            this,
+            bombRadius,
+            Math.max(8, getAttack() + 6),
+            Math.max(0.8, shootCooldown * 1.5)
+        );
+        bomb.setColor(new Color(40, 42, 48));
+        world.addObject(bomb);
+        world.getSoundManager().playSound("bomb_drop");
         shootCooldownRemaining = shootCooldown;
     }
 }

@@ -64,6 +64,8 @@ public final class GameObjectFactory {
             extra.put("projectileSpeed", monster.getProjectileSpeed());
             extra.put("shootCooldown", monster.getShootCooldown());
             extra.put("airborne", monster.isAirborne());
+            extra.put("bomber", monster.isBomber());
+            extra.put("bombRadius", monster.getBombRadius());
         } else if (object instanceof ItemObject item) {
             extra.put("kind", item.getKind());
             extra.put("value", item.getValue());
@@ -208,6 +210,12 @@ public final class GameObjectFactory {
         }
         if (extra.has("airborne")) {
             monster.setAirborne(extra.optBoolean("airborne", monster.isAirborne()));
+        }
+        if (extra.has("bomber")) {
+            monster.setBomber(extra.optBoolean("bomber", monster.isBomber()));
+        }
+        if (extra.has("bombRadius")) {
+            monster.setBombRadius(extra.optInt("bombRadius", monster.getBombRadius()));
         }
         return monster;
     }

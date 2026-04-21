@@ -73,5 +73,13 @@ The following sound effects were downloaded from Wikimedia Commons and stored in
   - Direct audio URL: https://upload.wikimedia.org/wikipedia/commons/3/36/Completion_Sound_12_%28Gravity_Sound%29.wav
   - Alternate victory / completion fanfare.
 
+## Locally generated files
+
+These files were generated procedurally in this repository and do not depend on
+external audio sources:
+
+- `bomb_drop.wav`
+- `explosion.wav`
+
 If you redistribute the game, please review the linked Commons pages for the
 exact license terms and attribution requirements.

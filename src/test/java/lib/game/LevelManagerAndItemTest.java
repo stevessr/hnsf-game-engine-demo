@@ -110,6 +110,7 @@ class LevelManagerAndItemTest {
             .orElseThrow();
 
         assertTrue(plane.isRangedAttacker(), "空袭敌机应具有远程攻击能力");
+        assertTrue(plane.isBomber(), "空袭敌机应投放炸弹而不是普通子弹");
         assertTrue(plane.getShootRange() >= 1000, "空袭敌机应能在较远距离发动攻击");
         assertTrue(
             airRaidWorld.getObjects().stream()

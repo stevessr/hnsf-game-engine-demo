@@ -150,6 +150,35 @@ class GameObjectModelTest {
     }
 
     @Test
+    void bomberMonsterShouldDropBombsInsteadOfBullets() {
+        GameWorld world = new GameWorld(640, 360);
+        world.setGravityEnabled(true);
+        PlayerObject player = new PlayerObject("hero", 280, 160);
+        MonsterObject plane = new MonsterObject("enemy-plane", 100, 60, 80);
+        plane.setAirborne(true);
+        plane.setBomber(true);
+        plane.setMaterial("plane");
+        plane.setSize(100, 40);
+        plane.setSpeed(0);
+        plane.setRangedAttacker(true);
+        plane.setShootRange(1000);
+        plane.setShootCooldown(0.1);
+        plane.setProjectileSpeed(160);
+
+        world.addObject(player);
+        world.addObject(plane);
+        world.update(0.2);
+
+        assertTrue(
+            world.getObjectsByType(GameObjectType.PROJECTILE).stream()
+                .filter(ProjectileObject.class::isInstance)
+                .map(ProjectileObject.class::cast)
+                .anyMatch(projectile -> projectile.isActive() && projectile.getName().contains("-bomb-")),
+            "敌机应在攻击范围内投放炸弹"
+        );
+    }
+
+    @Test
     void worldShouldRenderSceneObjectOverBackground() {
         GameWorld world = new GameWorld(80, 80, Color.BLACK);
         SceneObject scene = new SceneObject("wall", 10, 10, 20, 20, true, false);
@@ -234,6 +263,30 @@ class GameObjectModelTest {
 
         assertFalse(crate.isActive(), "可破坏建筑在耐久归零后应被销毁");
         assertFalse(projectile.isActive(), "子弹命中建筑后应消失");
+    }
+
+    @Test
+    void bombProjectileShouldExplodeAndDamageNearbyTargets() {
+        GameWorld world = new GameWorld(260, 180);
+        world.setGravityEnabled(true);
+        PlayerObject player = new PlayerObject("hero", 120, 110);
+        player.setHealth(40);
+        SceneObject bunker = new SceneObject("bunker", 140, 120, 32, 24, true, false);
+        bunker.setDestructible(true);
+        bunker.setDurability(18);
+        ProjectileObject bomb = ProjectileObject.createBomb("bomb", 120, 20, 0, 0, 12, null, 80, 24, 1.0);
+
+        world.addObject(player);
+        world.addObject(bunker);
+        world.addObject(bomb);
+
+        for (int i = 0; i < 240 && bomb.isActive(); i++) {
+            world.update(1.0 / 60.0);
+        }
+
+        assertFalse(bomb.isActive(), "炸弹在爆炸动画结束后应失效");
+        assertTrue(player.getHealth() < 40, "爆炸应对附近玩家造成伤害");
+        assertFalse(bunker.isActive(), "爆炸应能摧毁附近可破坏建筑");
     }
 
     @Test

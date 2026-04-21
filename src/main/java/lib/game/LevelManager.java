@@ -305,14 +305,16 @@ public final class LevelManager {
         plane.setColor(new Color(208, 216, 228));
         plane.setMaterial("plane");
         plane.setAirborne(true);
+        plane.setBomber(true);
         plane.setAggressive(true);
         plane.setSpeed(150);
-        plane.setAttack(20);
+        plane.setAttack(24);
         plane.setHealDropAmount(35);
         plane.setRangedAttacker(true);
-        plane.setShootRange(1500);
-        plane.setProjectileSpeed(460);
-        plane.setShootCooldown(0.85);
+        plane.setShootRange(1400);
+        plane.setProjectileSpeed(180);
+        plane.setShootCooldown(1.05);
+        plane.setBombRadius(88);
         levelWorld.addObject(plane);
 
         levelWorld.addObject(new ItemObject("air-supply", 760, 430, 28, 28, "health", 18, "Supply Drop"));

@@ -39,6 +39,8 @@ public class GameObjectFactoryTest {
         monster.setProjectileSpeed(500);
         monster.setShootCooldown(0.8);
         monster.setAirborne(true);
+        monster.setBomber(true);
+        monster.setBombRadius(96);
         monster.setMaterial("plane");
         monster.setSize(96, 40);
         
@@ -55,6 +57,8 @@ public class GameObjectFactoryTest {
         assertEquals(500, restored.getProjectileSpeed());
         assertEquals(0.8, restored.getShootCooldown());
         assertTrue(restored.isAirborne());
+        assertTrue(restored.isBomber());
+        assertEquals(96, restored.getBombRadius());
     }
 
     @Test
