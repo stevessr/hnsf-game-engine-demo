@@ -42,11 +42,26 @@ public final class ProjectileObject extends BaseObject {
             }
             
             if (other instanceof ActorObject actor) {
+                if (isFriendlyFire(actor)) {
+                    continue;
+                }
+                if (other instanceof PlayerObject player && player.getHealth() <= damage) {
+                    world.setFailureReason(resolvePlayerHitReason());
+                }
                 actor.takeDamage(world, damage);
                 setActive(false);
                 return;
-            }
- else if (other.getType() == GameObjectType.WALL || other.getType() == GameObjectType.VOXEL) {
+            } else if (other instanceof SceneObject scene) {
+                if (scene.isDestructible()) {
+                    scene.applyStructuralDamage(world, damage);
+                    setActive(false);
+                    return;
+                }
+                if (scene.isSolid()) {
+                    setActive(false);
+                    return;
+                }
+            } else if (other.getType() == GameObjectType.VOXEL) {
                 setActive(false);
                 return;
             }
@@ -57,5 +72,20 @@ public final class ProjectileObject extends BaseObject {
     public void render(Graphics2D graphics) {
         graphics.setColor(getColor());
         graphics.fillOval(getX(), getY(), getWidth(), getHeight());
+    }
+
+    private boolean isFriendlyFire(ActorObject actor) {
+        if (shooter == null || actor == null) {
+            return false;
+        }
+        return (shooter instanceof MonsterObject && actor instanceof MonsterObject)
+            || (shooter instanceof PlayerObject && actor instanceof PlayerObject);
+    }
+
+    private String resolvePlayerHitReason() {
+        if (shooter instanceof MonsterObject monster) {
+            return "被远程怪物射杀：" + monster.getName();
+        }
+        return "被投射物击中";
     }
 }

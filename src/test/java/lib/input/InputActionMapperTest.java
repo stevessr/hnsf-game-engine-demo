@@ -16,9 +16,11 @@ class InputActionMapperTest {
         InputActionMapper mapper = InputActionMapper.createDefaultGameMapping();
 
         keyboardManager.pressKey(KeyEvent.VK_A);
+        keyboardManager.pressKey(KeyEvent.VK_SHIFT);
         mouseManager.pressButton(MouseEvent.BUTTON1, 32, 48);
 
         assertTrue(mapper.isKeyboardActive(InputAction.MOVE_LEFT, keyboardManager));
+        assertTrue(mapper.isKeyboardActive(InputAction.SPRINT, keyboardManager));
         assertTrue(mapper.isActive(InputAction.MOVE_LEFT, keyboardManager, mouseManager));
         assertTrue(mapper.isMouseJustActivated(InputAction.MENU_CONFIRM, mouseManager));
         assertTrue(mapper.isJustActivated(InputAction.MENU_CONFIRM, keyboardManager, mouseManager));

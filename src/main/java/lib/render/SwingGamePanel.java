@@ -118,6 +118,21 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         if (json.has("volume")) {
             setVolume((float)json.getDouble("volume"));
         }
+        if (json.has("soundEnabled")) {
+            setSoundEnabled(json.getBoolean("soundEnabled"));
+        }
+        if (json.has("damageVolume")) {
+            setDamageVolume((float) json.getDouble("damageVolume"));
+        }
+        if (json.has("shootVolume")) {
+            setShootVolume((float) json.getDouble("shootVolume"));
+        }
+        if (json.has("menuVolume")) {
+            setMenuVolume((float) json.getDouble("menuVolume"));
+        }
+        if (json.has("effectVolume")) {
+            setEffectVolume((float) json.getDouble("effectVolume"));
+        }
 
         if (json.has("keyBindings")) {
             deserializeKeyBindings(json.getJSONObject("keyBindings"));
@@ -144,6 +159,11 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             getAmbientLight(),
             getLightingIntensity(),
             getVolume(),
+            isSoundEnabled(),
+            getDamageVolume(),
+            getShootVolume(),
+            getMenuVolume(),
+            getEffectVolume(),
             serializeKeyBindings()
         );
     }
@@ -326,6 +346,71 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     public void setVolume(float volume) {
         if (world != null) {
             world.getSoundManager().setVolume(volume);
+            savePersistentSettings();
+        }
+    }
+
+    @Override
+    public boolean isSoundEnabled() {
+        return world != null ? world.getSoundManager().isEnabled() : true;
+    }
+
+    @Override
+    public void setSoundEnabled(boolean enabled) {
+        if (world != null) {
+            world.getSoundManager().setEnabled(enabled);
+            savePersistentSettings();
+        }
+    }
+
+    @Override
+    public float getDamageVolume() {
+        return world != null ? world.getSoundManager().getDamageVolume() : 1.0f;
+    }
+
+    @Override
+    public void setDamageVolume(float volume) {
+        if (world != null) {
+            world.getSoundManager().setDamageVolume(volume);
+            savePersistentSettings();
+        }
+    }
+
+    @Override
+    public float getShootVolume() {
+        return world != null ? world.getSoundManager().getShootVolume() : 1.0f;
+    }
+
+    @Override
+    public void setShootVolume(float volume) {
+        if (world != null) {
+            world.getSoundManager().setShootVolume(volume);
+            savePersistentSettings();
+        }
+    }
+
+    @Override
+    public float getMenuVolume() {
+        return world != null ? world.getSoundManager().getMenuVolume() : 1.0f;
+    }
+
+    @Override
+    public void setMenuVolume(float volume) {
+        if (world != null) {
+            world.getSoundManager().setMenuVolume(volume);
+            savePersistentSettings();
+        }
+    }
+
+    @Override
+    public float getEffectVolume() {
+        return world != null ? world.getSoundManager().getEffectVolume() : 1.0f;
+    }
+
+    @Override
+    public void setEffectVolume(float volume) {
+        if (world != null) {
+            world.getSoundManager().setEffectVolume(volume);
             savePersistentSettings();
         }
     }

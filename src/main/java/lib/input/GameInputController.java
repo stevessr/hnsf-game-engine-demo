@@ -15,6 +15,8 @@ import lib.state.GameSettings;
 import lib.state.GameStateContext;
 
 public final class GameInputController {
+    private static final double SHIFT_ACCELERATION_MULTIPLIER = 1.75;
+
     private final KeyboardManager keyboardManager;
     private final MouseManager mouseManager;
     private final InputActionMapper actionMapper;
@@ -114,7 +116,11 @@ public final class GameInputController {
             ay /= mag;
         }
 
-        player.accelerate(ax, ay, 1.0 / 60.0);
+        double accelerationMultiplier = actionMapper.isKeyboardActive(InputAction.SPRINT, keyboardManager)
+            ? SHIFT_ACCELERATION_MULTIPLIER
+            : 1.0;
+
+        player.accelerate(ax * accelerationMultiplier, ay * accelerationMultiplier, 1.0 / 60.0);
     }
 
     public void applyVoxelSystem(GameWorld world) {
@@ -160,8 +166,10 @@ public final class GameInputController {
             if (hoveredIndex >= 0) {
                 menu.setSelectedIndex(hoveredIndex);
             }
+            world.getSoundManager().playSound("menu_click");
             syncDialog(dialog, "已确认", menu.getSelectedOption());
         } else if (actionMapper.isKeyboardJustActivated(InputAction.MENU_CONFIRM, keyboardManager)) {
+            world.getSoundManager().playSound("menu_click");
             syncDialog(dialog, "已确认", menu.getSelectedOption());
         }
     }

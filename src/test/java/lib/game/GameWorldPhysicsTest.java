@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import lib.object.BoundaryObject;
+import lib.object.SceneObject;
 import lib.object.VoxelObject;
 import lib.object.MonsterObject;
 import lib.object.PlayerObject;
@@ -96,5 +97,24 @@ class GameWorldPhysicsTest {
 
         assertEquals(12, player.getX(), "补色体素应阻挡角色前进");
         assertTrue(player.getHealth() < 120, "补色接触应造成掉血");
+    }
+
+    @Test
+    void ordinarySceneGroundShouldNotDamagePlayer() {
+        GameWorld world = new GameWorld(220, 160);
+        PlayerObject player = new PlayerObject("hero", 10, 20);
+        player.setFriction(1.0);
+        player.setColor(new Color(66, 135, 245));
+        SceneObject ground = new SceneObject("ground", 60, 20, 40, 48, true, false);
+        ground.setColor(new Color(255, 168, 72));
+
+        world.addObject(player);
+        world.addObject(ground);
+        player.setVelocity(100, 0);
+
+        world.update(1.0);
+
+        assertEquals(12, player.getX(), "地面仍应阻挡角色前进");
+        assertEquals(120, player.getHealth(), "普通地面不应因为补色而扣血");
     }
 }

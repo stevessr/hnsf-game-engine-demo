@@ -119,6 +119,7 @@ public final class ControlHintsOverlay {
             }
             case PLAYING -> {
                 hints.add(new Hint("WASD", "Move"));
+                hints.add(new Hint("Shift", "Sprint"));
                 hints.add(new Hint("Space", "Jump"));
                 hints.add(new Hint("K", "Shoot"));
                 hints.add(new Hint("G", "Goals"));

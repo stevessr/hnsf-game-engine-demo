@@ -7,6 +7,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
@@ -138,6 +139,119 @@ class GameObjectModelTest {
         assertTrue(boundary.isSolid());
         assertEquals(110, boundary.getX());
         assertEquals(10, boundary.getWidth());
+    }
+
+    @Test
+    void monsterShouldSpawnHealingDropWhenConfigured() {
+        GameWorld world = new GameWorld(200, 160);
+        MonsterObject monster = new MonsterObject("slime", 40, 50, 25);
+        monster.setHealDropAmount(18);
+        world.addObject(monster);
+
+        monster.takeDamage(world, 1000);
+        world.update(1.0 / 60.0);
+
+        assertEquals(1, world.getObjectsByType(GameObjectType.ITEM).size());
+        GameObject dropObject = world.getObjectsByType(GameObjectType.ITEM).get(0);
+        ItemObject drop = assertInstanceOf(ItemObject.class, dropObject);
+        assertEquals("health", drop.getKind());
+        assertEquals(18, drop.getValue());
+    }
+
+    @Test
+    void projectileShouldBreakDestructibleSceneObject() {
+        GameWorld world = new GameWorld(160, 120);
+        SceneObject crate = new SceneObject("crate", 35, 0, 24, 24, true, false);
+        crate.setDestructible(true);
+        crate.setDurability(10);
+        ProjectileObject projectile = new ProjectileObject("bullet", 0, 0, 200, 0, 10, null);
+        world.addObject(crate);
+        world.addObject(projectile);
+
+        world.update(0.2);
+
+        assertFalse(crate.isActive(), "可破坏建筑在耐久归零后应被销毁");
+        assertFalse(projectile.isActive(), "子弹命中建筑后应消失");
+    }
+
+    @Test
+    void unsupportedSceneObjectShouldCollapseAndCanSetDeathReason() {
+        GameWorld world = new GameWorld(180, 220);
+        world.setGravityEnabled(true);
+        PlayerObject player = new PlayerObject("hero", 40, 140);
+        player.setHealth(20);
+        SceneObject slab = new SceneObject("slab", 40, 0, 48, 24, true, false);
+        slab.setCollapseWhenUnsupported(true);
+        slab.setCollapseDamage(30);
+        world.addObject(slab);
+        world.addObject(player);
+
+        for (int i = 0; i < 120 && world.getFailureReason() == null; i++) {
+            world.update(1.0 / 60.0);
+        }
+
+        assertTrue(slab.getY() > 0, "失去支撑的建筑应开始倒塌");
+        assertTrue(world.getFailureReason() != null && world.getFailureReason().contains("slab"), "倒塌建筑砸中玩家时应记录死因");
+    }
+
+    @Test
+    void sceneObjectShouldBreakAfterBeingSteppedOnEnoughTimes() {
+        GameWorld world = new GameWorld(180, 140);
+        PlayerObject player = new PlayerObject("hero", 30, 12);
+        SceneObject platform = new SceneObject("fragile-platform", 20, 60, 80, 12, true, false);
+        platform.setBreakAfterSteps(2);
+        world.addObject(player);
+        world.addObject(platform);
+
+        world.update(1.0 / 60.0);
+        assertEquals(1, platform.getStepCount());
+        assertTrue(platform.isActive());
+
+        player.setPosition(30, 0);
+        world.update(1.0 / 60.0);
+        player.setPosition(30, 12);
+        world.update(1.0 / 60.0);
+
+        assertFalse(platform.isActive(), "脆弱平台被踩到阈值后应损坏");
+    }
+
+    @Test
+    void rangedMonsterShouldShootProjectileTowardPlayer() {
+        GameWorld world = new GameWorld(420, 180);
+        PlayerObject player = new PlayerObject("hero", 240, 80);
+        MonsterObject monster = new MonsterObject("archer", 60, 80, 20);
+        monster.setSpeed(0);
+        monster.setRangedAttacker(true);
+        monster.setShootRange(400);
+        monster.setShootCooldown(0.1);
+        world.addObject(player);
+        world.addObject(monster);
+
+        world.update(0.2);
+
+        assertTrue(world.getObjectsByType(GameObjectType.PROJECTILE).size() >= 1, "远程怪物应生成投射物");
+    }
+
+    @Test
+    void monsterProjectileShouldRecordFailureReasonWhenItKillsPlayer() {
+        GameWorld world = new GameWorld(420, 180);
+        PlayerObject player = new PlayerObject("hero", 240, 80);
+        player.setHealth(10);
+        MonsterObject monster = new MonsterObject("archer", 60, 80, 20);
+        monster.setSpeed(0);
+        monster.setAttack(10);
+        monster.setRangedAttacker(true);
+        monster.setShootRange(400);
+        monster.setProjectileSpeed(500);
+        monster.setShootCooldown(0.1);
+        world.addObject(player);
+        world.addObject(monster);
+
+        for (int i = 0; i < 120 && world.getFailureReason() == null; i++) {
+            world.update(1.0 / 60.0);
+        }
+
+        assertTrue(world.getFailureReason() != null && world.getFailureReason().contains("archer"), "远程击杀应记录怪物射击死因");
     }
 
     @Test

@@ -1,6 +1,9 @@
 package lib.object;
 
+import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 
 import lib.game.GameWorld;
@@ -25,6 +28,8 @@ public final class PlayerObject extends ActorObject {
     private int lightRadius = 200;
     private double lightOrbTimer = 0;
     private static final long INVULNERABILITY_DURATION_NANOS = 1_000_000_000L; // 1秒
+    private static final String REASON_MONSTER_PREFIX = "被怪物击败：";
+    private static final String REASON_COLOR_CONFLICT = "接触到互补色危险方块";
 
     public PlayerObject(String name) {
         this(name, 0, 0);
@@ -184,6 +189,7 @@ public final class PlayerObject extends ActorObject {
         
         ProjectileObject p = new ProjectileObject("bullet", (int)px, (int)py, lastDirX * 600, lastDirY * 600, getAttack(), this);
         world.addObject(p);
+        world.getSoundManager().playSound("shoot");
     }
 
     public void cycleColor() {
@@ -271,6 +277,9 @@ public final class PlayerObject extends ActorObject {
 
         for (GameObject other : world.getCollisions(this)) {
             if (other instanceof MonsterObject monster && monster.isActive()) {
+                if (getHealth() <= monster.getAttack()) {
+                    world.setFailureReason(REASON_MONSTER_PREFIX + monster.getName());
+                }
                 takeDamage(world, monster.getAttack());
                 lastDamageTimeNanos = now;
                 
@@ -301,7 +310,10 @@ public final class PlayerObject extends ActorObject {
             if (other == null || !other.isActive() || other == this) {
                 continue;
             }
-            if (isColorConflict(other)) {
+            if (isColorDamageSource(other) && isColorConflict(other)) {
+                if (getHealth() <= complementaryColorDamage) {
+                    world.setFailureReason(REASON_COLOR_CONFLICT);
+                }
                 takeDamage(world, complementaryColorDamage);
                 lastDamageTimeNanos = now;
                 return;
@@ -319,7 +331,11 @@ public final class PlayerObject extends ActorObject {
         }
         GameObject blockedX = movementResult.getBlockedByX();
         GameObject blockedY = movementResult.getBlockedByY();
-        if (isColorConflict(blockedX) || isColorConflict(blockedY)) {
+        if ((isColorDamageSource(blockedX) && isColorConflict(blockedX))
+            || (isColorDamageSource(blockedY) && isColorConflict(blockedY))) {
+            if (getHealth() <= complementaryColorDamage) {
+                world.setFailureReason(REASON_COLOR_CONFLICT);
+            }
             takeDamage(world, complementaryColorDamage);
             lastDamageTimeNanos = now;
         }
@@ -332,10 +348,27 @@ public final class PlayerObject extends ActorObject {
         return ColorUtils.isComplementary(getColor(), other.getColor());
     }
 
+    private boolean isColorDamageSource(GameObject other) {
+        if (!(other instanceof SceneObject scene)) {
+            return false;
+        }
+        if (!scene.isActive() || !scene.isSolid()) {
+            return false;
+        }
+        if (scene.getType() == GameObjectType.BOUNDARY) {
+            return false;
+        }
+        if (scene.getType() == GameObjectType.WALL || scene.getType() == GameObjectType.VOXEL) {
+            return true;
+        }
+        return scene.isDestructible() || scene.isCollapseWhenUnsupported() || scene.getBreakAfterSteps() > 0;
+    }
+
     @Override
     public void render(Graphics2D graphics) {
         if (isDying()) {
-            renderDeathAnimation(graphics, () -> renderBase(graphics));
+            renderDeathAnimation(graphics, this::renderBase);
+            renderDeathEffects(graphics);
             return;
         }
         renderBase(graphics);
@@ -400,6 +433,38 @@ public final class PlayerObject extends ActorObject {
         } else {
             graphics.setColor(new Color(60, 30, 20));
             graphics.fillArc(x + 8, y, 32, 32, 0, 180);
+        }
+    }
+
+    private void renderDeathEffects(Graphics2D graphics) {
+        double progress = getDeathAnimationProgress();
+        Graphics2D g2d = (Graphics2D) graphics.create();
+        try {
+            int cx = getX() + getWidth() / 2;
+            int cy = getY() + getHeight() / 2;
+
+            g2d.setComposite(AlphaComposite.getInstance(
+                AlphaComposite.SRC_OVER,
+                (float) Math.max(0.0, 0.8 - progress * 0.6)
+            ));
+            g2d.setStroke(new BasicStroke(3f));
+            g2d.setColor(new Color(255, 80, 80));
+            int radius = 16 + (int) Math.round(progress * 34);
+            g2d.drawOval(cx - radius, cy - radius, radius * 2, radius * 2);
+
+            g2d.setColor(new Color(255, 200, 120, 160));
+            int innerRadius = 10 + (int) Math.round(progress * 20);
+            g2d.drawOval(cx - innerRadius, cy - innerRadius, innerRadius * 2, innerRadius * 2);
+
+            g2d.setComposite(AlphaComposite.getInstance(
+                AlphaComposite.SRC_OVER,
+                (float) Math.max(0.0, 1.0 - progress)
+            ));
+            g2d.setFont(g2d.getFont().deriveFont(Font.BOLD, Math.max(14f, fontSize)));
+            g2d.setColor(new Color(255, 235, 235));
+            g2d.drawString("DEFEATED", getX() - 8, getY() - 12);
+        } finally {
+            g2d.dispose();
         }
     }
 }

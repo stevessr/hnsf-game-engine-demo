@@ -17,7 +17,9 @@ import lib.object.GameObjectFactory;
 import lib.object.GameObjectType;
 import lib.object.ItemObject;
 import lib.object.MenuObject;
+import lib.object.MonsterObject;
 import lib.object.PlayerObject;
+import lib.object.SceneObject;
 import lib.object.VoxelObject;
 import lib.object.dto.MapData;
 import lib.object.dto.ObjectData;
@@ -57,6 +59,83 @@ class LevelManagerAndItemTest {
     }
 
     @Test
+    void builtinLevelsShouldExposeDestructibleBuildingsAndHealingDrops() {
+        LevelManager levelManager = new LevelManager();
+        GameWorld tutorialWorld = MapDataMapper.toWorld(levelManager.createLevelData("tutorial"));
+        GameWorld demoWorld = MapDataMapper.toWorld(levelManager.createLevelData("demo-map"));
+
+        assertTrue(
+            tutorialWorld.getObjects().stream()
+                .filter(SceneObject.class::isInstance)
+                .map(SceneObject.class::cast)
+                .anyMatch(SceneObject::isDestructible),
+            "教程关卡应至少包含一个可破坏建筑"
+        );
+        assertTrue(
+            demoWorld.getObjects().stream()
+                .filter(SceneObject.class::isInstance)
+                .map(SceneObject.class::cast)
+                .filter(SceneObject::isDestructible)
+                .count() >= 2,
+            "演示关卡应至少包含两个可破坏建筑"
+        );
+        assertTrue(
+            tutorialWorld.getObjectsByType(GameObjectType.MONSTER).stream()
+                .filter(MonsterObject.class::isInstance)
+                .map(MonsterObject.class::cast)
+                .anyMatch(monster -> monster.getHealDropAmount() > 0),
+            "教程关卡应有预设回血掉落的怪物"
+        );
+        assertTrue(
+            demoWorld.getObjectsByType(GameObjectType.MONSTER).stream()
+                .filter(MonsterObject.class::isInstance)
+                .map(MonsterObject.class::cast)
+                .filter(monster -> monster.getHealDropAmount() > 0)
+                .count() >= 2,
+            "演示关卡应至少有两个预设回血掉落的怪物"
+        );
+    }
+
+    @Test
+    void generatedProceduralLevelShouldUseProvidedSeedAndRemainDeterministic() {
+        LevelManager levelManager = new LevelManager();
+
+        MapData first = levelManager.createGeneratedProceduralLevel(
+            "procedural-forest",
+            "procedural-forest-12345",
+            12345L
+        );
+        MapData second = levelManager.createGeneratedProceduralLevel(
+            "procedural-forest",
+            "procedural-forest-12345",
+            12345L
+        );
+
+        assertNotNull(first);
+        assertNotNull(second);
+        assertEquals("procedural-forest-12345", first.getName());
+        assertEquals(first.getName(), second.getName());
+        assertEquals(first.getWinCondition(), second.getWinCondition());
+        assertEquals(first.getTargetItems(), second.getTargetItems());
+        assertEquals(
+            MapDataMapper.exportToJson(first).toString(),
+            MapDataMapper.exportToJson(second).toString(),
+            "同一模板和种子应生成完全相同的地图"
+        );
+    }
+
+    @Test
+    void tutorialLevelShouldNotStartWithDialogsAlreadyActive() {
+        LevelManager levelManager = new LevelManager();
+        GameWorld tutorialWorld = MapDataMapper.toWorld(levelManager.createLevelData("tutorial"));
+
+        assertTrue(
+            tutorialWorld.getObjectsByType(GameObjectType.DIALOG).stream().noneMatch(GameObject::isActive),
+            "教程关卡中的提示对话应保持未激活，等待玩家靠近后再触发"
+        );
+    }
+
+    @Test
     void itemPickupShouldHealPlayerAndDeactivateItem() {
         GameWorld world = new GameWorld(160, 120);
         PlayerObject player = new PlayerObject("hero", 10, 20);
@@ -89,8 +168,10 @@ class LevelManagerAndItemTest {
     void textObjectsAndVoxelShouldRoundTripThroughObjectFactory() {
         MenuObject menu = new MenuObject("menu", 12, 18, 220, 150, "Menu", List.of("Start", "Exit"));
         menu.setFontSize(26);
+        menu.setActive(false);
         DialogObject dialog = new DialogObject("dialog", 12, 18, 320, 80, "Guide", "Hello world");
         dialog.setFontSize(24);
+        dialog.setActive(false);
         VoxelObject voxel = new VoxelObject("voxel", 20, 20, 24, new Color(255, 168, 72));
 
         ObjectData menuData = GameObjectFactory.toObjectData(menu);
@@ -106,6 +187,8 @@ class LevelManagerAndItemTest {
         assertInstanceOf(VoxelObject.class, restoredVoxel);
         assertEquals(26, ((MenuObject) restoredMenu).getFontSize());
         assertEquals(24, ((DialogObject) restoredDialog).getFontSize());
+        assertFalse(restoredMenu.isActive());
+        assertFalse(restoredDialog.isActive());
     }
 
     @Test

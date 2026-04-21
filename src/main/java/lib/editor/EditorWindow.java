@@ -35,7 +35,9 @@ import lib.object.GameObject;
 import lib.object.GameObjectType;
 import lib.object.ItemObject;
 import lib.object.MenuObject;
+import lib.object.MonsterObject;
 import lib.object.PlayerObject;
+import lib.object.SceneObject;
 import lib.persistence.MapDataMapper;
 import lib.persistence.MapRepository;
 
@@ -72,6 +74,16 @@ public final class EditorWindow extends JFrame {
     private final JSpinner healthSpinner;
     private final JSpinner attackSpinner;
     private final JSpinner speedSpinner;
+    private final JSpinner monsterHealDropSpinner;
+    private final JCheckBox rangedAttackToggle;
+    private final JSpinner shootRangeSpinner;
+    private final JSpinner projectileSpeedSpinner;
+    private final JSpinner shootCooldownSpinner;
+    private final JCheckBox destructibleToggle;
+    private final JSpinner durabilitySpinner;
+    private final JCheckBox collapseToggle;
+    private final JSpinner collapseDamageSpinner;
+    private final JSpinner breakAfterStepsSpinner;
     private final JToggleButton gridToggle;
     private final JToggleButton snapToggle;
     private final JSpinner gridSizeSpinner;
@@ -113,6 +125,16 @@ public final class EditorWindow extends JFrame {
         this.healthSpinner = new JSpinner(new SpinnerNumberModel(100, 0, 9999, 1));
         this.attackSpinner = new JSpinner(new SpinnerNumberModel(10, 0, 999, 1));
         this.speedSpinner = new JSpinner(new SpinnerNumberModel(5, 0, 999, 1));
+        this.monsterHealDropSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 9999, 1));
+        this.rangedAttackToggle = new JCheckBox("远程攻击", false);
+        this.shootRangeSpinner = new JSpinner(new SpinnerNumberModel(360, 40, 4000, 10));
+        this.projectileSpeedSpinner = new JSpinner(new SpinnerNumberModel(320, 80, 4000, 10));
+        this.shootCooldownSpinner = new JSpinner(new SpinnerNumberModel(1.2, 0.1, 10.0, 0.1));
+        this.destructibleToggle = new JCheckBox("可破坏", false);
+        this.durabilitySpinner = new JSpinner(new SpinnerNumberModel(100, 1, 9999, 1));
+        this.collapseToggle = new JCheckBox("失去支撑后倒塌", false);
+        this.collapseDamageSpinner = new JSpinner(new SpinnerNumberModel(30, 0, 9999, 1));
+        this.breakAfterStepsSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 99, 1));
         this.gridToggle = new JToggleButton("网格显示", true);
         this.snapToggle = new JToggleButton("网格吸附", true);
         this.gridSizeSpinner = new JSpinner(new SpinnerNumberModel(20, 4, 200, 1));
@@ -228,6 +250,29 @@ public final class EditorWindow extends JFrame {
         form.add(attackSpinner);
         form.add(new JLabel("速度"));
         form.add(speedSpinner);
+        form.add(new JLabel("怪物回血掉落"));
+        form.add(monsterHealDropSpinner);
+        form.add(new JLabel("远程攻击"));
+        form.add(rangedAttackToggle);
+        form.add(new JLabel("射击范围"));
+        form.add(shootRangeSpinner);
+        form.add(new JLabel("弹速"));
+        form.add(projectileSpeedSpinner);
+        form.add(new JLabel("射击冷却"));
+        form.add(shootCooldownSpinner);
+
+        form.add(new JLabel("--- 建筑属性 ---"));
+        form.add(new JLabel(""));
+        form.add(new JLabel("可破坏"));
+        form.add(destructibleToggle);
+        form.add(new JLabel("耐久"));
+        form.add(durabilitySpinner);
+        form.add(new JLabel("支撑丢失后倒塌"));
+        form.add(collapseToggle);
+        form.add(new JLabel("倒塌伤害"));
+        form.add(collapseDamageSpinner);
+        form.add(new JLabel("踩踏几次后损坏"));
+        form.add(breakAfterStepsSpinner);
         
         form.add(new JLabel("--- 玩家属性 ---"));
         form.add(new JLabel(""));
@@ -427,6 +472,28 @@ public final class EditorWindow extends JFrame {
             }
             previewPanel.repaint();
         });
+        destructibleToggle.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            durabilitySpinner.setEnabled(destructibleToggle.isSelected() && controller.getSelectedObject() instanceof SceneObject);
+        });
+        rangedAttackToggle.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            boolean enabled = rangedAttackToggle.isSelected() && controller.getSelectedObject() instanceof MonsterObject;
+            shootRangeSpinner.setEnabled(enabled);
+            projectileSpeedSpinner.setEnabled(enabled);
+            shootCooldownSpinner.setEnabled(enabled);
+        });
+        collapseToggle.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            boolean enabled = collapseToggle.isSelected() && controller.getSelectedObject() instanceof SceneObject;
+            collapseDamageSpinner.setEnabled(enabled);
+        });
     }
 
     private void updateInspectorFromSelection(GameObject selected) {
@@ -487,6 +554,54 @@ public final class EditorWindow extends JFrame {
                 speedSpinner.setEnabled(false);
             }
 
+            if (selected instanceof MonsterObject monster) {
+                monsterHealDropSpinner.setEnabled(true);
+                monsterHealDropSpinner.setValue(monster.getHealDropAmount());
+                rangedAttackToggle.setEnabled(true);
+                rangedAttackToggle.setSelected(monster.isRangedAttacker());
+                shootRangeSpinner.setEnabled(monster.isRangedAttacker());
+                projectileSpeedSpinner.setEnabled(monster.isRangedAttacker());
+                shootCooldownSpinner.setEnabled(monster.isRangedAttacker());
+                shootRangeSpinner.setValue(monster.getShootRange());
+                projectileSpeedSpinner.setValue(monster.getProjectileSpeed());
+                shootCooldownSpinner.setValue(monster.getShootCooldown());
+            } else {
+                monsterHealDropSpinner.setEnabled(false);
+                monsterHealDropSpinner.setValue(0);
+                rangedAttackToggle.setEnabled(false);
+                rangedAttackToggle.setSelected(false);
+                shootRangeSpinner.setEnabled(false);
+                projectileSpeedSpinner.setEnabled(false);
+                shootCooldownSpinner.setEnabled(false);
+                shootRangeSpinner.setValue(360);
+                projectileSpeedSpinner.setValue(320);
+                shootCooldownSpinner.setValue(1.2);
+            }
+
+            if (selected instanceof SceneObject scene) {
+                destructibleToggle.setEnabled(true);
+                durabilitySpinner.setEnabled(scene.isDestructible());
+                destructibleToggle.setSelected(scene.isDestructible());
+                durabilitySpinner.setValue(scene.getDurability());
+                collapseToggle.setEnabled(true);
+                collapseToggle.setSelected(scene.isCollapseWhenUnsupported());
+                collapseDamageSpinner.setEnabled(scene.isCollapseWhenUnsupported());
+                collapseDamageSpinner.setValue(scene.getCollapseDamage());
+                breakAfterStepsSpinner.setEnabled(true);
+                breakAfterStepsSpinner.setValue(scene.getBreakAfterSteps());
+            } else {
+                destructibleToggle.setEnabled(false);
+                destructibleToggle.setSelected(false);
+                durabilitySpinner.setEnabled(false);
+                durabilitySpinner.setValue(100);
+                collapseToggle.setEnabled(false);
+                collapseToggle.setSelected(false);
+                collapseDamageSpinner.setEnabled(false);
+                collapseDamageSpinner.setValue(30);
+                breakAfterStepsSpinner.setEnabled(false);
+                breakAfterStepsSpinner.setValue(0);
+            }
+
             // Player attributes
             if (selected instanceof PlayerObject player) {
                 damageToggle.setEnabled(true);
@@ -520,6 +635,19 @@ public final class EditorWindow extends JFrame {
         healthSpinner.setEnabled(false);
         attackSpinner.setEnabled(false);
         speedSpinner.setEnabled(false);
+        monsterHealDropSpinner.setEnabled(false);
+        rangedAttackToggle.setEnabled(false);
+        rangedAttackToggle.setSelected(false);
+        shootRangeSpinner.setEnabled(false);
+        projectileSpeedSpinner.setEnabled(false);
+        shootCooldownSpinner.setEnabled(false);
+        destructibleToggle.setEnabled(false);
+        destructibleToggle.setSelected(false);
+        durabilitySpinner.setEnabled(false);
+        collapseToggle.setEnabled(false);
+        collapseToggle.setSelected(false);
+        collapseDamageSpinner.setEnabled(false);
+        breakAfterStepsSpinner.setEnabled(false);
         damageToggle.setEnabled(false);
         damageSpinner.setEnabled(false);
         itemKindField.setEnabled(false);
@@ -599,6 +727,22 @@ public final class EditorWindow extends JFrame {
             actor.setHealth((int) healthSpinner.getValue());
             actor.setAttack((int) attackSpinner.getValue());
             actor.setSpeed((int) speedSpinner.getValue());
+        }
+
+        if (selected instanceof MonsterObject monster) {
+            monster.setHealDropAmount((int) monsterHealDropSpinner.getValue());
+            monster.setRangedAttacker(rangedAttackToggle.isSelected());
+            monster.setShootRange((int) shootRangeSpinner.getValue());
+            monster.setProjectileSpeed((int) projectileSpeedSpinner.getValue());
+            monster.setShootCooldown(((Number) shootCooldownSpinner.getValue()).doubleValue());
+        }
+
+        if (selected instanceof SceneObject scene) {
+            scene.setDestructible(destructibleToggle.isSelected());
+            scene.setDurability((int) durabilitySpinner.getValue());
+            scene.setCollapseWhenUnsupported(collapseToggle.isSelected());
+            scene.setCollapseDamage((int) collapseDamageSpinner.getValue());
+            scene.setBreakAfterSteps((int) breakAfterStepsSpinner.getValue());
         }
 
         if (selected instanceof PlayerObject player) {

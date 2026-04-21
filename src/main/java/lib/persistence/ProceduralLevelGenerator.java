@@ -12,6 +12,11 @@ import lib.object.dto.ObjectData;
  * 使用噪音生成随机的地形、敌人和道具分布。
  */
 public final class ProceduralLevelGenerator {
+    private static final int PLAYER_WIDTH = 32;
+    private static final int PLAYER_HEIGHT = 48;
+    private static final int FOREST_SAFE_ZONE_WIDTH = 320;
+    private static final int FOREST_SAFE_SURFACE_OFFSET = 80;
+
     private ProceduralLevelGenerator() {
     }
 
@@ -38,11 +43,12 @@ public final class ProceduralLevelGenerator {
 
         int groundY = height - 120;
         int tileSize = 40;
+        int safeSurfaceY = groundY - FOREST_SAFE_SURFACE_OFFSET;
 
         // 生成起伏的地形
         for (int x = 0; x < width; x += tileSize) {
             double n = noise.noise(x * 0.002, 0) * 0.5 + 0.5;
-            int currentY = groundY - (int) (n * 200);
+            int currentY = x < FOREST_SAFE_ZONE_WIDTH ? safeSurfaceY : groundY - (int) (n * 200);
             
             // 填充地面
             ObjectData dirt = createObject(GameObjectType.SCENE, "dirt", x, currentY, tileSize, height - currentY, new Color(80, 60, 45));
@@ -76,7 +82,7 @@ public final class ProceduralLevelGenerator {
         }
 
         // 放置玩家和终点
-        map.addObject(createObject(GameObjectType.PLAYER, "player", 150, groundY - 100, 32, 48, Color.BLUE));
+        map.addObject(createObject(GameObjectType.PLAYER, "player", 120, safeSurfaceY - PLAYER_HEIGHT, PLAYER_WIDTH, PLAYER_HEIGHT, Color.BLUE));
         map.addObject(createObject(GameObjectType.GOAL, "exit", width - 200, groundY - 240, 64, 80, Color.YELLOW));
 
         return map;
@@ -116,7 +122,18 @@ public final class ProceduralLevelGenerator {
         }
 
         // 确保入口和出口可用 (简单粗暴的清空周围区域)
-        map.addObject(createObject(GameObjectType.PLAYER, "player", 120, height / 2, 32, 48, Color.BLUE));
+        int[] spawn = findSupportedSpawn(
+            map,
+            width,
+            height,
+            PLAYER_WIDTH,
+            PLAYER_HEIGHT,
+            120,
+            height / 2
+        );
+        int playerX = spawn == null ? 120 : spawn[0];
+        int playerY = spawn == null ? height / 2 : spawn[1];
+        map.addObject(createObject(GameObjectType.PLAYER, "player", playerX, playerY, PLAYER_WIDTH, PLAYER_HEIGHT, Color.BLUE));
         map.addObject(createObject(GameObjectType.GOAL, "exit", width - 150, height / 2, 64, 80, Color.YELLOW));
 
         return map;
@@ -145,5 +162,87 @@ public final class ProceduralLevelGenerator {
         ObjectData data = createObject(GameObjectType.ITEM, name, x, y, 28, 28, Color.CYAN);
         data.setExtraJson("{\"kind\":\"lightorb\", \"value\":150, \"message\":\"Vision enhanced by procedurally generated orb!\"}");
         return data;
+    }
+
+    private static int[] findSupportedSpawn(
+        MapData map,
+        int worldWidth,
+        int worldHeight,
+        int objectWidth,
+        int objectHeight,
+        int preferredX,
+        int preferredY
+    ) {
+        if (map == null || map.getObjects().isEmpty()) {
+            return null;
+        }
+
+        int minX = 0;
+        int maxX = Math.max(0, worldWidth - objectWidth);
+        int minY = 0;
+        int maxY = Math.max(0, worldHeight - objectHeight);
+        int searchLimit = Math.max(worldWidth, worldHeight);
+
+        for (int radius = 0; radius <= searchLimit; radius += 40) {
+            int startX = clamp(preferredX - radius, minX, maxX);
+            int endX = clamp(preferredX + radius, minX, maxX);
+            int startY = clamp(preferredY - radius, minY, maxY);
+            int endY = clamp(preferredY + radius, minY, maxY);
+
+            for (int candidateY = startY; candidateY <= endY; candidateY += 4) {
+                for (int candidateX = startX; candidateX <= endX; candidateX += 4) {
+                    if (isSpawnClear(map, candidateX, candidateY, objectWidth, objectHeight)
+                        && hasSupportBelow(map, candidateX, candidateY, objectWidth, objectHeight)) {
+                        return new int[] {candidateX, candidateY};
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean isSpawnClear(MapData map, int x, int y, int width, int height) {
+        for (ObjectData object : map.getObjects()) {
+            if (object == null || !object.isSolid()) {
+                continue;
+            }
+            if (rectanglesOverlap(x, y, width, height, object.getX(), object.getY(), object.getWidth(), object.getHeight())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean hasSupportBelow(MapData map, int x, int y, int width, int height) {
+        int bottom = y + height;
+        for (ObjectData object : map.getObjects()) {
+            if (object == null || !object.isSolid()) {
+                continue;
+            }
+            int objectTop = object.getY();
+            boolean nearSupport = objectTop >= bottom - 2 && objectTop <= bottom + 4;
+            boolean horizontalOverlap = x < object.getX() + object.getWidth() && x + width > object.getX();
+            if (nearSupport && horizontalOverlap) {
+                return true;
+            }
+        }
+        return bottom >= map.getHeight();
+    }
+
+    private static boolean rectanglesOverlap(
+        int x1,
+        int y1,
+        int w1,
+        int h1,
+        int x2,
+        int y2,
+        int w2,
+        int h2
+    ) {
+        return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 }

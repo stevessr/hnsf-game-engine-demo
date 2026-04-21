@@ -184,6 +184,7 @@ public final class MapDataMapper {
         world.setWinCondition(mapData.getWinCondition());
         world.setTargetKills(mapData.getTargetKills());
         world.setTargetItems(mapData.getTargetItems());
+        world.setFailureReason(null);
         world.getEntityManager().clear();
         for (ObjectData objectData : mapData.getObjects()) {
             GameObject object = GameObjectFactory.fromObjectData(objectData);

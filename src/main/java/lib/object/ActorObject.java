@@ -6,6 +6,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
+import java.util.function.Consumer;
 
 import lib.game.GameWorld;
 
@@ -82,8 +83,15 @@ public abstract class ActorObject extends BaseObject {
         }
     }
 
-    protected final void renderDeathAnimation(Graphics2D graphics, Runnable baseRender) {
-        double progress = deathTimer / DEATH_ANIMATION_DURATION;
+    protected final double getDeathAnimationProgress() {
+        if (!dying) {
+            return 0.0;
+        }
+        return Math.max(0.0, Math.min(1.0, deathTimer / DEATH_ANIMATION_DURATION));
+    }
+
+    protected final void renderDeathAnimation(Graphics2D graphics, Consumer<Graphics2D> baseRender) {
+        double progress = getDeathAnimationProgress();
         Graphics2D g2d = (Graphics2D) graphics.create();
         
         int cx = getX() + getWidth() / 2;
@@ -96,7 +104,7 @@ public abstract class ActorObject extends BaseObject {
         
         g2d.transform(at);
         g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (1.0 - progress)));
-        baseRender.run();
+        baseRender.accept(g2d);
         g2d.dispose();
     }
 
@@ -106,7 +114,11 @@ public abstract class ActorObject extends BaseObject {
         }
         setHealth(health - amount);
         if (world != null) {
-            world.getSoundManager().playSound("hurt");
+            if (this instanceof PlayerObject) {
+                world.getSoundManager().playSound("damage");
+            } else {
+                world.getSoundManager().playSound("hurt");
+            }
         }
     }
 

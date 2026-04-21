@@ -9,15 +9,18 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import lib.game.GameWorld;
 import lib.input.GameInputController;
+import lib.object.GameObjectType;
 import lib.object.DialogObject;
 import lib.object.MenuObject;
 import lib.object.MonsterObject;
 import lib.object.PlayerObject;
+import lib.render.Camera;
 
 class DefaultGameStateMachineTest {
     @Test
@@ -84,6 +87,90 @@ class DefaultGameStateMachineTest {
     }
 
     @Test
+    void menuGenerateForestShouldRequestProceduralGenerationAndEnterPlaying() {
+        GameWorld world = new GameWorld(240, 180);
+        MenuObject menu = new MenuObject(
+            "main-menu",
+            10,
+            10,
+            220,
+            120,
+            "Main",
+            List.of("Start", "Levels", "Generate Forest", "Generate Cave", "Editor", "Options", "Exit")
+        );
+        menu.setSelectedIndex(2);
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(GameState.MENU);
+        GameInputController inputController = GameInputController.createDefault();
+        AtomicReference<String> requestedTemplate = new AtomicReference<>();
+
+        GameRuntimeActions actions = new GameRuntimeActions() {
+            @Override
+            public void requestExit() {
+            }
+
+            @Override
+            public boolean requestGenerateProceduralLevel(String templateName) {
+                requestedTemplate.set(templateName);
+                return true;
+            }
+        };
+        GameStateContext context = new GameStateContext(world, inputController, actions);
+
+        world.addObject(menu);
+        world.setStateMachine(stateMachine);
+
+        tapKey(inputController, KeyEvent.VK_ENTER);
+        stateMachine.processInput(context);
+        inputController.finishFrame();
+
+        assertEquals("procedural-forest", requestedTemplate.get());
+        assertEquals(GameState.PLAYING, stateMachine.getCurrentState(), "生成关卡后应切回 PLAYING");
+        assertFalse(menu.isActive(), "生成后主菜单应隐藏");
+    }
+
+    @Test
+    void menuGenerateCaveShouldRequestProceduralGenerationAndEnterPlaying() {
+        GameWorld world = new GameWorld(240, 180);
+        MenuObject menu = new MenuObject(
+            "main-menu",
+            10,
+            10,
+            220,
+            120,
+            "Main",
+            List.of("Start", "Levels", "Generate Forest", "Generate Cave", "Editor", "Options", "Exit")
+        );
+        menu.setSelectedIndex(3);
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(GameState.MENU);
+        GameInputController inputController = GameInputController.createDefault();
+        AtomicReference<String> requestedTemplate = new AtomicReference<>();
+
+        GameRuntimeActions actions = new GameRuntimeActions() {
+            @Override
+            public void requestExit() {
+            }
+
+            @Override
+            public boolean requestGenerateProceduralLevel(String templateName) {
+                requestedTemplate.set(templateName);
+                return true;
+            }
+        };
+        GameStateContext context = new GameStateContext(world, inputController, actions);
+
+        world.addObject(menu);
+        world.setStateMachine(stateMachine);
+
+        tapKey(inputController, KeyEvent.VK_ENTER);
+        stateMachine.processInput(context);
+        inputController.finishFrame();
+
+        assertEquals("procedural-cave", requestedTemplate.get());
+        assertEquals(GameState.PLAYING, stateMachine.getCurrentState(), "生成关卡后应切回 PLAYING");
+        assertFalse(menu.isActive(), "生成后主菜单应隐藏");
+    }
+
+    @Test
     void playingPauseShouldStopWorldUpdateUntilResumed() {
         GameWorld world = new GameWorld(240, 180);
         PlayerObject player = new PlayerObject("hero", 10, 20);
@@ -145,8 +232,52 @@ class DefaultGameStateMachineTest {
             world.update(1.0); 
             inputController.finishFrame();
         }
-        
+
         assertTrue(player.getX() > xAtPause, "Player should move to the right after unpause. currentX=" + player.getX() + ", xAtPause=" + xAtPause);
+    }
+
+    @Test
+    void pauseMenuRestartShouldRequestReloadAndReturnToPlaying() {
+        GameWorld world = new GameWorld(240, 180);
+        PlayerObject player = new PlayerObject("hero", 10, 20);
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(GameState.PLAYING);
+        GameInputController inputController = GameInputController.createDefault();
+        AtomicReference<String> requestedLevel = new AtomicReference<>("unset");
+
+        GameRuntimeActions actions = new GameRuntimeActions() {
+            @Override
+            public void requestExit() {
+            }
+
+            @Override
+            public void requestLoadLevel(String levelName) {
+                requestedLevel.set(levelName);
+            }
+        };
+        GameStateContext context = new GameStateContext(world, inputController, actions);
+
+        world.addObject(player);
+        world.setStateMachine(stateMachine);
+
+        stateMachine.togglePause(world, null);
+        MenuObject pauseMenu = world.getObjectsByType(GameObjectType.MENU).stream()
+            .filter(MenuObject.class::isInstance)
+            .map(MenuObject.class::cast)
+            .filter(menu -> "pause-menu".equals(menu.getName()))
+            .findFirst()
+            .orElseThrow();
+
+        assertTrue(pauseMenu.getOptions().contains("Restart Level"), "暂停菜单应包含重启关卡选项");
+
+        pauseMenu.setSelectedIndex(1);
+        tapKey(inputController, KeyEvent.VK_ENTER);
+        stateMachine.processInput(context);
+        inputController.finishFrame();
+
+        assertEquals(null, requestedLevel.get(), "重启关卡应请求重新加载当前关卡");
+        assertEquals(GameState.PLAYING, stateMachine.getCurrentState(), "重启后应切回 PLAYING");
+        assertFalse(world.getObjectsByType(GameObjectType.MENU).stream()
+            .anyMatch(obj -> "pause-menu".equals(obj.getName())), "重启后暂停菜单应被移除");
     }
 
     @Test
@@ -261,6 +392,94 @@ class DefaultGameStateMachineTest {
 
         assertTrue(nextRequested.get(), "结算菜单选择 Next Level 时应请求下一关");
         assertEquals(GameState.PLAYING, stateMachine.getCurrentState(), "进入下一关后应切回 PLAYING");
+    }
+
+    @Test
+    void dismissedDialogShouldNotImmediatelyReopenWhilePlayerStaysNearby() {
+        GameWorld world = new GameWorld(960, 540);
+        PlayerObject player = new PlayerObject("hero", 100, 320);
+        DialogObject dialog = new DialogObject("tutorial", 100, 100, 400, 60, "Guide", "Welcome");
+        dialog.setActive(false);
+
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(GameState.PLAYING);
+        GameInputController inputController = GameInputController.createDefault();
+        GameStateContext context = new GameStateContext(world, inputController);
+
+        world.addObject(player);
+        world.addObject(dialog);
+        world.setStateMachine(stateMachine);
+        stateMachine.init(world);
+
+        stateMachine.processInput(context);
+        inputController.finishFrame();
+
+        assertEquals(GameState.DIALOG, stateMachine.getCurrentState());
+        assertTrue(dialog.isActive(), "玩家靠近后应触发提示对话");
+
+        tapKey(inputController, KeyEvent.VK_ENTER);
+        stateMachine.processInput(context);
+        inputController.finishFrame();
+
+        assertEquals(GameState.PLAYING, stateMachine.getCurrentState());
+        assertFalse(dialog.isActive(), "确认后对话应关闭");
+
+        stateMachine.processInput(context);
+        inputController.finishFrame();
+
+        assertEquals(GameState.PLAYING, stateMachine.getCurrentState(), "关闭后的对话不应在同一区域立刻再次弹出");
+        assertFalse(dialog.isActive(), "关闭后的对话应保持关闭");
+    }
+
+    @Test
+    void recenterUiShouldIgnoreCameraOffsetForSettlementMenu() {
+        GameWorld world = new GameWorld(960 * 3, 540);
+        PlayerObject player = new PlayerObject("hero", 2700, 320);
+        MenuObject victoryMenu = new MenuObject("victory-menu", 0, 0, 320, 200, "Victory", List.of("Next Level"));
+        Camera camera = new Camera(960, 540);
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(GameState.SETTLEMENT);
+
+        world.addObject(player);
+        world.addObject(victoryMenu);
+        world.setCamera(camera);
+        camera.update(world, player);
+
+        stateMachine.recenterUI(world);
+
+        assertEquals((960 - victoryMenu.getWidth()) / 2, victoryMenu.getX(), "结算菜单应固定居中在视口内，而不是跟随世界坐标漂移");
+        assertEquals((540 - victoryMenu.getHeight()) / 2, victoryMenu.getY());
+    }
+
+    @Test
+    void gameOverMenuShouldDisplayFailureReason() {
+        GameWorld world = new GameWorld(240, 180);
+        PlayerObject player = new PlayerObject("hero", 10, 20);
+        MonsterObject monster = new MonsterObject("slime", 10, 20, 0);
+        monster.setAttack(player.getHealth());
+        monster.setSpeed(0);
+
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(GameState.PLAYING);
+        GameInputController inputController = GameInputController.createDefault();
+        GameStateContext context = new GameStateContext(world, inputController);
+
+        world.addObject(player);
+        world.addObject(monster);
+        world.setStateMachine(stateMachine);
+
+        for (int i = 0; i < 120 && stateMachine.getCurrentState() != GameState.GAMEOVER; i++) {
+            stateMachine.processInput(context);
+            world.update(1.0 / 60.0);
+            inputController.finishFrame();
+        }
+
+        assertEquals(GameState.GAMEOVER, stateMachine.getCurrentState(), "玩家死亡后应进入 GAMEOVER");
+        MenuObject gameOverMenu = world.getObjectsByType(lib.object.GameObjectType.MENU).stream()
+            .filter(MenuObject.class::isInstance)
+            .map(MenuObject.class::cast)
+            .filter(menu -> "gameover-menu".equals(menu.getName()))
+            .findFirst()
+            .orElse(null);
+        assertNotNull(gameOverMenu, "应创建游戏结束菜单");
+        assertTrue(gameOverMenu.getSubtitle().contains("slime"), "游戏结束菜单应显示死亡原因");
     }
 
     private static void tapKey(GameInputController inputController, int keyCode) {

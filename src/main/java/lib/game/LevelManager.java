@@ -124,16 +124,10 @@ public final class LevelManager {
         }
 
         if (normalized.equals(PROC_FOREST)) {
-            MapData mapData = ProceduralLevelGenerator.generateForest(PROC_FOREST, System.currentTimeMillis());
-            mapData.setWinCondition(WinConditionType.COLLECT_TARGET_COUNT);
-            mapData.setTargetItems(5);
-            return mapData;
+            return createGeneratedProceduralLevel(PROC_FOREST, PROC_FOREST, System.currentTimeMillis());
         }
         if (normalized.equals(PROC_CAVE)) {
-            MapData mapData = ProceduralLevelGenerator.generateCave(PROC_CAVE, System.currentTimeMillis());
-            mapData.setWinCondition(WinConditionType.KILL_TARGET_COUNT);
-            mapData.setTargetKills(10);
-            return mapData;
+            return createGeneratedProceduralLevel(PROC_CAVE, PROC_CAVE, System.currentTimeMillis());
         }
 
         GameWorld levelWorld = switch (normalized) {
@@ -150,6 +144,34 @@ public final class LevelManager {
             default -> createTutorialLevelWorld();
         };
         return MapDataMapper.fromWorld(levelWorld, normalized);
+    }
+
+    public MapData createGeneratedProceduralLevel(String templateName, String generatedName, long seed) {
+        String normalizedTemplate = normalizeLevelName(templateName);
+        if (normalizedTemplate == null) {
+            return null;
+        }
+        String normalizedName = normalizeLevelName(generatedName);
+        if (normalizedName == null) {
+            normalizedName = normalizedTemplate + "-" + seed;
+        }
+
+        MapData mapData = switch (normalizedTemplate) {
+            case PROC_FOREST -> ProceduralLevelGenerator.generateForest(normalizedName, seed);
+            case PROC_CAVE -> ProceduralLevelGenerator.generateCave(normalizedName, seed);
+            default -> null;
+        };
+        if (mapData == null) {
+            return null;
+        }
+        if (PROC_FOREST.equals(normalizedTemplate)) {
+            mapData.setWinCondition(WinConditionType.COLLECT_TARGET_COUNT);
+            mapData.setTargetItems(5);
+        } else if (PROC_CAVE.equals(normalizedTemplate)) {
+            mapData.setWinCondition(WinConditionType.KILL_TARGET_COUNT);
+            mapData.setTargetKills(10);
+        }
+        return mapData;
     }
 
     private void registerBuiltinLevels() {
@@ -182,8 +204,14 @@ public final class LevelManager {
         levelWorld.addObject(tut2);
 
         // 教程 3: 战斗
-        levelWorld.addObject(new MonsterObject("dummy", 1200, 340, 50));
-        DialogObject tut3 = new DialogObject("tut-3", 1200, 100, 400, 60, "System", "Press K to SHOOT and defeat enemies.");
+        MonsterObject tutorialDummy = new MonsterObject("dummy", 1200, 340, 50);
+        tutorialDummy.setHealDropAmount(25);
+        levelWorld.addObject(tutorialDummy);
+        WallObject fragileCrate = new WallObject("fragile-crate", 1430, 330, 56, 90);
+        fragileCrate.setDestructible(true);
+        fragileCrate.setDurability(18);
+        levelWorld.addObject(fragileCrate);
+        DialogObject tut3 = new DialogObject("tut-3", 1200, 100, 400, 60, "System", "Press K to SHOOT. Some monsters drop healing, and fragile blocks can be destroyed.");
         tut3.setActive(false);
         levelWorld.addObject(tut3);
 
@@ -207,10 +235,22 @@ public final class LevelManager {
         addFrame(levelWorld, 960 * 3, 540);
         addGround(levelWorld, 0, 420, 960 * 3, 120, new Color(102, 153, 102));
         addPlayer(levelWorld, 120, 320);
-        levelWorld.addObject(new MonsterObject("slime-demo", 360, 340, 30));
+        MonsterObject slimeDemo = new MonsterObject("slime-demo", 360, 340, 30);
+        slimeDemo.setHealDropAmount(12);
+        levelWorld.addObject(slimeDemo);
         levelWorld.addObject(new MonsterObject("bat-demo", 700, 260, 50));
-        levelWorld.addObject(new MonsterObject("bat-far", 1800, 240, 60));
-        levelWorld.addObject(new WallObject("demo-center-wall", 280, 290, 110, 80));
+        MonsterObject batFar = new MonsterObject("bat-far", 1800, 240, 60);
+        batFar.setHealDropAmount(20);
+        levelWorld.addObject(batFar);
+        WallObject centerWall = new WallObject("demo-center-wall", 280, 290, 110, 80);
+        centerWall.setDestructible(true);
+        centerWall.setDurability(30);
+        levelWorld.addObject(centerWall);
+        SceneObject demoCrate = new SceneObject("demo-breakable-crate", 980, 360, 52, 60, true, false);
+        demoCrate.setColor(new Color(154, 116, 84));
+        demoCrate.setDestructible(true);
+        demoCrate.setDurability(16);
+        levelWorld.addObject(demoCrate);
         levelWorld.addObject(new VoxelObject("demo-voxel-a", 560, 310, 24, 24, new Color(255, 168, 72)));
         levelWorld.addObject(new VoxelObject("demo-voxel-b", 584, 310, 24, 24, new Color(255, 168, 72)));
         levelWorld.addObject(new VoxelObject("demo-voxel-c", 608, 310, 24, 24, new Color(255, 168, 72)));

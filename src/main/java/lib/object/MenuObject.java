@@ -9,6 +9,7 @@ import java.util.List;
 
 public final class MenuObject extends BaseObject {
     private String title;
+    private String subtitle;
     private List<String> options;
     private int selectedIndex;
     private int fontSize;
@@ -16,6 +17,7 @@ public final class MenuObject extends BaseObject {
     public MenuObject(String name, int x, int y, int width, int height, String title, List<String> options) {
         super(GameObjectType.MENU, name, x, y, width, height, new Color(28, 32, 45, 230), true);
         this.title = normalizeText(title, "Menu");
+        this.subtitle = null;
         this.options = normalizeOptions(options);
         this.selectedIndex = 0;
         this.fontSize = 18;
@@ -27,6 +29,14 @@ public final class MenuObject extends BaseObject {
 
     public void setTitle(String title) {
         this.title = normalizeText(title, "Menu");
+    }
+
+    public String getSubtitle() {
+        return subtitle;
+    }
+
+    public void setSubtitle(String subtitle) {
+        this.subtitle = normalizeSubtitle(subtitle);
     }
 
     public List<String> getOptions() {
@@ -59,10 +69,11 @@ public final class MenuObject extends BaseObject {
     }
 
     public int getTitleAreaHeight() {
-        if (fontSize == 18) {
-            return 42;
+        int titleHeight = fontSize == 18 ? 42 : Math.max(30, fontSize + 14);
+        if (subtitle != null && !subtitle.isBlank()) {
+            return titleHeight + Math.max(20, fontSize);
         }
-        return Math.max(30, fontSize + 14);
+        return titleHeight;
     }
 
     public int getOptionLineHeight() {
@@ -117,10 +128,24 @@ public final class MenuObject extends BaseObject {
         int titleX = getX() + (getWidth() - titleWidth) / 2;
         int titleBaseline = getY() + (fontSize == 18 ? 20 : Math.max(20, metrics.getAscent() + 10));
         graphics.drawString(title, titleX, titleBaseline);
+
+        int dividerY = titleBaseline + 8;
+        if (subtitle != null && !subtitle.isBlank()) {
+            Font subtitleFont = originalFont.deriveFont((float) Math.max(10, fontSize - 3));
+            graphics.setFont(subtitleFont);
+            FontMetrics subtitleMetrics = graphics.getFontMetrics(subtitleFont);
+            graphics.setColor(new Color(255, 220, 220));
+            int subtitleWidth = subtitleMetrics.stringWidth(subtitle);
+            int subtitleX = getX() + (getWidth() - subtitleWidth) / 2;
+            int subtitleBaseline = titleBaseline + subtitleMetrics.getHeight();
+            graphics.drawString(subtitle, subtitleX, subtitleBaseline);
+            graphics.setFont(font);
+            dividerY = subtitleBaseline + 8;
+        }
         
         // 标题下方装饰线
         graphics.setColor(new Color(255, 255, 255, 40));
-        graphics.drawLine(getX() + 20, titleBaseline + 8, getX() + getWidth() - 20, titleBaseline + 8);
+        graphics.drawLine(getX() + 20, dividerY, getX() + getWidth() - 20, dividerY);
 
         for (int index = 0; index < options.size(); index++) {
             int lineY = getOptionStartY() + (index * getOptionLineHeight()) + (fontSize == 18 ? 0 : metrics.getAscent());
@@ -144,6 +169,13 @@ public final class MenuObject extends BaseObject {
     private static String normalizeText(String value, String fallback) {
         if (value == null || value.isBlank()) {
             return fallback;
+        }
+        return lib.utils.Unicode2Gbk.convert(value);
+    }
+
+    private static String normalizeSubtitle(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
         }
         return lib.utils.Unicode2Gbk.convert(value);
     }

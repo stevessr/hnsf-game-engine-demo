@@ -3,12 +3,15 @@ package org.example;
 import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -119,13 +122,16 @@ public class App {
         
         // 游戏菜单
         JMenu gameMenu = new JMenu("游戏 (Game)");
-        JMenuItem restartItem = new JMenuItem("重置 (Restart)");
+        JMenuItem restartItem = new JMenuItem("重启关卡 (Restart Level)");
         restartItem.addActionListener(e -> {
             String currentLevel = normalizeLevelName(activeLevelName.get());
             String targetLevel = currentLevel == null ? DEFAULT_START_MAP : currentLevel;
             String loadedLevel = reloadGameWorld(world, repository, levelManager, targetLevel, panel);
             if (loadedLevel != null) {
                 activeLevelName.set(loadedLevel);
+                if (world.getStateMachine() instanceof DefaultGameStateMachine dsm) {
+                    dsm.transitionTo(GameState.PLAYING);
+                }
             }
         });
         
@@ -157,11 +163,14 @@ public class App {
             "Primary Software Game Engine Prototype\n\n" +
             "Controls:\n" +
             "- WASD/Arrows: Move\n" +
+            "- Shift: Sprint\n" +
             "- Space: Jump\n" +
             "- K: Shoot\n" +
             "- T: Cycle Throttle\n" +
             "- C: Cycle Color\n" +
-            "- P/Esc: Pause"));
+            "- P/Esc: Pause\n\n" +
+            "Main menu:\n" +
+            "- Generate Forest / Generate Cave: input a seed to create a procedural level"));
         helpMenu.add(aboutItem);
         
         menuBar.add(gameMenu);
@@ -275,6 +284,13 @@ public class App {
                 };
                 runOnEdt(action);
             }
+
+            @Override
+            public boolean requestGenerateProceduralLevel(String templateName) {
+                return runOnEdtAndReturn(() ->
+                    promptAndGenerateProceduralLevel(frame, world, repository, levelManager, panel, activeLevelName, templateName)
+                );
+            }
         };
     }
 
@@ -297,6 +313,36 @@ public class App {
         } else {
             SwingUtilities.invokeLater(action);
         }
+    }
+
+    private static boolean runOnEdtAndReturn(BooleanSupplier action) {
+        if (action == null) {
+            return false;
+        }
+        if (SwingUtilities.isEventDispatchThread()) {
+            return action.getAsBoolean();
+        }
+
+        AtomicBoolean result = new AtomicBoolean(false);
+        AtomicReference<RuntimeException> failure = new AtomicReference<>();
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                try {
+                    result.set(action.getAsBoolean());
+                } catch (RuntimeException ex) {
+                    failure.set(ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            return false;
+        } catch (InvocationTargetException ex) {
+            throw new IllegalStateException("生成程序化关卡失败", ex.getCause());
+        }
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return result.get();
     }
 
     private static void ensureBuiltinLevels(MapRepository repository, LevelManager levelManager) {
@@ -355,6 +401,135 @@ public class App {
         panel.getInputController().getMouseManager().reset();
         panel.repaint();
         return mapData.getName();
+    }
+
+    private static boolean promptAndGenerateProceduralLevel(
+        JFrame frame,
+        GameWorld world,
+        MapRepository repository,
+        LevelManager levelManager,
+        SwingGamePanel panel,
+        AtomicReference<String> activeLevelName,
+        String templateName
+    ) {
+        if (frame == null || world == null || repository == null || levelManager == null || panel == null || activeLevelName == null) {
+            return false;
+        }
+
+        String normalizedTemplate = normalizeLevelName(templateName);
+        if (!isProceduralTemplate(normalizedTemplate)) {
+            JOptionPane.showMessageDialog(frame, "不支持的程序化模板: " + templateName);
+            return false;
+        }
+
+        String seedInput = JOptionPane.showInputDialog(
+            frame,
+            "请输入种子（可留空使用随机种子，数字或文本都可以）:",
+            proceduralTemplateTitle(normalizedTemplate) + " - Seed",
+            JOptionPane.PLAIN_MESSAGE
+        );
+        if (seedInput == null) {
+            return false;
+        }
+
+        long seed = parseSeed(seedInput);
+        String generatedName = buildGeneratedLevelName(normalizedTemplate, seedInput, seed);
+
+        try {
+            MapData mapData = levelManager.createGeneratedProceduralLevel(normalizedTemplate, generatedName, seed);
+            if (mapData == null) {
+                JOptionPane.showMessageDialog(frame, "生成失败: 无法创建程序化关卡");
+                return false;
+            }
+            repository.saveMap(mapData);
+            String loadedLevel = reloadGameWorld(world, repository, levelManager, generatedName, panel);
+            if (loadedLevel != null) {
+                activeLevelName.set(loadedLevel);
+                return true;
+            }
+            JOptionPane.showMessageDialog(frame, "生成成功，但加载失败: " + generatedName);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(frame, "生成失败: " + ex.getMessage());
+        }
+        return false;
+    }
+
+    private static boolean isProceduralTemplate(String templateName) {
+        return Set.of("procedural-forest", "procedural-cave").contains(templateName);
+    }
+
+    private static String proceduralTemplateTitle(String templateName) {
+        return switch (templateName) {
+            case "procedural-forest" -> "生成森林关卡";
+            case "procedural-cave" -> "生成洞穴关卡";
+            default -> "生成程序化关卡";
+        };
+    }
+
+    private static long parseSeed(String seedText) {
+        if (seedText == null || seedText.isBlank()) {
+            return System.currentTimeMillis();
+        }
+        String trimmed = seedText.trim();
+        try {
+            return Long.parseLong(trimmed);
+        } catch (NumberFormatException ex) {
+            return hashSeed(trimmed);
+        }
+    }
+
+    private static long hashSeed(String text) {
+        long hash = 0xcbf29ce484222325L;
+        for (int i = 0; i < text.length(); i++) {
+            hash ^= text.charAt(i);
+            hash *= 0x100000001b3L;
+        }
+        return hash;
+    }
+
+    private static String buildGeneratedLevelName(String templateName, String seedText, long seed) {
+        String base = normalizeLevelName(templateName);
+        if (base == null) {
+            base = "procedural-level";
+        }
+        if (seedText == null || seedText.isBlank()) {
+            return base + "-random-" + Long.toUnsignedString(seed);
+        }
+
+        String trimmed = seedText.trim();
+        try {
+            Long.parseLong(trimmed);
+            return base + "-" + Long.toString(seed);
+        } catch (NumberFormatException ignored) {
+            String label = sanitizeLevelToken(trimmed);
+            if (label == null) {
+                return base + "-" + Long.toUnsignedString(seed);
+            }
+            if (label.length() > 32) {
+                label = label.substring(0, 32);
+            }
+            return base + "-" + label + "-" + Long.toUnsignedString(seed);
+        }
+    }
+
+    private static String sanitizeLevelToken(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        StringBuilder builder = new StringBuilder(value.length());
+        boolean lastDash = false;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (Character.isLetterOrDigit(c) || c == '-' || c == '_') {
+                builder.append(c);
+                lastDash = false;
+            } else if (!lastDash) {
+                builder.append('-');
+                lastDash = true;
+            }
+        }
+        String result = builder.toString().replaceAll("^-+|-+$", "");
+        return result.isBlank() ? null : result;
     }
 
     private static MapData loadLevelData(MapRepository repository, LevelManager levelManager, String levelName) {
@@ -430,12 +605,12 @@ public class App {
     }
 
     private static MenuObject createMainMenu(GameWorld world, boolean active, int uiFontSize) {
-        List<String> options = List.of("Start", "Levels", "Editor", "Options", "Exit");
-        MenuObject menu = new MenuObject(MAIN_MENU_NAME, 24, 24, 240, 180, "Demo Menu", options);
+        List<String> options = List.of("Start", "Levels", "Generate Forest", "Generate Cave", "Editor", "Options", "Exit");
+        MenuObject menu = new MenuObject(MAIN_MENU_NAME, 24, 24, 260, 180, "Demo Menu", options);
         menu.setActive(active);
         menu.setSelectedIndex(0);
         menu.setFontSize(uiFontSize);
-        menu.setSize(240, Math.max(180, menu.getPreferredHeight()));
+        menu.setSize(260, Math.max(180, menu.getPreferredHeight()));
         return menu;
     }
 

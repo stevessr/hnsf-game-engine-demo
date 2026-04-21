@@ -3,9 +3,20 @@ package lib.object;
 import java.awt.Color;
 import java.awt.Graphics2D;
 
+import lib.game.GameWorld;
+
 public class SceneObject extends BaseObject {
     private boolean solid;
     private boolean background;
+    private boolean destructible;
+    private int durability;
+    private boolean collapseWhenUnsupported;
+    private int collapseDamage;
+    private boolean collapsing;
+    private double collapseVelocityY;
+    private int breakAfterSteps;
+    private int stepCount;
+    private boolean playerStandingLastFrame;
 
     public SceneObject(String name) {
         this(GameObjectType.SCENE, name, 0, 0, 128, 128, new Color(120, 180, 120), true, false);
@@ -29,6 +40,15 @@ public class SceneObject extends BaseObject {
         super(type, name, x, y, width, height, color, true);
         this.solid = solid;
         this.background = background;
+        this.destructible = false;
+        this.durability = 100;
+        this.collapseWhenUnsupported = false;
+        this.collapseDamage = 30;
+        this.collapsing = false;
+        this.collapseVelocityY = 0.0;
+        this.breakAfterSteps = 0;
+        this.stepCount = 0;
+        this.playerStandingLastFrame = false;
     }
 
     public boolean isSolid() {
@@ -47,6 +67,90 @@ public class SceneObject extends BaseObject {
         this.background = background;
     }
 
+    public boolean isDestructible() {
+        return destructible;
+    }
+
+    public void setDestructible(boolean destructible) {
+        this.destructible = destructible;
+    }
+
+    public int getDurability() {
+        return durability;
+    }
+
+    public void setDurability(int durability) {
+        this.durability = Math.max(1, durability);
+    }
+
+    public boolean isCollapseWhenUnsupported() {
+        return collapseWhenUnsupported;
+    }
+
+    public void setCollapseWhenUnsupported(boolean collapseWhenUnsupported) {
+        this.collapseWhenUnsupported = collapseWhenUnsupported;
+        if (!collapseWhenUnsupported) {
+            this.collapsing = false;
+            this.collapseVelocityY = 0.0;
+        }
+    }
+
+    public int getCollapseDamage() {
+        return collapseDamage;
+    }
+
+    public void setCollapseDamage(int collapseDamage) {
+        this.collapseDamage = Math.max(0, collapseDamage);
+    }
+
+    public boolean isCollapsing() {
+        return collapsing;
+    }
+
+    public int getBreakAfterSteps() {
+        return breakAfterSteps;
+    }
+
+    public void setBreakAfterSteps(int breakAfterSteps) {
+        this.breakAfterSteps = Math.max(0, breakAfterSteps);
+        if (this.breakAfterSteps == 0) {
+            this.stepCount = 0;
+        } else {
+            this.stepCount = Math.min(this.stepCount, this.breakAfterSteps);
+        }
+    }
+
+    public int getStepCount() {
+        return stepCount;
+    }
+
+    public boolean applyStructuralDamage(GameWorld world, int amount) {
+        if (!destructible || amount <= 0 || !isActive()) {
+            return false;
+        }
+        durability = Math.max(0, durability - amount);
+        if (durability == 0) {
+            playBreakSound(world);
+            setActive(false);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void update(GameWorld world, double deltaSeconds) {
+        if (world == null || !isActive() || deltaSeconds <= 0) {
+            return;
+        }
+
+        PlayerObject player = world.findPlayer().orElse(null);
+        handleStepBreak(world, player);
+        if (!isActive()) {
+            return;
+        }
+        handleCollapse(world, deltaSeconds, player);
+    }
+
     @Override
     public void render(Graphics2D graphics) {
         graphics.setColor(getColor());
@@ -55,5 +159,108 @@ public class SceneObject extends BaseObject {
             graphics.setColor(Color.DARK_GRAY);
             graphics.drawRect(getX(), getY(), getWidth(), getHeight());
         }
+        if (destructible) {
+            graphics.setColor(new Color(255, 210, 120, 180));
+            graphics.drawLine(getX() + 4, getY() + 4, getX() + getWidth() - 4, getY() + getHeight() - 4);
+            graphics.drawLine(getX() + getWidth() - 4, getY() + 4, getX() + 4, getY() + getHeight() - 4);
+        }
+        if (collapseWhenUnsupported) {
+            graphics.setColor(new Color(255, 120, 80, 180));
+            int midX = getX() + getWidth() / 2;
+            graphics.drawLine(midX, getY() + 4, midX, getY() + getHeight() - 8);
+            graphics.drawLine(midX, getY() + getHeight() - 8, midX - 5, getY() + getHeight() - 14);
+            graphics.drawLine(midX, getY() + getHeight() - 8, midX + 5, getY() + getHeight() - 14);
+        }
+        if (breakAfterSteps > 0) {
+            graphics.setColor(new Color(255, 245, 180, 180));
+            graphics.drawString(stepCount + "/" + breakAfterSteps, getX() + 4, getY() + Math.min(14, Math.max(12, getHeight() - 4)));
+        }
+    }
+
+    private void handleStepBreak(GameWorld world, PlayerObject player) {
+        if (breakAfterSteps <= 0 || player == null || !player.isActive() || player.isDying() || collapsing) {
+            playerStandingLastFrame = false;
+            return;
+        }
+        boolean standingOnTop = isPlayerStandingOnTop(player);
+        if (standingOnTop && !playerStandingLastFrame) {
+            stepCount++;
+            if (stepCount >= breakAfterSteps) {
+                playBreakSound(world);
+                setActive(false);
+                playerStandingLastFrame = false;
+                return;
+            }
+        }
+        playerStandingLastFrame = standingOnTop;
+    }
+
+    private void handleCollapse(GameWorld world, double deltaSeconds, PlayerObject player) {
+        if (!collapseWhenUnsupported) {
+            return;
+        }
+        if (!collapsing && !hasSupport(world)) {
+            collapsing = true;
+            playBreakSound(world);
+        }
+        if (!collapsing) {
+            return;
+        }
+
+        collapseVelocityY += world.getGravityStrength() * deltaSeconds;
+        int nextY = getY() + (int) Math.round(collapseVelocityY * deltaSeconds);
+        var movement = world.moveObject(this, getX(), nextY);
+        setPosition(movement.getResolvedX(), movement.getResolvedY());
+
+        if (player != null && player.isActive() && !player.isDying() && overlaps(player)) {
+            if (player.getHealth() <= collapseDamage) {
+                world.setFailureReason("被倒塌建筑砸中：" + getName());
+            }
+            player.takeDamage(world, collapseDamage);
+        }
+
+        if (movement.isBlockedY()) {
+            collapsing = false;
+            collapseVelocityY = 0.0;
+        }
+    }
+
+    private void playBreakSound(GameWorld world) {
+        if (world != null) {
+            world.getSoundManager().playSound("crash");
+        }
+    }
+
+    private boolean hasSupport(GameWorld world) {
+        int supportTop = getY() + getHeight();
+        for (SceneObject other : world.getSolidObjects()) {
+            if (other == this || !other.isActive()) {
+                continue;
+            }
+            int otherTop = other.getY();
+            boolean directlyBelow = otherTop >= supportTop && otherTop <= supportTop + 2;
+            boolean horizontalOverlap = getX() < other.getX() + other.getWidth()
+                && getX() + getWidth() > other.getX();
+            if (directlyBelow && horizontalOverlap) {
+                return true;
+            }
+        }
+        return getY() + getHeight() >= world.getHeight();
+    }
+
+    private boolean isPlayerStandingOnTop(PlayerObject player) {
+        int playerBottom = player.getY() + player.getHeight();
+        boolean horizontalOverlap = player.getX() < getX() + getWidth()
+            && player.getX() + player.getWidth() > getX();
+        boolean nearTop = playerBottom >= getY() - 4 && playerBottom <= getY() + 6;
+        return horizontalOverlap && nearTop && player.getVelocityY() >= 0;
+    }
+
+    private boolean overlaps(GameObject other) {
+        return other != null
+            && getX() < other.getX() + other.getWidth()
+            && getX() + getWidth() > other.getX()
+            && getY() < other.getY() + other.getHeight()
+            && getY() + getHeight() > other.getY();
     }
 }

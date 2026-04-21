@@ -37,6 +37,7 @@ public final class GameWorld {
     private int kills = 0;
     private int itemsCollected = 0;
     private boolean showGoals = true;
+    private String failureReason;
 
     public GameWorld(int width, int height) {
         this(width, height, new Color(32, 36, 48));
@@ -88,6 +89,18 @@ public final class GameWorld {
 
     public boolean isShowGoals() {
         return showGoals;
+    }
+
+    public String getFailureReason() {
+        return failureReason;
+    }
+
+    public void setFailureReason(String failureReason) {
+        if (failureReason == null || failureReason.isBlank()) {
+            this.failureReason = null;
+            return;
+        }
+        this.failureReason = failureReason.trim();
     }
 
     public void setShowGoals(boolean showGoals) {
