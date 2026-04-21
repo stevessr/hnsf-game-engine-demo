@@ -55,7 +55,7 @@ public final class ProjectileObject extends BaseObject {
             Math.max(1, explosionRadius),
             Math.max(1, explosionDamage),
             Math.max(0.1, fuseSeconds),
-            0.45,
+            0.75,
             Math.max(3.0, fuseSeconds + 1.0)
         );
     }
@@ -229,6 +229,10 @@ public final class ProjectileObject extends BaseObject {
                 applyExplosionDamage(world);
                 explosionApplied = true;
             }
+            world.triggerScreenShake(
+                Math.min(16.0, Math.max(6.0, explosionRadius / 9.0)),
+                Math.max(0.35, 0.35 + explosionRadius / 350.0)
+            );
             world.getSoundManager().playSound("explosion");
         }
     }
@@ -291,6 +295,39 @@ public final class ProjectileObject extends BaseObject {
         graphics.drawOval(cx - outerRadius, cy - outerRadius, outerRadius * 2, outerRadius * 2);
         graphics.setColor(new Color(255, 245, 180, Math.max(0, alpha - 40)));
         graphics.fillOval(cx - innerRadius, cy - innerRadius, innerRadius * 2, innerRadius * 2);
+
+        renderExplosionSmoke(graphics, cx, cy, outerRadius, progress);
+    }
+
+    private void renderExplosionSmoke(Graphics2D graphics, int cx, int cy, int outerRadius, double progress) {
+        int smokeAlpha = (int) Math.round(150.0 * Math.sin(Math.min(1.0, progress) * Math.PI));
+        if (smokeAlpha <= 0) {
+            return;
+        }
+
+        int rise = (int) Math.round(outerRadius * (0.18 + progress * 0.42));
+        int spread = (int) Math.max(8, outerRadius * (0.35 + progress * 0.3));
+        int coreRadius = (int) Math.max(10, outerRadius * (0.38 + progress * 0.34));
+
+        drawSmokePuff(graphics, cx, cy - rise / 2, coreRadius, smokeColor(48, 46, 42, smokeAlpha));
+        drawSmokePuff(graphics, cx - spread / 2, cy - rise, (int) Math.max(8, coreRadius * 0.82), smokeColor(68, 64, 60, smokeAlpha - 25));
+        drawSmokePuff(graphics, cx + spread / 2, cy - rise + 4, (int) Math.max(8, coreRadius * 0.78), smokeColor(58, 54, 50, smokeAlpha - 20));
+        drawSmokePuff(graphics, cx - spread / 3, cy + outerRadius / 8 - rise / 4, (int) Math.max(8, coreRadius * 0.65), smokeColor(90, 78, 60, smokeAlpha - 40));
+        drawSmokePuff(graphics, cx + spread / 4, cy + outerRadius / 10 - rise / 5, (int) Math.max(8, coreRadius * 0.7), smokeColor(76, 70, 66, smokeAlpha - 35));
+    }
+
+    private void drawSmokePuff(Graphics2D graphics, int centerX, int centerY, int radius, Color color) {
+        if (radius <= 0 || color == null) {
+            return;
+        }
+        int alpha = Math.max(0, color.getAlpha());
+        graphics.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
+        graphics.fillOval(centerX - radius, centerY - radius, radius * 2, radius * 2);
+    }
+
+    private Color smokeColor(int red, int green, int blue, int alpha) {
+        int clampedAlpha = Math.max(0, Math.min(255, alpha));
+        return new Color(red, green, blue, clampedAlpha);
     }
 
     private String resolvePlayerHitReason() {

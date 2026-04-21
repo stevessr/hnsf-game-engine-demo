@@ -280,10 +280,13 @@ class GameObjectModelTest {
         world.addObject(bunker);
         world.addObject(bomb);
 
+        boolean shakeTriggered = false;
         for (int i = 0; i < 240 && bomb.isActive(); i++) {
             world.update(1.0 / 60.0);
+            shakeTriggered |= world.isScreenShaking();
         }
 
+        assertTrue(shakeTriggered, "爆炸应触发屏幕震动");
         assertFalse(bomb.isActive(), "炸弹在爆炸动画结束后应失效");
         assertTrue(player.getHealth() < 40, "爆炸应对附近玩家造成伤害");
         assertFalse(bunker.isActive(), "爆炸应能摧毁附近可破坏建筑");

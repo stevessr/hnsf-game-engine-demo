@@ -3,8 +3,6 @@ package lib.render;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -83,12 +81,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         setDoubleBuffered(true);
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
-        addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent event) {
-                syncViewportToPanelSize();
-            }
-        });
         registerInputListeners();
     }
 
@@ -157,8 +149,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         settingsRepository.saveSettings(
             targetFPS,
             uiFontSize,
-            getWidth(),
-            getHeight(),
+            resolveSavedPanelWidth(),
+            resolveSavedPanelHeight(),
             getThrottlePower(),
             getDeceleration(),
             isGravityEnabled(),
@@ -443,7 +435,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             frame.pack();
             frame.setLocationRelativeTo(null);
         }
-        syncViewportToPanelSize();
         savePersistentSettings();
         revalidate();
         repaint();
@@ -644,20 +635,28 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         return camera == null ? 540 : camera.getViewportHeight();
     }
 
-    private void syncViewportToPanelSize() {
-        if (camera == null) {
-            return;
+    private int resolveSavedPanelWidth() {
+        int currentWidth = getWidth();
+        if (currentWidth > 0) {
+            return currentWidth;
         }
-        int viewportWidth = Math.max(1, getWidth() > 0 ? getWidth() : getPreferredSize().width);
-        int viewportHeight = Math.max(1, getHeight() > 0 ? getHeight() : getPreferredSize().height);
-        if (camera.getViewportWidth() == viewportWidth && camera.getViewportHeight() == viewportHeight) {
-            return;
+        Dimension preferredSize = getPreferredSize();
+        if (preferredSize != null && preferredSize.width > 0) {
+            return preferredSize.width;
         }
-        camera.setViewportSize(viewportWidth, viewportHeight);
-        if (world.getStateMachine() instanceof DefaultGameStateMachine dsm) {
-            dsm.recenterUI(world);
+        return 960;
+    }
+
+    private int resolveSavedPanelHeight() {
+        int currentHeight = getHeight();
+        if (currentHeight > 0) {
+            return currentHeight;
         }
-        repaint();
+        Dimension preferredSize = getPreferredSize();
+        if (preferredSize != null && preferredSize.height > 0) {
+            return preferredSize.height;
+        }
+        return 540;
     }
 
     public void syncInputMap() {
@@ -697,7 +696,6 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     @Override
     protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
-        syncViewportToPanelSize();
         Graphics2D graphics2d = (Graphics2D) graphics.create();
         try {
             int panelWidth = getWidth();
