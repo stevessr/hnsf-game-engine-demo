@@ -9,6 +9,7 @@ import lib.object.BoundaryObject;
 import lib.object.DialogObject;
 import lib.object.GoalObject;
 import lib.object.ItemObject;
+import lib.object.MonsterKind;
 import lib.object.MonsterObject;
 import lib.object.PlayerObject;
 import lib.object.SceneObject;
@@ -33,6 +34,7 @@ public final class LevelManager {
     private static final String PROC_FOREST = "procedural-forest";
     private static final String PROC_CAVE = "procedural-cave";
     private static final String AIR_RAID_DEMO = "air-raid-demo";
+    private static final String SHOWCASE_DEMO = "showcase-demo";
 
     private final GameWorld world;
     private final List<String> levelNames;
@@ -136,6 +138,11 @@ public final class LevelManager {
             BackgroundAssets.applyLevelBackground(airRaidWorld, AIR_RAID_DEMO);
             return MapDataMapper.fromWorld(airRaidWorld, AIR_RAID_DEMO);
         }
+        if (normalized.equals(SHOWCASE_DEMO)) {
+            GameWorld showcaseWorld = createShowcaseDemoWorld();
+            BackgroundAssets.applyLevelBackground(showcaseWorld, SHOWCASE_DEMO);
+            return MapDataMapper.fromWorld(showcaseWorld, SHOWCASE_DEMO);
+        }
 
         GameWorld levelWorld = switch (normalized) {
             case TUTORIAL_LEVEL -> createTutorialLevelWorld();
@@ -193,6 +200,7 @@ public final class LevelManager {
         addLevel(PROC_FOREST);
         addLevel(PROC_CAVE);
         addLevel(AIR_RAID_DEMO);
+        addLevel(SHOWCASE_DEMO);
     }
 
     private GameWorld createTutorialLevelWorld() {
@@ -349,6 +357,140 @@ public final class LevelManager {
         return levelWorld;
     }
 
+    private GameWorld createShowcaseDemoWorld() {
+        int width = 960 * 5;
+        int height = 720;
+        GameWorld levelWorld = new GameWorld(width, height, new Color(54, 62, 78));
+        addFrame(levelWorld, width, height);
+        levelWorld.setGravityEnabled(true);
+        addGround(levelWorld, 0, 580, width, 140, new Color(94, 112, 96));
+        addPlayer(levelWorld, 120, 500);
+        levelWorld.setRespawnPoint(120, 500);
+
+        DialogObject introDialog = new DialogObject(
+            "showcase-intro",
+            120,
+            70,
+            780,
+            60,
+            "Guide",
+            "Showcase level: learn pickups, grounded enemies, flying enemies, ranged attacks and fragile structures."
+        );
+        introDialog.setActive(false);
+        levelWorld.addObject(introDialog);
+
+        levelWorld.addObject(new ItemObject("showcase-coin", 220, 520, 28, 28, "coin", 25, "XP Coin"));
+        levelWorld.addObject(new ItemObject("showcase-heart", 300, 516, 28, 28, "health", 24, "Healing Heart"));
+        levelWorld.addObject(new ItemObject("showcase-light", 380, 510, 28, 28, "lightorb", 180, "Light Orb"));
+        levelWorld.addObject(new ItemObject("showcase-speed", 460, 516, 28, 28, "speed", 180, "Speed Boost"));
+        levelWorld.addObject(new ItemObject("showcase-shield", 540, 516, 28, 28, "shield", 40, "Shield Ward"));
+
+        VoxelObject stoneVoxel = new VoxelObject("showcase-stone-voxel", 660, 532, 24, 24, new Color(116, 116, 124));
+        stoneVoxel.setMaterial("stone");
+        levelWorld.addObject(stoneVoxel);
+        VoxelObject woodVoxel = new VoxelObject("showcase-wood-voxel", 688, 532, 24, 24, new Color(156, 108, 72));
+        woodVoxel.setMaterial("wood");
+        levelWorld.addObject(woodVoxel);
+        VoxelObject brickVoxel = new VoxelObject("showcase-brick-voxel", 716, 532, 24, 24, new Color(166, 88, 74));
+        brickVoxel.setMaterial("brick");
+        levelWorld.addObject(brickVoxel);
+
+        WallObject brickStep = new WallObject("showcase-brick-step", 860, 470, 120, 36);
+        levelWorld.addObject(brickStep);
+        WallObject woodBridge = new WallObject("showcase-bridge", 1020, 430, 140, 26);
+        levelWorld.addObject(woodBridge);
+
+        SceneObject breakCrate = new SceneObject("showcase-breakable-crate", 1180, 520, 58, 60, true, false);
+        breakCrate.setDestructible(true);
+        breakCrate.setDurability(16);
+        levelWorld.addObject(breakCrate);
+
+        SceneObject brittleFloor = new SceneObject("showcase-brittle-floor", 1320, 470, 96, 20, true, false);
+        brittleFloor.setMaterial("wood");
+        brittleFloor.setBreakAfterSteps(2);
+        levelWorld.addObject(brittleFloor);
+
+        MonsterObject slime = createShowcaseMonster("showcase-slime", MonsterKind.SLIME, 980, 520, 28);
+        slime.setHealDropAmount(12);
+        levelWorld.addObject(slime);
+
+        MonsterObject spider = createShowcaseMonster("showcase-spider", MonsterKind.SPIDER, 1360, 516, 42);
+        spider.setSpeed(135);
+        levelWorld.addObject(spider);
+
+        MonsterObject bat = createShowcaseMonster("showcase-bat", MonsterKind.BAT, 1660, 250, 48);
+        bat.setHealDropAmount(10);
+        bat.setRangedAttacker(true);
+        bat.setShootRange(420);
+        bat.setProjectileSpeed(240);
+        bat.setShootCooldown(1.15);
+        levelWorld.addObject(bat);
+
+        MonsterObject ghost = createShowcaseMonster("showcase-ghost", MonsterKind.GHOST, 1940, 300, 52);
+        ghost.setRevivable(true);
+        ghost.setReviveDelaySeconds(4.0);
+        levelWorld.addObject(ghost);
+
+        MonsterObject gargoyle = createShowcaseMonster("showcase-gargoyle", MonsterKind.GARGOYLE, 2280, 324, 70);
+        gargoyle.setRangedAttacker(true);
+        gargoyle.setShootRange(520);
+        gargoyle.setProjectileSpeed(260);
+        gargoyle.setShootCooldown(1.1);
+        levelWorld.addObject(gargoyle);
+
+        MonsterObject dragon = createShowcaseMonster("showcase-dragon", MonsterKind.DRAGON, 2700, 320, 90);
+        dragon.setSize(92, 72);
+        dragon.setAttack(26);
+        dragon.setHealth(120);
+        dragon.setRangedAttacker(true);
+        dragon.setShootRange(620);
+        dragon.setProjectileSpeed(280);
+        dragon.setShootCooldown(1.0);
+        dragon.setHealDropAmount(30);
+        levelWorld.addObject(dragon);
+
+        SceneObject bunkerOne = new SceneObject("showcase-bunker-1", 3100, 500, 150, 80, true, false);
+        bunkerOne.setMaterial("stone");
+        bunkerOne.setDestructible(true);
+        bunkerOne.setDurability(28);
+        levelWorld.addObject(bunkerOne);
+
+        SceneObject bunkerTwo = new SceneObject("showcase-bunker-2", 3440, 500, 170, 80, true, false);
+        bunkerTwo.setMaterial("stone");
+        bunkerTwo.setDestructible(true);
+        bunkerTwo.setDurability(32);
+        levelWorld.addObject(bunkerTwo);
+
+        SceneObject towerBase = new SceneObject("showcase-tower-base", 3780, 520, 110, 60, true, false);
+        towerBase.setMaterial("stone");
+        towerBase.setDestructible(true);
+        towerBase.setDurability(24);
+        levelWorld.addObject(towerBase);
+
+        SceneObject tower = new SceneObject("showcase-radar-tower", 3812, 330, 46, 190, true, false);
+        tower.setMaterial("stone");
+        tower.setCollapseWhenUnsupported(true);
+        tower.setCollapseDamage(24);
+        levelWorld.addObject(tower);
+
+        MonsterObject plane = createShowcaseMonster("showcase-plane", MonsterKind.PLANE, 3320, 160, 110);
+        plane.setSize(116, 42);
+        plane.setMaterial("plane");
+        plane.setBomber(true);
+        plane.setAttack(22);
+        plane.setSpeed(150);
+        plane.setRangedAttacker(true);
+        plane.setShootRange(1400);
+        plane.setProjectileSpeed(180);
+        plane.setShootCooldown(1.0);
+        plane.setBombRadius(88);
+        levelWorld.addObject(plane);
+
+        levelWorld.addObject(new ItemObject("showcase-gem", 3650, 512, 28, 28, "gem", 40, "Bonus XP"));
+        levelWorld.addObject(new GoalObject("showcase-exit", width - 140, 500, 64, 72));
+        return levelWorld;
+    }
+
     private void addAirCloud(GameWorld levelWorld, int x, int y, int width, int height, Color color) {
         SceneObject cloud = new SceneObject("cloud", x, y, width, height, false, true);
         cloud.setColor(color);
@@ -414,6 +556,13 @@ public final class LevelManager {
 
     private void addPlayer(GameWorld levelWorld, int x, int y) {
         levelWorld.addObject(new PlayerObject("player", x, y));
+    }
+
+    private MonsterObject createShowcaseMonster(String name, MonsterKind kind, int x, int y, int rewardExperience) {
+        MonsterObject monster = new MonsterObject(name, x, y, rewardExperience);
+        monster.setMonsterKind(kind);
+        monster.setAggressive(true);
+        return monster;
     }
 
     private String normalizeLevelName(String name) {

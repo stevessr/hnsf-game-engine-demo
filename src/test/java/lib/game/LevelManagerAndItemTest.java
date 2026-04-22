@@ -2,6 +2,8 @@ package lib.game;
 
 import java.awt.Color;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,6 +19,7 @@ import lib.object.GameObjectFactory;
 import lib.object.GameObjectType;
 import lib.object.ItemObject;
 import lib.object.MenuObject;
+import lib.object.MonsterKind;
 import lib.object.MonsterObject;
 import lib.object.PlayerObject;
 import lib.object.SceneObject;
@@ -38,6 +41,7 @@ class LevelManagerAndItemTest {
         assertTrue(levelNames.contains("level-3"));
         assertTrue(levelNames.contains("level-4"));
         assertTrue(levelNames.contains("air-raid-demo"));
+        assertTrue(levelNames.contains("showcase-demo"));
     }
 
     @Test
@@ -118,6 +122,67 @@ class LevelManagerAndItemTest {
                 .map(SceneObject.class::cast)
                 .anyMatch(SceneObject::isDestructible),
             "空袭 demo 关卡应包含可被破坏的掩体"
+        );
+    }
+
+    @Test
+    void showcaseDemoShouldContainAllMonsterKindsItemsAndMechanics() {
+        LevelManager levelManager = new LevelManager();
+        GameWorld showcaseWorld = MapDataMapper.toWorld(levelManager.createLevelData("showcase-demo"));
+
+        Set<MonsterKind> monsterKinds = showcaseWorld.getObjectsByType(GameObjectType.MONSTER).stream()
+            .filter(MonsterObject.class::isInstance)
+            .map(MonsterObject.class::cast)
+            .map(MonsterObject::getMonsterKind)
+            .collect(Collectors.toSet());
+
+        assertTrue(monsterKinds.contains(MonsterKind.SLIME));
+        assertTrue(monsterKinds.contains(MonsterKind.SPIDER));
+        assertTrue(monsterKinds.contains(MonsterKind.BAT));
+        assertTrue(monsterKinds.contains(MonsterKind.GHOST));
+        assertTrue(monsterKinds.contains(MonsterKind.GARGOYLE));
+        assertTrue(monsterKinds.contains(MonsterKind.DRAGON));
+        assertTrue(monsterKinds.contains(MonsterKind.PLANE));
+
+        Set<String> itemKinds = showcaseWorld.getObjectsByType(GameObjectType.ITEM).stream()
+            .filter(ItemObject.class::isInstance)
+            .map(ItemObject.class::cast)
+            .map(ItemObject::getKind)
+            .collect(Collectors.toSet());
+
+        assertTrue(itemKinds.contains("coin"));
+        assertTrue(itemKinds.contains("health"));
+        assertTrue(itemKinds.contains("lightorb"));
+        assertTrue(itemKinds.contains("speed"));
+        assertTrue(itemKinds.contains("shield"));
+
+        assertTrue(
+            showcaseWorld.getObjectsByType(GameObjectType.MONSTER).stream()
+                .filter(MonsterObject.class::isInstance)
+                .map(MonsterObject.class::cast)
+                .anyMatch(MonsterObject::isRevivable),
+            "展示关卡应包含可复活怪物"
+        );
+        assertTrue(
+            showcaseWorld.getObjectsByType(GameObjectType.MONSTER).stream()
+                .filter(MonsterObject.class::isInstance)
+                .map(MonsterObject.class::cast)
+                .anyMatch(MonsterObject::isBomber),
+            "展示关卡应包含投弹怪物"
+        );
+        assertTrue(
+            showcaseWorld.getObjects().stream()
+                .filter(SceneObject.class::isInstance)
+                .map(SceneObject.class::cast)
+                .anyMatch(scene -> scene.getBreakAfterSteps() > 0),
+            "展示关卡应包含踩踏后会破碎的平台"
+        );
+        assertTrue(
+            showcaseWorld.getObjects().stream()
+                .filter(SceneObject.class::isInstance)
+                .map(SceneObject.class::cast)
+                .anyMatch(SceneObject::isCollapseWhenUnsupported),
+            "展示关卡应包含失去支撑后会坍塌的结构"
         );
     }
 

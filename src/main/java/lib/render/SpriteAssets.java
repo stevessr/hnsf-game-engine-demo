@@ -1,5 +1,6 @@
 package lib.render;
 
+import java.awt.AlphaComposite;
 import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.awt.RenderingHints;
@@ -59,7 +60,8 @@ public final class SpriteAssets {
             player.getY(),
             player.getWidth(),
             player.getHeight(),
-            player.getLastDirectionX() < -0.1
+            player.getLastDirectionX() < -0.1,
+            1.0f
         );
     }
 
@@ -80,6 +82,7 @@ public final class SpriteAssets {
         if (resourcePath == null) {
             return false;
         }
+        float alpha = monster.getMonsterKind() == MonsterKind.GHOST ? 0.82f : 1.0f;
         return drawSprite(
             graphics,
             resourcePath,
@@ -87,7 +90,8 @@ public final class SpriteAssets {
             monster.getY(),
             monster.getWidth(),
             monster.getHeight(),
-            faceLeft
+            faceLeft,
+            alpha
         );
     }
 
@@ -114,7 +118,8 @@ public final class SpriteAssets {
             item.getY(),
             item.getWidth(),
             item.getHeight(),
-            false
+            false,
+            1.0f
         );
     }
 
@@ -131,7 +136,8 @@ public final class SpriteAssets {
                 wall.getY(),
                 wall.getWidth(),
                 wall.getHeight(),
-                false
+                false,
+                1.0f
             );
         }
         if (resourcePath == null) {
@@ -160,7 +166,8 @@ public final class SpriteAssets {
                 scene.getY(),
                 scene.getWidth(),
                 scene.getHeight(),
-                false
+                false,
+                1.0f
             );
         }
         if (resourcePath == null) {
@@ -229,7 +236,8 @@ public final class SpriteAssets {
         int y,
         int width,
         int height,
-        boolean flipHorizontally
+        boolean flipHorizontally,
+        float alpha
     ) {
         BufferedImage image = loadImage(resourcePath);
         if (image == null) {
@@ -237,6 +245,7 @@ public final class SpriteAssets {
         }
         Graphics2D g2d = (Graphics2D) graphics.create();
         try {
+            float safeAlpha = Math.max(0.0f, Math.min(1.0f, alpha));
             g2d.setRenderingHint(
                 RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_BILINEAR
@@ -245,6 +254,7 @@ public final class SpriteAssets {
                 RenderingHints.KEY_RENDERING,
                 RenderingHints.VALUE_RENDER_QUALITY
             );
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, safeAlpha));
             if (flipHorizontally) {
                 g2d.drawImage(image, x + width, y, -width, height, null);
             } else {

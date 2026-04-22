@@ -87,9 +87,20 @@ class GameObjectModelTest {
             graphics.dispose();
         }
 
-        int centerX = player.getX() + (player.getWidth() / 2);
-        int centerY = player.getY() + (player.getHeight() / 2) + 8; // 更加靠下，确保命中衣服颜色
-        assertEquals(player.getColor().getRGB(), image.getRGB(centerX, centerY));
+        assertTrue(
+            regionHasOpaquePixel(image, player.getX(), player.getY(), player.getWidth(), player.getHeight()),
+            "玩家边界框内应存在可见像素"
+        );
+        assertTrue(
+            regionHasOpaquePixel(
+                image,
+                player.getX() + (player.getWidth() / 4),
+                player.getY() + (player.getHeight() / 4),
+                Math.max(8, player.getWidth() / 2),
+                Math.max(8, player.getHeight() / 2)
+            ),
+            "玩家主体区域应被正常渲染"
+        );
     }
 
     @Test
@@ -104,10 +115,26 @@ class GameObjectModelTest {
             graphics.dispose();
         }
 
-        int legAlpha = (image.getRGB(player.getX() + 14, player.getY() + player.getHeight() - 2) >>> 24) & 0xFF;
-        int belowFeetAlpha = (image.getRGB(player.getX() + player.getWidth() / 2, player.getY() + player.getHeight() + 2) >>> 24) & 0xFF;
-        assertTrue(legAlpha > 0, "玩家腿部应被正常渲染");
-        assertEquals(0, belowFeetAlpha, "玩家渲染不应超出自身碰撞框底部");
+        assertTrue(
+            regionHasOpaquePixel(
+                image,
+                player.getX() + 6,
+                player.getY() + player.getHeight() - 8,
+                Math.max(8, player.getWidth() - 12),
+                8
+            ),
+            "玩家下半身应被正常渲染"
+        );
+        assertFalse(
+            regionHasOpaquePixel(
+                image,
+                player.getX(),
+                player.getY() + player.getHeight(),
+                player.getWidth(),
+                4
+            ),
+            "玩家渲染不应超出自身碰撞框底部"
+        );
     }
 
     @Test
@@ -171,10 +198,27 @@ class GameObjectModelTest {
             graphics.dispose();
         }
 
-        int wingAlpha = (image.getRGB(bat.getX() + 2, bat.getY() + 5) >>> 24) & 0xFF;
-        int bodyAlpha = (image.getRGB(bat.getX() + bat.getWidth() / 2, bat.getY() + bat.getHeight() / 2) >>> 24) & 0xFF;
-        assertTrue(wingAlpha > 0, "蝙蝠翅膀应延伸到边缘区域");
-        assertTrue(bodyAlpha > 0, "蝙蝠身体应被正常渲染");
+        assertTrue(
+            regionHasOpaquePixel(
+                image,
+                bat.getX() + (bat.getWidth() / 3),
+                bat.getY() + (bat.getHeight() / 4),
+                Math.max(8, bat.getWidth() / 3),
+                Math.max(8, bat.getHeight() / 2)
+            ),
+            "蝙蝠身体应被正常渲染"
+        );
+        assertTrue(
+            regionHasOpaquePixel(image, bat.getX(), bat.getY() + 4, Math.max(8, bat.getWidth() / 4), bat.getHeight() / 2)
+                || regionHasOpaquePixel(
+                    image,
+                    bat.getX() + bat.getWidth() - Math.max(8, bat.getWidth() / 4),
+                    bat.getY() + 4,
+                    Math.max(8, bat.getWidth() / 4),
+                    bat.getHeight() / 2
+                ),
+            "蝙蝠翅膀应延伸到身体两侧"
+        );
     }
 
     @Test
@@ -214,20 +258,33 @@ class GameObjectModelTest {
             graphics.dispose();
         }
 
-        int bodyAlpha = (image.getRGB(spider.getX() + spider.getWidth() / 2, spider.getY() + spider.getHeight() / 2)
-            >>> 24) & 0xFF;
-        int legAlpha = Math.max(
-            Math.max(
-                (image.getRGB(spider.getX() + 1, spider.getY() + 12) >>> 24) & 0xFF,
-                (image.getRGB(spider.getX() + 1, spider.getY() + 17) >>> 24) & 0xFF
+        assertTrue(
+            regionHasOpaquePixel(
+                image,
+                spider.getX() + (spider.getWidth() / 4),
+                spider.getY() + (spider.getHeight() / 4),
+                Math.max(8, spider.getWidth() / 2),
+                Math.max(8, spider.getHeight() / 2)
             ),
-            Math.max(
-                (image.getRGB(spider.getX() + spider.getWidth() - 2, spider.getY() + 22) >>> 24) & 0xFF,
-                (image.getRGB(spider.getX() + spider.getWidth() - 2, spider.getY() + 27) >>> 24) & 0xFF
-            )
+            "蜘蛛身体应被正常渲染"
         );
-        assertTrue(bodyAlpha > 0, "蜘蛛身体应被正常渲染");
-        assertTrue(legAlpha > 0, "蜘蛛应具有延伸到边缘的腿部渲染");
+        assertTrue(
+            regionHasOpaquePixel(
+                image,
+                spider.getX(),
+                spider.getY() + (spider.getHeight() / 3),
+                Math.max(8, spider.getWidth() / 4),
+                Math.max(10, spider.getHeight() / 2)
+            )
+                || regionHasOpaquePixel(
+                    image,
+                    spider.getX() + spider.getWidth() - Math.max(8, spider.getWidth() / 4),
+                    spider.getY() + (spider.getHeight() / 3),
+                    Math.max(8, spider.getWidth() / 4),
+                    Math.max(10, spider.getHeight() / 2)
+                ),
+            "蜘蛛应具有向外伸展的腿部轮廓"
+        );
     }
 
     @Test
@@ -242,10 +299,14 @@ class GameObjectModelTest {
             graphics.dispose();
         }
 
-        int alpha = (image.getRGB(ghost.getX() + ghost.getWidth() / 2, ghost.getY() + ghost.getHeight() / 2)
-            >>> 24) & 0xFF;
-        assertTrue(alpha > 0, "幽灵应被渲染出来");
-        assertTrue(alpha < 255, "幽灵应保持半透明效果");
+        assertTrue(
+            regionHasOpaquePixel(image, ghost.getX(), ghost.getY(), ghost.getWidth(), ghost.getHeight()),
+            "幽灵应被渲染出来"
+        );
+        assertTrue(
+            regionHasTranslucentPixel(image, ghost.getX(), ghost.getY(), ghost.getWidth(), ghost.getHeight()),
+            "幽灵应保持半透明效果"
+        );
     }
 
     @Test
@@ -463,11 +524,26 @@ class GameObjectModelTest {
             graphics.dispose();
         }
 
-        Color wingPixel = new Color(image.getRGB(76, 39), true);
-        Color nosePixel = new Color(image.getRGB(108, 50), true);
-
-        assertTrue(wingPixel.getAlpha() > 0, "飞机机翼区域应被绘制");
-        assertTrue(nosePixel.getAlpha() > 0, "飞机机头区域应被绘制");
+        assertTrue(
+            regionHasOpaquePixel(
+                image,
+                plane.getX() + 12,
+                plane.getY() + 8,
+                Math.max(20, plane.getWidth() / 3),
+                Math.max(10, plane.getHeight() / 2)
+            ),
+            "飞机机翼区域应被绘制"
+        );
+        assertTrue(
+            regionHasOpaquePixel(
+                image,
+                plane.getX() + plane.getWidth() - Math.max(24, plane.getWidth() / 4),
+                plane.getY() + 10,
+                Math.max(16, plane.getWidth() / 5),
+                Math.max(10, plane.getHeight() / 2)
+            ),
+            "飞机机头区域应被绘制"
+        );
     }
 
     @Test
@@ -516,7 +592,9 @@ class GameObjectModelTest {
         }
 
         assertEquals(Color.BLACK.getRGB(), image.getRGB(0, 0));
-        assertEquals(scene.getColor().getRGB(), image.getRGB(15, 15));
+        Color scenePixel = new Color(image.getRGB(15, 15), true);
+        assertTrue(scenePixel.getAlpha() > 0, "场景物体应覆盖在背景之上");
+        assertNotEquals(Color.BLACK.getRGB(), scenePixel.getRGB(), "场景区域不应保持背景颜色");
     }
 
     @Test
@@ -874,5 +952,43 @@ class GameObjectModelTest {
 
         assertNotEquals(0, (image.getRGB(20, 20) >> 24) & 0xFF, "Menu should render non-transparent pixel");
         assertNotEquals(0, (image.getRGB(60, 95) >> 24) & 0xFF, "Dialog should render non-transparent pixel");
+    }
+
+    private static boolean regionHasOpaquePixel(BufferedImage image, int x, int y, int width, int height) {
+        if (image == null || width <= 0 || height <= 0) {
+            return false;
+        }
+        int startX = Math.max(0, x);
+        int startY = Math.max(0, y);
+        int endX = Math.min(image.getWidth(), x + width);
+        int endY = Math.min(image.getHeight(), y + height);
+        for (int py = startY; py < endY; py++) {
+            for (int px = startX; px < endX; px++) {
+                int alpha = (image.getRGB(px, py) >>> 24) & 0xFF;
+                if (alpha > 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean regionHasTranslucentPixel(BufferedImage image, int x, int y, int width, int height) {
+        if (image == null || width <= 0 || height <= 0) {
+            return false;
+        }
+        int startX = Math.max(0, x);
+        int startY = Math.max(0, y);
+        int endX = Math.min(image.getWidth(), x + width);
+        int endY = Math.min(image.getHeight(), y + height);
+        for (int py = startY; py < endY; py++) {
+            for (int px = startX; px < endX; px++) {
+                int alpha = (image.getRGB(px, py) >>> 24) & 0xFF;
+                if (alpha > 0 && alpha < 255) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

@@ -7,6 +7,8 @@ import java.awt.FontMetrics;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Rectangle;
+import java.awt.Shape;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -18,6 +20,7 @@ public final class MenuObject extends BaseObject {
     private int selectedIndex;
     private int hoveredIndex;
     private int fontSize;
+    private int optionColumns;
 
     public MenuObject(String name, int x, int y, int width, int height, String title, List<String> options) {
         super(GameObjectType.MENU, name, x, y, width, height, new Color(28, 32, 45, 230), true);
@@ -27,6 +30,7 @@ public final class MenuObject extends BaseObject {
         this.selectedIndex = 0;
         this.hoveredIndex = -1;
         this.fontSize = 18;
+        this.optionColumns = 1;
     }
 
     public String getTitle() {
@@ -83,6 +87,14 @@ public final class MenuObject extends BaseObject {
         this.fontSize = Math.max(10, Math.min(64, fontSize));
     }
 
+    public int getOptionColumns() {
+        return optionColumns;
+    }
+
+    public void setOptionColumns(int optionColumns) {
+        this.optionColumns = Math.max(1, Math.min(4, optionColumns));
+    }
+
     public int getTitleAreaHeight() {
         int titleHeight = Math.max(44, fontSize + 22);
         if (subtitle != null && !subtitle.isBlank()) {
@@ -100,7 +112,35 @@ public final class MenuObject extends BaseObject {
     }
 
     public int getPreferredHeight() {
-        return getTitleAreaHeight() + (options.size() * getOptionLineHeight()) + 18;
+        return getTitleAreaHeight() + (getOptionRows() * getOptionLineHeight()) + 18;
+    }
+
+    public int getOptionRows() {
+        return Math.max(1, (options.size() + optionColumns - 1) / optionColumns);
+    }
+
+    public Rectangle getOptionBounds(int index) {
+        if (options.isEmpty() || index < 0 || index >= options.size()) {
+            return new Rectangle();
+        }
+        int rows = getOptionRows();
+        int column = index / rows;
+        int row = index % rows;
+        int gap = getOptionColumnGap();
+        int buttonWidth = Math.max(120, (getWidth() - 24 - gap * (optionColumns - 1)) / optionColumns);
+        int buttonHeight = getOptionLineHeight() - 6;
+        int buttonX = getX() + 12 + column * (buttonWidth + gap);
+        int buttonY = getOptionStartY() + row * getOptionLineHeight() + 2;
+        return new Rectangle(buttonX, buttonY, buttonWidth, buttonHeight);
+    }
+
+    public int findOptionIndexAt(int mouseX, int mouseY) {
+        for (int index = 0; index < options.size(); index++) {
+            if (getOptionBounds(index).contains(mouseX, mouseY)) {
+                return index;
+            }
+        }
+        return -1;
     }
 
     public void nextOption() {
@@ -195,18 +235,19 @@ public final class MenuObject extends BaseObject {
             ));
             g2d.drawLine(x + 22, dividerY, x + width - 22, dividerY);
 
-            Font optionFont = originalFont.deriveFont((float) fontSize);
+            float optionFontSize = optionColumns > 1 ? Math.max(12f, fontSize - 1f) : (float) fontSize;
+            Font optionFont = originalFont.deriveFont(optionFontSize);
             g2d.setFont(optionFont);
             FontMetrics optionMetrics = g2d.getFontMetrics(optionFont);
-            int lineHeight = getOptionLineHeight();
 
             for (int index = 0; index < options.size(); index++) {
                 boolean isSelected = index == selectedIndex;
                 boolean isHovered = index == hoveredIndex;
-                int buttonX = x + 12;
-                int buttonY = getOptionStartY() + index * lineHeight + 2;
-                int buttonWidth = width - 24;
-                int buttonHeight = lineHeight - 6;
+                Rectangle bounds = getOptionBounds(index);
+                int buttonX = bounds.x;
+                int buttonY = bounds.y;
+                int buttonWidth = bounds.width;
+                int buttonHeight = bounds.height;
 
                 if (isHovered || isSelected) {
                     Color glowColor = isHovered
@@ -243,14 +284,26 @@ public final class MenuObject extends BaseObject {
                 ));
                 g2d.fillRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 16, 16);
 
-                g2d.setColor(new Color(255, 255, 255, isHovered || isSelected ? 112 : 48));
-                g2d.drawRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 16, 16);
+	                g2d.setColor(new Color(255, 255, 255, isHovered || isSelected ? 112 : 48));
+	                g2d.drawRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 16, 16);
 
-                String label = isSelected ? "▶ " + options.get(index) : options.get(index);
                 int textX = buttonX + 16;
+                if (isSelected) {
+                    int arrowCenterY = buttonY + buttonHeight / 2;
+                    g2d.setColor(new Color(255, 245, 220, 235));
+                    g2d.fillPolygon(
+                        new int[]{buttonX + 12, buttonX + 12, buttonX + 26},
+                        new int[]{arrowCenterY - 10, arrowCenterY + 10, arrowCenterY},
+                        3
+                    );
+                    textX += 22;
+                }
                 int textY = buttonY + (buttonHeight - optionMetrics.getHeight()) / 2 + optionMetrics.getAscent();
                 g2d.setColor(isHovered || isSelected ? new Color(255, 250, 240) : new Color(210, 220, 232));
-                g2d.drawString(label, textX, textY);
+                Shape previousClip = g2d.getClip();
+                g2d.setClip(buttonX + 10, buttonY + 4, Math.max(20, buttonWidth - 20), Math.max(12, buttonHeight - 8));
+                g2d.drawString(options.get(index), textX, textY);
+                g2d.setClip(previousClip);
             }
         } finally {
             g2d.setFont(originalFont);
@@ -289,6 +342,10 @@ public final class MenuObject extends BaseObject {
 
     private int clampIndex(int index) {
         return Math.max(0, Math.min(options.size() - 1, index));
+    }
+
+    private int getOptionColumnGap() {
+        return optionColumns > 1 ? 14 : 0;
     }
 
     private Color resolveAccentColor() {

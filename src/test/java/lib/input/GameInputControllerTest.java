@@ -100,7 +100,7 @@ class GameInputControllerTest {
     void menuActionsShouldSupportKeyboardAndMouseSelection() {
         GameInputController inputController = GameInputController.createDefault();
         GameWorld world = new GameWorld(240, 180);
-        MenuObject menu = new MenuObject("menu", 10, 10, 120, 120, "Main", List.of("Start", "Options", "Exit"));
+        MenuObject menu = new MenuObject("menu", 10, 10, 140, 180, "Main", List.of("Start", "Options", "Exit"));
         DialogObject dialog = new DialogObject("dialog", 10, 110, 180, 40, "Guide", "...");
         world.addObject(menu);
         world.addObject(dialog);
@@ -112,12 +112,15 @@ class GameInputControllerTest {
         assertEquals(1, menu.getSelectedIndex());
         assertTrue(dialog.getMessage().contains("Options"));
 
-        inputController.getMouseManager().moveTo(30, 104);
-        inputController.getMouseManager().pressButton(MouseEvent.BUTTON1, 30, 104);
+        int exitX = menu.getX() + 24;
+        int exitY = menu.getOptionStartY() + (menu.getOptionLineHeight() * 2) + (menu.getOptionLineHeight() / 2);
+        inputController.getMouseManager().moveTo(exitX, exitY);
+        inputController.getMouseManager().pressButton(MouseEvent.BUTTON1, exitX, exitY);
         inputController.applyInputs(world);
         inputController.finishFrame();
 
         assertEquals(2, menu.getSelectedIndex());
+        assertEquals(2, menu.getHoveredIndex());
         assertTrue(dialog.getMessage().contains("已确认"));
         assertTrue(dialog.getMessage().contains("Exit"));
     }

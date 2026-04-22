@@ -35,7 +35,8 @@ public final class BackgroundAssets {
         "level-2", LEVEL_RUINS,
         "level-3", LEVEL_CAVERN,
         "level-4", LEVEL_BOSS,
-        "air-raid-demo", LEVEL_AIR_RAID
+        "air-raid-demo", LEVEL_AIR_RAID,
+        "showcase-demo", LEVEL_DEMO
     );
 
     private static final Map<String, BufferedImage> IMAGE_CACHE = new ConcurrentHashMap<>();
