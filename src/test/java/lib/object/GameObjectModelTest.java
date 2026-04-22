@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import lib.game.GameWorld;
 import lib.object.dto.MapBackgroundMode;
+import lib.object.dto.MapBackgroundPreset;
 
 class GameObjectModelTest {
     @Test
@@ -516,6 +517,33 @@ class GameObjectModelTest {
 
         assertEquals(Color.BLACK.getRGB(), image.getRGB(0, 0));
         assertEquals(scene.getColor().getRGB(), image.getRGB(15, 15));
+    }
+
+    @Test
+    void backgroundPresetChangeShouldUpdateCachedRender() {
+        GameWorld world = new GameWorld(80, 80, new Color(54, 92, 56));
+        world.setBackgroundPreset(MapBackgroundPreset.FOREST);
+
+        BufferedImage first = new BufferedImage(80, 80, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D firstGraphics = first.createGraphics();
+        try {
+            world.render(firstGraphics);
+        } finally {
+            firstGraphics.dispose();
+        }
+
+        world.setBackgroundPreset(MapBackgroundPreset.NIGHT);
+        world.setBackgroundColor(new Color(24, 30, 60));
+
+        BufferedImage second = new BufferedImage(80, 80, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D secondGraphics = second.createGraphics();
+        try {
+            world.render(secondGraphics);
+        } finally {
+            secondGraphics.dispose();
+        }
+
+        assertNotEquals(first.getRGB(10, 10), second.getRGB(10, 10));
     }
 
     @Test

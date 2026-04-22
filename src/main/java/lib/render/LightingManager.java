@@ -160,20 +160,47 @@ public final class LightingManager {
         if (radius <= 0) {
             return;
         }
-        
-        Graphics2D gLight = (Graphics2D) g.create();
-        
-        Area lightArea = new Area(new Ellipse2D.Float(x - radius, y - radius, radius * 2, radius * 2));
+        if (casters == null || casters.isEmpty()) {
+            drawLight(g, x, y, radius, intensity);
+            return;
+        }
+
+        int left = x - radius;
+        int top = y - radius;
+        int right = x + radius;
+        int bottom = y + radius;
+        boolean hasRelevantCaster = false;
+
+        Area lightArea = null;
         for (GameObject caster : casters) {
             if (!caster.isActive()) {
                 continue;
             }
-            lightArea.subtract(new Area(new Rectangle2D.Float(caster.getX(), caster.getY(), caster.getWidth(), caster.getHeight())));
+            int casterLeft = caster.getX();
+            int casterTop = caster.getY();
+            int casterRight = casterLeft + Math.max(0, caster.getWidth());
+            int casterBottom = casterTop + Math.max(0, caster.getHeight());
+            if (casterRight <= left || casterBottom <= top || casterLeft >= right || casterTop >= bottom) {
+                continue;
+            }
+            hasRelevantCaster = true;
+            if (lightArea == null) {
+                lightArea = new Area(new Ellipse2D.Float(x - radius, y - radius, radius * 2, radius * 2));
+            }
+            lightArea.subtract(new Area(new Rectangle2D.Float(casterLeft, casterTop, caster.getWidth(), caster.getHeight())));
         }
-        
+        if (!hasRelevantCaster || lightArea == null) {
+            drawLight(g, x, y, radius, intensity);
+            return;
+        }
+
+        Graphics2D gLight = (Graphics2D) g.create();
         gLight.setClip(lightArea);
-        drawLight(gLight, x, y, radius, intensity);
-        gLight.dispose();
+        try {
+            drawLight(gLight, x, y, radius, intensity);
+        } finally {
+            gLight.dispose();
+        }
     }
 
     private void drawLight(Graphics2D g, int x, int y, int radius, float intensity) {

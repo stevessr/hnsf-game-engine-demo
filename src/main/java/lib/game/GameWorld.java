@@ -36,6 +36,8 @@ public final class GameWorld {
     private MapBackgroundPreset backgroundPreset = MapBackgroundPreset.DEFAULT;
     private BufferedImage backgroundImage;
     private String backgroundImageName;
+    private BufferedImage backgroundRenderCache;
+    private boolean backgroundRenderCacheDirty = true;
     private boolean gravityEnabled;
     private int gravityStrength;
     private WinConditionType winCondition = WinConditionType.REACH_GOAL;
@@ -240,6 +242,7 @@ public final class GameWorld {
     public void setSize(int width, int height) {
         this.width = Math.max(0, width);
         this.height = Math.max(0, height);
+        invalidateBackgroundCache();
         if (stateMachine instanceof DefaultGameStateMachine dsm) {
             dsm.recenterUI(this);
         }
@@ -254,6 +257,7 @@ public final class GameWorld {
             return;
         }
         this.backgroundColor = backgroundColor;
+        invalidateBackgroundCache();
     }
 
     public MapBackgroundMode getBackgroundMode() {
@@ -262,6 +266,7 @@ public final class GameWorld {
 
     public void setBackgroundMode(MapBackgroundMode backgroundMode) {
         this.backgroundMode = backgroundMode == null ? MapBackgroundMode.GRADIENT : backgroundMode;
+        invalidateBackgroundCache();
     }
 
     public MapBackgroundPreset getBackgroundPreset() {
@@ -270,6 +275,7 @@ public final class GameWorld {
 
     public void setBackgroundPreset(MapBackgroundPreset backgroundPreset) {
         this.backgroundPreset = backgroundPreset == null ? MapBackgroundPreset.DEFAULT : backgroundPreset;
+        invalidateBackgroundCache();
     }
 
     public BufferedImage getBackgroundImage() {
@@ -293,11 +299,13 @@ public final class GameWorld {
         } else {
             this.backgroundImageName = null;
         }
+        invalidateBackgroundCache();
     }
 
     public void clearBackgroundImage() {
         this.backgroundImage = null;
         this.backgroundImageName = null;
+        invalidateBackgroundCache();
     }
 
     public boolean isGravityEnabled() {
@@ -414,13 +422,8 @@ public final class GameWorld {
     }
 
     public void render(Graphics2D graphics) {
-        Graphics2D backgroundGraphics = (Graphics2D) graphics.create();
-        try {
-            renderBackground(backgroundGraphics);
-        } finally {
-            backgroundGraphics.dispose();
-        }
-        
+        renderBackground(graphics);
+
         Graphics2D worldGraphics = (Graphics2D) graphics.create();
         if (camera != null) {
             worldGraphics.translate(-camera.getX() + getScreenShakeOffsetX(), -camera.getY() + getScreenShakeOffsetY());
@@ -434,24 +437,61 @@ public final class GameWorld {
     }
 
     private void renderBackground(Graphics2D graphics) {
-        MapBackgroundMode mode = backgroundMode == null ? MapBackgroundMode.GRADIENT : backgroundMode;
-        Color baseColor = backgroundColor == null ? new Color(32, 36, 48) : backgroundColor;
-        MapBackgroundPreset preset = backgroundPreset == null ? MapBackgroundPreset.DEFAULT : backgroundPreset;
-        switch (mode) {
-            case SOLID -> {
-                graphics.setColor(baseColor);
-                graphics.fillRect(0, 0, width, height);
-            }
-            case IMAGE -> {
-                if (backgroundImage != null) {
-                    graphics.drawImage(backgroundImage, 0, 0, width, height, null);
-                } else {
-                    preset.paint(graphics, width, height, baseColor);
-                }
-            }
-            case GRADIENT -> preset.paint(graphics, width, height, baseColor);
-            default -> preset.paint(graphics, width, height, baseColor);
+        if (graphics == null || width <= 0 || height <= 0) {
+            return;
         }
+        ensureBackgroundCache();
+        if (backgroundRenderCache != null) {
+            graphics.drawImage(backgroundRenderCache, 0, 0, null);
+        }
+    }
+
+    private void ensureBackgroundCache() {
+        if (!backgroundRenderCacheDirty
+            && backgroundRenderCache != null
+            && backgroundRenderCache.getWidth() == width
+            && backgroundRenderCache.getHeight() == height) {
+            return;
+        }
+        if (width <= 0 || height <= 0) {
+            backgroundRenderCache = null;
+            backgroundRenderCacheDirty = false;
+            return;
+        }
+        if (backgroundRenderCache == null
+            || backgroundRenderCache.getWidth() != width
+            || backgroundRenderCache.getHeight() != height) {
+            backgroundRenderCache = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        }
+
+        Graphics2D cacheGraphics = backgroundRenderCache.createGraphics();
+        try {
+            MapBackgroundMode mode = backgroundMode == null ? MapBackgroundMode.GRADIENT : backgroundMode;
+            Color baseColor = backgroundColor == null ? new Color(32, 36, 48) : backgroundColor;
+            MapBackgroundPreset preset = backgroundPreset == null ? MapBackgroundPreset.DEFAULT : backgroundPreset;
+            switch (mode) {
+                case SOLID -> {
+                    cacheGraphics.setColor(baseColor);
+                    cacheGraphics.fillRect(0, 0, width, height);
+                }
+                case IMAGE -> {
+                    if (backgroundImage != null) {
+                        cacheGraphics.drawImage(backgroundImage, 0, 0, width, height, null);
+                    } else {
+                        preset.paint(cacheGraphics, width, height, baseColor);
+                    }
+                }
+                case GRADIENT -> preset.paint(cacheGraphics, width, height, baseColor);
+                default -> preset.paint(cacheGraphics, width, height, baseColor);
+            }
+        } finally {
+            cacheGraphics.dispose();
+        }
+        backgroundRenderCacheDirty = false;
+    }
+
+    private void invalidateBackgroundCache() {
+        backgroundRenderCacheDirty = true;
     }
 
     private void updateScreenShake(double deltaSeconds) {
