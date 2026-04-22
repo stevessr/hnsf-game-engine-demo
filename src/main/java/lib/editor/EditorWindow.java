@@ -76,6 +76,8 @@ public final class EditorWindow extends JFrame {
     private final JSpinner wSpinner;
     private final JSpinner hSpinner;
     private final JSpinner fontSizeSpinner;
+    private final JSpinner menuColumnsSpinner;
+    private final JSpinner maxVisibleRowsSpinner;
     private final JSpinner damageSpinner;
     private final JButton colorButton;
     private final JCheckBox damageToggle;
@@ -140,6 +142,8 @@ public final class EditorWindow extends JFrame {
         this.wSpinner = new JSpinner(new SpinnerNumberModel(80, 4, 4000, 1));
         this.hSpinner = new JSpinner(new SpinnerNumberModel(60, 4, 4000, 1));
         this.fontSizeSpinner = new JSpinner(new SpinnerNumberModel(18, 10, 64, 1));
+        this.menuColumnsSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 4, 1));
+        this.maxVisibleRowsSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 100, 1));
         this.damageSpinner = new JSpinner(new SpinnerNumberModel(14, 0, 999, 1));
         this.colorButton = new JButton("颜色");
         this.colorButton.setOpaque(true);
@@ -284,6 +288,10 @@ public final class EditorWindow extends JFrame {
         form.add(colorButton);
         form.add(new JLabel("字号"));
         form.add(fontSizeSpinner);
+        form.add(new JLabel("菜单列数"));
+        form.add(menuColumnsSpinner);
+        form.add(new JLabel("最大显示行数(0=自适应)"));
+        form.add(maxVisibleRowsSpinner);
         
         form.add(new JLabel("纹理路径"));
         form.add(texturePathField);
@@ -621,6 +629,22 @@ public final class EditorWindow extends JFrame {
             }
             previewPanel.repaint();
         });
+        menuColumnsSpinner.addChangeListener(event -> {
+            if (updatingControls) return;
+            GameObject selected = controller.getSelectedObject();
+            if (selected instanceof MenuObject menu) {
+                menu.setOptionColumns((int) menuColumnsSpinner.getValue());
+                previewPanel.repaint();
+            }
+        });
+        maxVisibleRowsSpinner.addChangeListener(event -> {
+            if (updatingControls) return;
+            GameObject selected = controller.getSelectedObject();
+            if (selected instanceof MenuObject menu) {
+                menu.setMaxVisibleRows((int) maxVisibleRowsSpinner.getValue());
+                previewPanel.repaint();
+            }
+        });
     }
 
     private void syncPosition() {
@@ -852,12 +876,20 @@ public final class EditorWindow extends JFrame {
             if (selected instanceof MenuObject menu) {
                 fontSizeSpinner.setValue(menu.getFontSize());
                 fontSizeSpinner.setEnabled(true);
+                menuColumnsSpinner.setValue(menu.getOptionColumns());
+                menuColumnsSpinner.setEnabled(true);
+                maxVisibleRowsSpinner.setValue(menu.getMaxVisibleRows() == Integer.MAX_VALUE ? 0 : menu.getMaxVisibleRows());
+                maxVisibleRowsSpinner.setEnabled(true);
             } else if (selected instanceof DialogObject dialog) {
                 fontSizeSpinner.setValue(dialog.getFontSize());
                 fontSizeSpinner.setEnabled(true);
+                menuColumnsSpinner.setEnabled(false);
+                maxVisibleRowsSpinner.setEnabled(false);
             } else {
                 fontSizeSpinner.setValue(controller.getDefaultFontSize());
                 fontSizeSpinner.setEnabled(false);
+                menuColumnsSpinner.setEnabled(false);
+                maxVisibleRowsSpinner.setEnabled(false);
             }
 
             // Actor attributes
@@ -1003,6 +1035,8 @@ public final class EditorWindow extends JFrame {
         itemValueSpinner.setEnabled(false);
         itemMessageField.setEnabled(false);
         fontSizeSpinner.setEnabled(false);
+        menuColumnsSpinner.setEnabled(false);
+        maxVisibleRowsSpinner.setEnabled(false);
     }
 
     private void updateWorldControlsFromWorld() {
@@ -1121,6 +1155,8 @@ public final class EditorWindow extends JFrame {
 
         if (selected instanceof MenuObject menu) {
             menu.setFontSize((int) fontSizeSpinner.getValue());
+            menu.setOptionColumns((int) menuColumnsSpinner.getValue());
+            menu.setMaxVisibleRows((int) maxVisibleRowsSpinner.getValue());
             menu.setSize(menu.getWidth(), Math.max(menu.getHeight(), menu.getPreferredHeight()));
         } else if (selected instanceof DialogObject dialog) {
             dialog.setFontSize((int) fontSizeSpinner.getValue());

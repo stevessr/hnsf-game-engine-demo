@@ -148,7 +148,9 @@ public final class MenuObject extends BaseObject {
     }
 
     public int getVisibleRowCount() {
-        return Math.max(1, Math.min(getOptionRows(), maxVisibleRows));
+        int availableHeight = getHeight() - getTitleAreaHeight() - 18;
+        int maxByHeight = Math.max(1, availableHeight / getOptionLineHeight());
+        return Math.max(1, Math.min(getOptionRows(), Math.min(maxVisibleRows, maxByHeight)));
     }
 
     public Rectangle getOptionBounds(int index) {
@@ -159,7 +161,9 @@ public final class MenuObject extends BaseObject {
         int column = index / rows;
         int row = index % rows;
         int visibleRow = row - scrollOffset;
-        if (visibleRow < 0 || visibleRow >= getVisibleRowCount()) {
+        
+        int visibleRowCount = getVisibleRowCount();
+        if (visibleRow < 0 || visibleRow >= visibleRowCount) {
             return new Rectangle();
         }
         int gap = getOptionColumnGap();
@@ -273,6 +277,14 @@ public final class MenuObject extends BaseObject {
             ));
             g2d.drawLine(x + 22, dividerY, x + width - 22, dividerY);
 
+            // Options Area Clipping
+            Shape oldClip = g2d.getClip();
+            int optionsAreaY = dividerY + 4;
+            int optionsAreaHeight = height - (optionsAreaY - y) - 10;
+            if (optionsAreaHeight > 0) {
+                g2d.clipRect(x, optionsAreaY, width, optionsAreaHeight);
+            }
+
             float optionFontSize = optionColumns > 1 ? Math.max(12f, fontSize - 1f) : (float) fontSize;
             Font optionFont = originalFont.deriveFont(optionFontSize);
             g2d.setFont(optionFont);
@@ -342,10 +354,11 @@ public final class MenuObject extends BaseObject {
                 int textY = buttonY + (buttonHeight - optionMetrics.getHeight()) / 2 + optionMetrics.getAscent();
                 g2d.setColor(isHovered || isSelected ? new Color(255, 250, 240) : new Color(210, 220, 232));
                 Shape previousClip = g2d.getClip();
-                g2d.setClip(buttonX + 10, buttonY + 4, Math.max(20, buttonWidth - 20), Math.max(12, buttonHeight - 8));
+                g2d.clip(new Rectangle(buttonX + 10, buttonY + 4, Math.max(20, buttonWidth - 20), Math.max(12, buttonHeight - 8)));
                 g2d.drawString(options.get(index), textX, textY);
                 g2d.setClip(previousClip);
             }
+            g2d.setClip(oldClip);
             renderScrollBar(g2d);
         } finally {
             g2d.setFont(originalFont);
