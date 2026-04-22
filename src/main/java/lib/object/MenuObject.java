@@ -140,7 +140,7 @@ public final class MenuObject extends BaseObject {
     }
 
     public int getPreferredHeight() {
-        return getTitleAreaHeight() + (getVisibleRowCount() * getOptionLineHeight()) + 18;
+        return getTitleAreaHeight() + (getPreferredVisibleRowCount() * getOptionLineHeight()) + 18;
     }
 
     public int getOptionRows() {
@@ -151,6 +151,11 @@ public final class MenuObject extends BaseObject {
         int availableHeight = getHeight() - getTitleAreaHeight() - 18;
         int maxByHeight = Math.max(1, availableHeight / getOptionLineHeight());
         return Math.max(1, Math.min(getOptionRows(), Math.min(maxVisibleRows, maxByHeight)));
+    }
+
+    private int getPreferredVisibleRowCount() {
+        int maxRows = maxVisibleRows == Integer.MAX_VALUE ? getOptionRows() : Math.max(1, maxVisibleRows);
+        return Math.max(1, Math.min(getOptionRows(), maxRows));
     }
 
     public Rectangle getOptionBounds(int index) {

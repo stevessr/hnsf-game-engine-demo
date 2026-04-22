@@ -615,7 +615,7 @@ public class App {
         menu.setActive(active);
         menu.setSelectedIndex(0);
         menu.setFontSize(uiFontSize);
-        menu.setSize(260, Math.max(180, menu.getPreferredHeight()));
+        menu.setSize(260, Math.max(menu.getPreferredHeight(), minimumMenuHeight(world)));
         centerMenu(menu, world);
         return menu;
     }
@@ -636,9 +636,13 @@ public class App {
         menu.setSelectedIndex(0);
         menu.setFontSize(uiFontSize);
         menu.setMaxVisibleRows(10);
-        menu.setSize(menu.getWidth(), Math.max(220, menu.getPreferredHeight()));
+        menu.setSize(menu.getWidth(), Math.max(menu.getPreferredHeight(), minimumMenuHeight(world)));
         centerMenu(menu, world);
         return menu;
+    }
+
+    private static int minimumMenuHeight(GameWorld world) {
+        return (int) Math.ceil(resolveViewportHeight(world) * 0.8);
     }
 
     private static void centerMenu(MenuObject menu, GameWorld world) {
