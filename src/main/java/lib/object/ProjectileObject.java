@@ -11,6 +11,7 @@ import lib.game.GameWorld;
  */
 public final class ProjectileObject extends BaseObject {
     private final GameObject shooter;
+    private final ProjectileType projectileType;
     private double velocityX;
     private double velocityY;
     private final int damage;
@@ -20,6 +21,8 @@ public final class ProjectileObject extends BaseObject {
     private final int explosionDamage;
     private final double fuseSeconds;
     private final double explosionDuration;
+    private final int lightRadius;
+    private final float lightIntensity;
     private double lifetime = 3.0; // 存活 3 秒
     private double age = 0.0;
     private boolean exploding = false;
@@ -27,7 +30,40 @@ public final class ProjectileObject extends BaseObject {
     private boolean explosionApplied = false;
 
     public ProjectileObject(String name, int x, int y, double vx, double vy, int damage, GameObject shooter) {
-        this(name, x, y, vx, vy, damage, shooter, false, false, 0, damage, 0.0, 0.45, 3.0);
+        this(name, x, y, vx, vy, damage, shooter, ProjectileType.STANDARD);
+    }
+
+    public ProjectileObject(
+        String name,
+        int x,
+        int y,
+        double vx,
+        double vy,
+        int damage,
+        GameObject shooter,
+        ProjectileType projectileType
+    ) {
+        this(
+            name,
+            x,
+            y,
+            vx,
+            vy,
+            damage,
+            shooter,
+            projectileType == null ? ProjectileType.STANDARD : projectileType,
+            projectileType == null ? ProjectileType.STANDARD.isGravityAffected() : projectileType.isGravityAffected(),
+            projectileType == null ? ProjectileType.STANDARD.isExplosive() : projectileType.isExplosive(),
+            projectileType == null ? ProjectileType.STANDARD.getExplosionRadius() : projectileType.getExplosionRadius(),
+            projectileType == null
+                ? ProjectileType.STANDARD.computeExplosionDamage(damage)
+                : projectileType.computeExplosionDamage(damage),
+            projectileType == null ? ProjectileType.STANDARD.getFuseSeconds() : projectileType.getFuseSeconds(),
+            projectileType == null ? ProjectileType.STANDARD.getExplosionDuration() : projectileType.getExplosionDuration(),
+            projectileType == null ? ProjectileType.STANDARD.getLifetimeSeconds() : projectileType.getLifetimeSeconds(),
+            projectileType == null ? ProjectileType.STANDARD.getLightRadius() : projectileType.getLightRadius(),
+            projectileType == null ? ProjectileType.STANDARD.getLightIntensity() : projectileType.getLightIntensity()
+        );
     }
 
     public double getVelocityX() {
@@ -40,6 +76,38 @@ public final class ProjectileObject extends BaseObject {
 
     public GameObject getShooter() {
         return shooter;
+    }
+
+    public ProjectileType getProjectileType() {
+        return projectileType;
+    }
+
+    public int getDamage() {
+        return damage;
+    }
+
+    public boolean isGravityAffected() {
+        return gravityAffected;
+    }
+
+    public boolean isExplosive() {
+        return explosive;
+    }
+
+    public int getExplosionRadius() {
+        return explosionRadius;
+    }
+
+    public int getExplosionDamage() {
+        return explosionDamage;
+    }
+
+    public int getLightRadius() {
+        return lightRadius;
+    }
+
+    public float getLightIntensity() {
+        return lightIntensity;
     }
 
     public static ProjectileObject createBomb(
@@ -62,13 +130,16 @@ public final class ProjectileObject extends BaseObject {
             vy,
             damage,
             shooter,
+            ProjectileType.BOMB,
             true,
             true,
             Math.max(1, explosionRadius),
             Math.max(1, explosionDamage),
             Math.max(0.1, fuseSeconds),
             0.75,
-            Math.max(3.0, fuseSeconds + 1.0)
+            Math.max(3.0, fuseSeconds + 1.0),
+            0,
+            0.0f
         );
     }
 
@@ -80,19 +151,23 @@ public final class ProjectileObject extends BaseObject {
         double vy,
         int damage,
         GameObject shooter,
+        ProjectileType projectileType,
         boolean gravityAffected,
         boolean explosive,
         int explosionRadius,
         int explosionDamage,
         double fuseSeconds,
         double explosionDuration,
-        double lifetime
+        double lifetime,
+        int lightRadius,
+        float lightIntensity
     ) {
-        super(GameObjectType.PROJECTILE, name, x, y, 8, 8, Color.YELLOW, true);
+        super(GameObjectType.PROJECTILE, name, x, y, 8, 8, projectileType == null ? ProjectileType.STANDARD.getBaseColor() : projectileType.getBaseColor(), true);
         this.velocityX = vx;
         this.velocityY = vy;
         this.damage = damage;
         this.shooter = shooter;
+        this.projectileType = projectileType == null ? ProjectileType.STANDARD : projectileType;
         this.gravityAffected = gravityAffected;
         this.explosive = explosive;
         this.explosionRadius = explosionRadius;
@@ -100,6 +175,8 @@ public final class ProjectileObject extends BaseObject {
         this.fuseSeconds = fuseSeconds;
         this.explosionDuration = explosionDuration;
         this.lifetime = lifetime;
+        this.lightRadius = Math.max(0, lightRadius);
+        this.lightIntensity = Math.max(0.0f, Math.min(1.0f, lightIntensity));
     }
 
     @Override
@@ -207,8 +284,35 @@ public final class ProjectileObject extends BaseObject {
             renderBomb(graphics);
             return;
         }
+        if (projectileType == ProjectileType.FLARE) {
+            renderFlare(graphics);
+            return;
+        }
+        if (projectileType == ProjectileType.BOMB) {
+            renderBomb(graphics);
+            return;
+        }
+        renderStandard(graphics);
+    }
+
+    private void renderStandard(Graphics2D graphics) {
         graphics.setColor(getColor());
         graphics.fillOval(getX(), getY(), getWidth(), getHeight());
+    }
+
+    private void renderFlare(Graphics2D graphics) {
+        int x = getX();
+        int y = getY();
+        int width = getWidth();
+        int height = getHeight();
+        graphics.setColor(new Color(255, 220, 120, 130));
+        graphics.fillOval(x - 6, y - 6, width + 12, height + 12);
+        graphics.setColor(new Color(255, 170, 80, 210));
+        graphics.fillOval(x, y, width, height);
+        graphics.setColor(new Color(255, 250, 220, 220));
+        graphics.fillOval(x + width / 3, y + height / 3, Math.max(2, width / 4), Math.max(2, height / 4));
+        graphics.setColor(new Color(255, 210, 120, 200));
+        graphics.drawOval(x - 6, y - 6, width + 12, height + 12);
     }
 
     private boolean isFriendlyFire(ActorObject actor) {

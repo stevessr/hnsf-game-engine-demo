@@ -15,6 +15,7 @@ import java.util.List;
 import lib.game.GameWorld;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
+import lib.object.ProjectileObject;
 
 /**
  * 增强型光照系统管理器，支持探索模式(常亮)和简单的阴影遮挡。
@@ -138,6 +139,20 @@ public final class LightingManager {
         for (GameObject obj : world.getObjectsByType(GameObjectType.GOAL)) {
             if (obj.isActive()) {
                 drawLightWithShadows(g2d, obj.getX() + obj.getWidth() / 2, obj.getY() + obj.getHeight() / 2, (int)(250 * intensityMultiplier), 1.2f, casters);
+            }
+        }
+
+        // 照明弹等投射物光源
+        for (GameObject obj : world.getObjectsByType(GameObjectType.PROJECTILE)) {
+            if (obj instanceof ProjectileObject projectile && projectile.isActive() && projectile.getLightRadius() > 0) {
+                drawLightWithShadows(
+                    g2d,
+                    projectile.getX() + projectile.getWidth() / 2,
+                    projectile.getY() + projectile.getHeight() / 2,
+                    (int) (projectile.getLightRadius() * intensityMultiplier),
+                    projectile.getLightIntensity(),
+                    casters
+                );
             }
         }
         

@@ -81,6 +81,10 @@ public final class GameInputController {
             player.cycleColor();
         }
 
+        if (actionMapper.isKeyboardJustActivated(InputAction.CYCLE_PROJECTILE_TYPE, keyboardManager)) {
+            player.cycleProjectileType();
+        }
+
         if (world.isGravityEnabled() && actionMapper.isKeyboardJustActivated(InputAction.JUMP, keyboardManager)) {
             player.jump(world);
         }

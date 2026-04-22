@@ -615,6 +615,48 @@ class GameObjectModelTest {
     }
 
     @Test
+    void playerShouldShootSelectedProjectileType() {
+        GameWorld world = new GameWorld(160, 120);
+        PlayerObject player = new PlayerObject("hero", 20, 20);
+        player.setProjectileType(ProjectileType.BOMB);
+        world.addObject(player);
+
+        player.shoot(world, 120, 80);
+
+        ProjectileObject projectile = world.getObjectsByType(GameObjectType.PROJECTILE).stream()
+            .filter(ProjectileObject.class::isInstance)
+            .map(ProjectileObject.class::cast)
+            .findFirst()
+            .orElseThrow();
+
+        assertEquals(ProjectileType.BOMB, projectile.getProjectileType(), "玩家应使用当前选择的弹种开火");
+        assertTrue(projectile.isExplosive(), "爆破弹应具备爆炸效果");
+    }
+
+    @Test
+    void flareProjectileShouldEmitVisibleLight() {
+        GameWorld world = new GameWorld(100, 100, Color.BLACK);
+        world.setBackgroundMode(MapBackgroundMode.SOLID);
+        world.getLightingManager().setEnabled(true);
+        world.getLightingManager().setExplorationMode(false);
+        world.getLightingManager().setAmbientLight(0.0f);
+
+        ProjectileObject flare = new ProjectileObject("flare", 40, 40, 0, 0, 5, null, ProjectileType.FLARE);
+        world.addObject(flare);
+
+        BufferedImage image = new BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            world.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color litPixel = new Color(image.getRGB(44, 44), true);
+        assertNotEquals(Color.BLACK.getRGB(), litPixel.getRGB(), "照明弹应在黑暗环境中提供可见光照");
+    }
+
+    @Test
     void bombProjectileShouldExplodeAndDamageNearbyTargets() {
         GameWorld world = new GameWorld(260, 180);
         world.setGravityEnabled(true);

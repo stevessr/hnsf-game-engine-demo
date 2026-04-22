@@ -44,6 +44,7 @@ public final class InputActionMapper {
         mapper.bindKey(InputAction.DIALOG_NEXT, KeyEvent.VK_SPACE);
         mapper.bindKey(InputAction.DIALOG_NEXT, KeyEvent.VK_ENTER);
         mapper.bindKey(InputAction.CYCLE_COLOR, KeyEvent.VK_C);
+        mapper.bindKey(InputAction.CYCLE_PROJECTILE_TYPE, KeyEvent.VK_B);
         mapper.bindKey(InputAction.JUMP, KeyEvent.VK_SPACE);
         mapper.bindKey(InputAction.SHOOT, KeyEvent.VK_K);
         mapper.bindMouseButton(InputAction.SHOOT, MouseEvent.BUTTON1);

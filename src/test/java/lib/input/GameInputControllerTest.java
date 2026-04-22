@@ -15,6 +15,7 @@ import lib.object.GameObjectType;
 import lib.object.MenuObject;
 import lib.object.PlayerObject;
 import lib.object.ProjectileObject;
+import lib.object.ProjectileType;
 
 class GameInputControllerTest {
     @Test
@@ -138,6 +139,20 @@ class GameInputControllerTest {
         assertTrue(projectile.getVelocityX() > 0, "子弹应朝鼠标所在方向水平发射");
         assertTrue(projectile.getVelocityY() > 0, "子弹应朝鼠标所在方向垂直发射");
         assertTrue(world.getObjectsByType(GameObjectType.VOXEL).isEmpty(), "左键点击不应再创建方块");
+    }
+
+    @Test
+    void bKeyShouldCyclePlayerProjectileType() {
+        GameInputController inputController = GameInputController.createDefault();
+        GameWorld world = new GameWorld(240, 180);
+        PlayerObject player = new PlayerObject("hero", 100, 100);
+        world.addObject(player);
+
+        inputController.getKeyboardManager().pressKey(KeyEvent.VK_B);
+        inputController.applyInputs(world);
+        inputController.finishFrame();
+
+        assertEquals(ProjectileType.FLARE, player.getProjectileType(), "B 键应切换到下一种子弹");
     }
 
     @Test

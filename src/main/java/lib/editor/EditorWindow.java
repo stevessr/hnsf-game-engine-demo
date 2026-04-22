@@ -41,6 +41,7 @@ import lib.object.MenuObject;
 import lib.object.MonsterObject;
 import lib.object.MonsterKind;
 import lib.object.PlayerObject;
+import lib.object.ProjectileType;
 import lib.object.SceneObject;
 import lib.object.dto.MapBackgroundMode;
 import lib.object.dto.MapBackgroundPreset;
@@ -78,6 +79,7 @@ public final class EditorWindow extends JFrame {
     private final JSpinner damageSpinner;
     private final JButton colorButton;
     private final JCheckBox damageToggle;
+    private final JComboBox<ProjectileType> projectileTypeSelector;
     private final JTextField itemKindField;
     private final JSpinner itemValueSpinner;
     private final JTextField itemMessageField;
@@ -142,6 +144,7 @@ public final class EditorWindow extends JFrame {
         this.colorButton = new JButton("颜色");
         this.colorButton.setOpaque(true);
         this.damageToggle = new JCheckBox("互补色伤害", true);
+        this.projectileTypeSelector = new JComboBox<>(ProjectileType.values());
         this.itemKindField = new JTextField("coin");
         this.itemValueSpinner = new JSpinner(new SpinnerNumberModel(10, 0, 9999, 1));
         this.itemMessageField = new JTextField("");
@@ -332,6 +335,8 @@ public final class EditorWindow extends JFrame {
         form.add(damageSpinner);
         form.add(new JLabel("伤害开关"));
         form.add(damageToggle);
+        form.add(new JLabel("子弹类型"));
+        form.add(projectileTypeSelector);
         
         form.add(new JLabel("--- 物品属性 ---"));
         form.add(new JLabel(""));
@@ -743,9 +748,13 @@ public final class EditorWindow extends JFrame {
                 damageSpinner.setEnabled(true);
                 damageToggle.setSelected(player.isComplementaryColorDamageEnabled());
                 damageSpinner.setValue(player.getComplementaryColorDamage());
+                projectileTypeSelector.setEnabled(true);
+                projectileTypeSelector.setSelectedItem(player.getProjectileType());
             } else {
                 damageToggle.setEnabled(false);
                 damageSpinner.setEnabled(false);
+                projectileTypeSelector.setEnabled(false);
+                projectileTypeSelector.setSelectedItem(ProjectileType.STANDARD);
             }
 
             // Item attributes
@@ -792,6 +801,8 @@ public final class EditorWindow extends JFrame {
         breakAfterStepsSpinner.setEnabled(false);
         damageToggle.setEnabled(false);
         damageSpinner.setEnabled(false);
+        projectileTypeSelector.setEnabled(false);
+        projectileTypeSelector.setSelectedItem(ProjectileType.STANDARD);
         itemKindField.setEnabled(false);
         itemValueSpinner.setEnabled(false);
         itemMessageField.setEnabled(false);
@@ -949,6 +960,8 @@ public final class EditorWindow extends JFrame {
         if (selected instanceof PlayerObject player) {
             player.setComplementaryColorDamageEnabled(damageToggle.isSelected());
             player.setComplementaryColorDamage((int) damageSpinner.getValue());
+            ProjectileType projectileType = (ProjectileType) projectileTypeSelector.getSelectedItem();
+            player.setProjectileType(projectileType);
         }
 
         if (selected instanceof ItemObject item) {

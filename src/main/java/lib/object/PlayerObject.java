@@ -24,6 +24,7 @@ public final class PlayerObject extends ActorObject {
     private double shootCooldown = 0.3;
     private double lastDirX = 1.0;
     private double lastDirY = 0.0;
+    private ProjectileType projectileType = ProjectileType.STANDARD;
     private double walkingTimer = 0;
     private int lightRadius = 200;
     private double lightOrbTimer = 0;
@@ -260,6 +261,18 @@ public final class PlayerObject extends ActorObject {
         this.lightOrbTimer = Math.max(this.lightOrbTimer, duration);
     }
 
+    public ProjectileType getProjectileType() {
+        return projectileType;
+    }
+
+    public void setProjectileType(ProjectileType projectileType) {
+        this.projectileType = projectileType == null ? ProjectileType.STANDARD : projectileType;
+    }
+
+    public void cycleProjectileType() {
+        this.projectileType = (projectileType == null ? ProjectileType.STANDARD : projectileType).next();
+    }
+
     public void triggerHealEffect() {
         this.healEffectTimer = HEAL_EFFECT_DURATION;
     }
@@ -336,8 +349,10 @@ public final class PlayerObject extends ActorObject {
         lastShootTime = now;
         double px = getX() + getWidth() / 2.0;
         double py = getY() + getHeight() / 2.0;
-
-        ProjectileObject p = new ProjectileObject("bullet", (int) px, (int) py, dirX * 600, dirY * 600, getAttack(), this);
+        ProjectileType type = projectileType == null ? ProjectileType.STANDARD : projectileType;
+        int damage = type.computeDamage(getAttack());
+        double speed = 600.0 * type.getSpeedMultiplier();
+        ProjectileObject p = new ProjectileObject("bullet", (int) px, (int) py, dirX * speed, dirY * speed, damage, this, type);
         world.addObject(p);
         world.getSoundManager().playSound("shoot");
     }
