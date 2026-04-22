@@ -12,7 +12,7 @@ import lib.object.dto.ObjectData;
  * 使用噪音生成随机的地形、敌人和道具分布。
  */
 public final class ProceduralLevelGenerator {
-    private static final int PLAYER_WIDTH = 32;
+    private static final int PLAYER_WIDTH = 48;
     private static final int PLAYER_HEIGHT = 48;
     private static final int FOREST_SAFE_ZONE_WIDTH = 320;
     private static final int FOREST_SAFE_SURFACE_OFFSET = 80;

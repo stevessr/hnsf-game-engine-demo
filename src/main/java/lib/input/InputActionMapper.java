@@ -46,10 +46,11 @@ public final class InputActionMapper {
         mapper.bindKey(InputAction.CYCLE_COLOR, KeyEvent.VK_C);
         mapper.bindKey(InputAction.JUMP, KeyEvent.VK_SPACE);
         mapper.bindKey(InputAction.SHOOT, KeyEvent.VK_K);
+        mapper.bindMouseButton(InputAction.SHOOT, MouseEvent.BUTTON1);
         mapper.bindKey(InputAction.SPRINT, KeyEvent.VK_SHIFT);
         mapper.bindKey(InputAction.CYCLE_THROTTLE, KeyEvent.VK_T);
         mapper.bindKey(InputAction.TOGGLE_GOALS, KeyEvent.VK_G);
-        mapper.bindMouseButton(InputAction.VOXEL_BUILD, MouseEvent.BUTTON1);
+        mapper.bindMouseButton(InputAction.VOXEL_BUILD, MouseEvent.BUTTON2);
         mapper.bindMouseButton(InputAction.VOXEL_DESTROY, MouseEvent.BUTTON3);
         return mapper;
     }
@@ -64,6 +65,14 @@ public final class InputActionMapper {
 
     public void clearBindings(InputAction action) {
         keyBindings.get(action).clear();
+        mouseBindings.get(action).clear();
+    }
+
+    public void clearKeyBindings(InputAction action) {
+        keyBindings.get(action).clear();
+    }
+
+    public void clearMouseBindings(InputAction action) {
         mouseBindings.get(action).clear();
     }
 

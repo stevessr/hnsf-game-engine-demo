@@ -158,7 +158,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         int fontSize = settings != null ? settings.getUIFontSize() : 24;
         int menuHeight = 220;
         
-        MenuObject gameOverMenu = new MenuObject(GAMEOVER_MENU_NAME, 0, 0, menuWidth, menuHeight, "GAME OVER", List.of("Restart Level", "Back to Menu"));
+        MenuObject gameOverMenu = new MenuObject(GAMEOVER_MENU_NAME, 0, 0, menuWidth, menuHeight, "GAME OVER", List.of("Respawn", "Back to Menu"));
         gameOverMenu.setSubtitle(resolveFailureReason(world));
         gameOverMenu.setColor(new Color(80, 0, 0, 200));
         gameOverMenu.setFontSize(fontSize);
@@ -422,10 +422,10 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
     private void handleGameOverMenuSelection(MenuObject menu, GameStateContext context) {
         String selected = menu.getSelectedOption();
-        if (selected.contains("Restart")) {
+        if (isRespawnOption(selected) || isRestartLevelOption(selected)) {
             playMenuClickSound(context.getWorld());
             removeMenu(context.getWorld(), GAMEOVER_MENU_NAME);
-            restartCurrentLevel(context);
+            respawnAfterDeath(context);
         } else {
             playMenuBackSound(context.getWorld());
             removeMenu(context.getWorld(), GAMEOVER_MENU_NAME);
@@ -457,6 +457,21 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         removeMenu(world, PAUSE_MENU_NAME);
         removeMenu(world, OPTIONS_MENU_NAME);
         context.getRuntimeActions().requestLoadLevel(null);
+        transitionTo(GameState.PLAYING);
+        clearPlayerMovement(context);
+    }
+
+    private void respawnAfterDeath(GameStateContext context) {
+        if (context == null) {
+            return;
+        }
+        GameWorld world = context.getWorld();
+        if (world == null || !world.respawnPlayer()) {
+            restartCurrentLevel(context);
+            return;
+        }
+        removeMenu(world, GAMEOVER_MENU_NAME);
+        removeMenu(world, OPTIONS_MENU_NAME);
         transitionTo(GameState.PLAYING);
         clearPlayerMovement(context);
     }
@@ -949,7 +964,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
 
-        inputController.applyPlayerMovement(world, context.getSettings(), player);
+        inputController.applyPlayerMovement(world, context.getSettings(), player, context.getDeltaSeconds());
         inputController.applyVoxelSystem(world);
     }
 
@@ -1172,6 +1187,10 @@ public final class DefaultGameStateMachine implements GameStateMachine {
 
     private boolean isRestartLevelOption(String s) {
         return List.of("Restart Level", "Restart", "restart", "重启关卡", "重新开始").contains(s);
+    }
+
+    private boolean isRespawnOption(String s) {
+        return List.of("Respawn", "respawn", "重生", "复活", "重新出生").contains(s);
     }
 
     private boolean isExitToMenuOption(String s) {

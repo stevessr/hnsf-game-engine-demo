@@ -11,9 +11,13 @@ import lib.game.GameWorld;
  * 支持经验、回复、加速、视野增强等简单效果。
  */
 public final class ItemObject extends BaseObject {
+    private static final double LIGHT_SOURCE_RESPAWN_DELAY_SECONDS = 15.0;
     private String kind;
     private int value;
     private String message;
+    private boolean renewable;
+    private double respawnDelaySeconds;
+    private double respawnTimer;
 
     public ItemObject(String name, int x, int y) {
         this(name, x, y, 28, 28, "coin", 10, "Collected coin");
@@ -28,6 +32,7 @@ public final class ItemObject extends BaseObject {
         this.kind = normalizeKind(kind);
         this.value = Math.max(0, value);
         this.message = normalizeMessage(message, this.kind, this.value);
+        configureRenewableState();
     }
 
     public String getKind() {
@@ -36,6 +41,7 @@ public final class ItemObject extends BaseObject {
 
     public void setKind(String kind) {
         this.kind = normalizeKind(kind);
+        configureRenewableState();
         if (message == null || message.isBlank()) {
             this.message = normalizeMessage(null, this.kind, value);
         }
@@ -57,6 +63,14 @@ public final class ItemObject extends BaseObject {
         this.message = normalizeMessage(message, kind, value);
     }
 
+    public boolean isRenewable() {
+        return renewable;
+    }
+
+    public double getRespawnDelaySeconds() {
+        return respawnDelaySeconds;
+    }
+
     @Override
     public void update(GameWorld world, double deltaSeconds) {
         if (world == null || !isActive()) {
@@ -71,7 +85,30 @@ public final class ItemObject extends BaseObject {
         }
         applyEffect(world, player);
         world.recordItemCollection();
+        if (renewable) {
+            respawnTimer = respawnDelaySeconds;
+        }
         setActive(false);
+    }
+
+    @Override
+    public void updateInactive(GameWorld world, double deltaSeconds) {
+        if (world == null || isActive() || !renewable || deltaSeconds <= 0.0) {
+            return;
+        }
+        if (respawnTimer <= 0.0) {
+            respawnTimer = respawnDelaySeconds;
+        }
+        if (respawnTimer <= 0.0) {
+            setActive(true);
+            respawnTimer = 0.0;
+            return;
+        }
+        respawnTimer = Math.max(0.0, respawnTimer - deltaSeconds);
+        if (respawnTimer <= 0.0) {
+            setActive(true);
+            respawnTimer = 0.0;
+        }
     }
 
     @Override
@@ -133,6 +170,29 @@ public final class ItemObject extends BaseObject {
             case "shield" -> new Color(170, 130, 255);
             case "gem", "xp", "experience" -> new Color(255, 165, 60);
             default -> new Color(255, 210, 92);
+        };
+    }
+
+    private void configureRenewableState() {
+        boolean lightSource = isLightSourceKind(kind);
+        renewable = lightSource;
+        if (lightSource) {
+            if (respawnDelaySeconds <= 0.0) {
+                respawnDelaySeconds = LIGHT_SOURCE_RESPAWN_DELAY_SECONDS;
+            }
+        } else {
+            respawnDelaySeconds = 0.0;
+            respawnTimer = 0.0;
+        }
+    }
+
+    private static boolean isLightSourceKind(String kind) {
+        if (kind == null) {
+            return false;
+        }
+        return switch (kind.toLowerCase(Locale.ROOT)) {
+            case "lightorb", "vision", "light" -> true;
+            default -> false;
         };
     }
 }

@@ -216,7 +216,7 @@ public final class LevelManager {
         fragileCrate.setDestructible(true);
         fragileCrate.setDurability(18);
         levelWorld.addObject(fragileCrate);
-        DialogObject tut3 = new DialogObject("tut-3", 1200, 100, 400, 60, "System", "Press K to SHOOT. Some monsters drop healing, and fragile blocks can be destroyed.");
+        DialogObject tut3 = new DialogObject("tut-3", 1200, 100, 400, 60, "System", "Press K or Left Click to SHOOT. Some monsters drop healing, and fragile blocks can be destroyed.");
         tut3.setActive(false);
         levelWorld.addObject(tut3);
 

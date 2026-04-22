@@ -237,6 +237,54 @@ class DefaultGameStateMachineTest {
     }
 
     @Test
+    void playingInputShouldRespectFrameDeltaSeconds() {
+        GameWorld slowWorld = new GameWorld(240, 180);
+        PlayerObject slowPlayer = new PlayerObject("slow", 10, 20);
+        slowPlayer.setDeceleration(1.0);
+        slowPlayer.setThrottlePower(600);
+        DefaultGameStateMachine slowStateMachine = new DefaultGameStateMachine(GameState.PLAYING);
+        GameInputController slowInputController = GameInputController.createDefault();
+        GameStateContext slowContext = new GameStateContext(
+            slowWorld,
+            slowInputController,
+            null,
+            GameRuntimeActions.noOp(),
+            1.0 / 60.0
+        );
+
+        slowWorld.addObject(slowPlayer);
+        slowWorld.setStateMachine(slowStateMachine);
+        tapKey(slowInputController, KeyEvent.VK_D);
+        slowInputController.processInputs(slowContext);
+        slowInputController.finishFrame();
+
+        GameWorld fastWorld = new GameWorld(240, 180);
+        PlayerObject fastPlayer = new PlayerObject("fast", 10, 20);
+        fastPlayer.setDeceleration(1.0);
+        fastPlayer.setThrottlePower(600);
+        DefaultGameStateMachine fastStateMachine = new DefaultGameStateMachine(GameState.PLAYING);
+        GameInputController fastInputController = GameInputController.createDefault();
+        GameStateContext fastContext = new GameStateContext(
+            fastWorld,
+            fastInputController,
+            null,
+            GameRuntimeActions.noOp(),
+            1.0
+        );
+
+        fastWorld.addObject(fastPlayer);
+        fastWorld.setStateMachine(fastStateMachine);
+        tapKey(fastInputController, KeyEvent.VK_D);
+        fastInputController.processInputs(fastContext);
+        fastInputController.finishFrame();
+
+        assertTrue(
+            fastPlayer.getVelocityX() > slowPlayer.getVelocityX(),
+            "更大的帧时间应带来更强的加速度"
+        );
+    }
+
+    @Test
     void pauseMenuRestartShouldRequestReloadAndReturnToPlaying() {
         GameWorld world = new GameWorld(240, 180);
         PlayerObject player = new PlayerObject("hero", 10, 20);
@@ -494,7 +542,67 @@ class DefaultGameStateMachineTest {
             .findFirst()
             .orElse(null);
         assertNotNull(gameOverMenu, "应创建游戏结束菜单");
+        assertTrue(gameOverMenu.getOptions().contains("Respawn"), "游戏结束菜单应提供重生选项");
+        assertFalse(gameOverMenu.getOptions().contains("Restart Level"), "游戏结束菜单不应再显示重启关卡");
         assertTrue(gameOverMenu.getSubtitle().contains("slime"), "游戏结束菜单应显示死亡原因");
+    }
+
+    @Test
+    void gameOverRespawnShouldReturnToPlayingWithoutReloadRequest() {
+        GameWorld world = new GameWorld(240, 180);
+        PlayerObject player = new PlayerObject("hero", 24, 48);
+        player.setLevel(5);
+        player.gainExperience(80);
+        player.setThrottlePower(1000);
+        MonsterObject killer = new MonsterObject("killer", 24, 48, 0);
+        killer.setAttack(player.getHealth());
+        killer.setSpeed(0);
+
+        DefaultGameStateMachine stateMachine = new DefaultGameStateMachine(GameState.PLAYING);
+        GameInputController inputController = GameInputController.createDefault();
+        AtomicBoolean levelReloadRequested = new AtomicBoolean(false);
+
+        GameRuntimeActions actions = new GameRuntimeActions() {
+            @Override
+            public void requestExit() {
+            }
+
+            @Override
+            public void requestLoadLevel(String levelName) {
+                levelReloadRequested.set(true);
+            }
+        };
+        GameStateContext context = new GameStateContext(world, inputController, actions);
+
+        world.addObject(player);
+        world.addObject(killer);
+        world.setStateMachine(stateMachine);
+
+        for (int i = 0; i < 120 && stateMachine.getCurrentState() != GameState.GAMEOVER; i++) {
+            stateMachine.processInput(context);
+            world.update(1.0 / 60.0);
+            inputController.finishFrame();
+        }
+
+        MenuObject gameOverMenu = world.getObjectsByType(GameObjectType.MENU).stream()
+            .filter(MenuObject.class::isInstance)
+            .map(MenuObject.class::cast)
+            .filter(menu -> "gameover-menu".equals(menu.getName()))
+            .findFirst()
+            .orElseThrow();
+        assertTrue(gameOverMenu.getOptions().contains("Respawn"), "游戏结束菜单应显示重生选项");
+
+        tapKey(inputController, KeyEvent.VK_ENTER);
+        stateMachine.processInput(context);
+        inputController.finishFrame();
+
+        assertFalse(levelReloadRequested.get(), "重生不应请求重新加载关卡");
+        assertEquals(GameState.PLAYING, stateMachine.getCurrentState(), "重生后应返回 PLAYING");
+        assertTrue(player.isActive(), "重生后玩家应重新激活");
+        assertEquals(24, player.getX(), "重生后玩家应回到出生点 X");
+        assertEquals(48, player.getY(), "重生后玩家应回到出生点 Y");
+        assertEquals(5, player.getLevel(), "重生后不应重置玩家等级");
+        assertEquals(80, player.getExperience(), "重生后不应重置玩家经验");
     }
 
     private static void tapKey(GameInputController inputController, int keyCode) {

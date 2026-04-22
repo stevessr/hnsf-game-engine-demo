@@ -51,7 +51,12 @@ public final class GameInputController {
             context.getWorld().getStateMachine().processInput(context);
             return;
         }
-        applyPlayerMovement(context.getWorld(), context.getSettings(), context.getWorld().findPlayer().orElse(null));
+        applyPlayerMovement(
+            context.getWorld(),
+            context.getSettings(),
+            context.getWorld().findPlayer().orElse(null),
+            context.getDeltaSeconds()
+        );
         applyMenuNavigation(context.getWorld());
         applyVoxelSystem(context.getWorld());
     }
@@ -61,7 +66,14 @@ public final class GameInputController {
     }
 
     public void applyPlayerMovement(GameWorld world, GameSettings settings, PlayerObject player) {
-        if (player == null || !player.isActive()) {
+        double deltaSeconds = settings != null && settings.getTargetFPS() > 0
+            ? 1.0 / Math.max(1, settings.getTargetFPS())
+            : 1.0 / 60.0;
+        applyPlayerMovement(world, settings, player, deltaSeconds);
+    }
+
+    public void applyPlayerMovement(GameWorld world, GameSettings settings, PlayerObject player, double deltaSeconds) {
+        if (player == null || !player.isActive() || hasActiveUiOverlay(world)) {
             return;
         }
 
@@ -73,7 +85,9 @@ public final class GameInputController {
             player.jump(world);
         }
 
-        if (actionMapper.isJustActivated(InputAction.SHOOT, keyboardManager, mouseManager)) {
+        if (actionMapper.isMouseJustActivated(InputAction.SHOOT, mouseManager)) {
+            player.shoot(world, mouseManager.getMouseX(), mouseManager.getMouseY());
+        } else if (actionMapper.isKeyboardJustActivated(InputAction.SHOOT, keyboardManager)) {
             player.shoot(world);
         }
 
@@ -115,24 +129,21 @@ public final class GameInputController {
             ax /= mag;
             ay /= mag;
         }
-
-        double deltaSeconds = settings != null && settings.getTargetFPS() > 0
-            ? 1.0 / Math.max(1, settings.getTargetFPS())
-            : 1.0 / 60.0;
+        double frameDeltaSeconds = deltaSeconds > 0.0 ? deltaSeconds : 1.0 / 60.0;
         boolean movingInput = ax != 0.0 || ay != 0.0;
         boolean sprintHeld = actionMapper.isKeyboardActive(InputAction.SPRINT, keyboardManager);
 
         if (sprintHeld && movingInput) {
             boolean burstBoost = actionMapper.isKeyboardJustActivated(InputAction.SPRINT, keyboardManager);
-            if (player.sprintAccelerate(ax, ay, deltaSeconds, burstBoost)) {
+            if (player.sprintAccelerate(ax, ay, frameDeltaSeconds, burstBoost)) {
                 playSprintWindSound(world, burstBoost);
             } else {
-                player.accelerate(ax, ay, deltaSeconds);
+                player.accelerate(ax, ay, frameDeltaSeconds);
             }
         } else if (movingInput) {
-            player.accelerate(ax, ay, deltaSeconds);
+            player.accelerate(ax, ay, frameDeltaSeconds);
         } else {
-            player.recoverStamina(deltaSeconds);
+            player.recoverStamina(frameDeltaSeconds);
         }
     }
 
@@ -154,6 +165,9 @@ public final class GameInputController {
     }
 
     public void applyVoxelSystem(GameWorld world) {
+        if (hasActiveUiOverlay(world)) {
+            return;
+        }
         if (actionMapper.isMouseJustActivated(InputAction.VOXEL_BUILD, mouseManager)) {
             int mx = mouseManager.getMouseX();
             int my = mouseManager.getMouseY();
@@ -253,5 +267,18 @@ public final class GameInputController {
             return;
         }
         dialog.setMessage(prefix + "菜单项：" + selectedOption);
+    }
+
+    private boolean hasActiveUiOverlay(GameWorld world) {
+        if (world == null) {
+            return false;
+        }
+        boolean hasActiveMenu = world.getObjectsByType(GameObjectType.MENU).stream()
+            .anyMatch(object -> object instanceof MenuObject menu && menu.isActive());
+        if (hasActiveMenu) {
+            return true;
+        }
+        return world.getObjectsByType(GameObjectType.DIALOG).stream()
+            .anyMatch(object -> object instanceof DialogObject dialog && dialog.isActive());
     }
 }

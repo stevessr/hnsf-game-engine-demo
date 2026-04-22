@@ -154,6 +154,151 @@ class GameObjectModelTest {
     }
 
     @Test
+    void batMonsterShouldInferFlyingTraitsAndRenderDistinctWings() {
+        MonsterObject bat = new MonsterObject("bat-cave", 20, 20, 15);
+
+        assertEquals(MonsterKind.BAT, bat.getMonsterKind(), "名称包含 bat 的怪物应自动识别为蝙蝠");
+        assertTrue(bat.isAirborne(), "蝙蝠应默认会飞");
+        assertEquals(50, bat.getGravityPercent(), "蝙蝠应使用较低的重力系数");
+
+        BufferedImage image = new BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            bat.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        int wingAlpha = (image.getRGB(bat.getX() + 2, bat.getY() + 5) >>> 24) & 0xFF;
+        int bodyAlpha = (image.getRGB(bat.getX() + bat.getWidth() / 2, bat.getY() + bat.getHeight() / 2) >>> 24) & 0xFF;
+        assertTrue(wingAlpha > 0, "蝙蝠翅膀应延伸到边缘区域");
+        assertTrue(bodyAlpha > 0, "蝙蝠身体应被正常渲染");
+    }
+
+    @Test
+    void monsterKindInferenceShouldSupportChineseNames() {
+        MonsterObject bat = new MonsterObject("蝙蝠", 10, 10, 10);
+        MonsterObject slime = new MonsterObject("史莱姆", 10, 10, 10);
+        MonsterObject spider = new MonsterObject("蜘蛛", 10, 10, 10);
+        MonsterObject ghost = new MonsterObject("幽灵", 10, 10, 10);
+        MonsterObject gargoyle = new MonsterObject("石像鬼", 10, 10, 10);
+        MonsterObject dragon = new MonsterObject("飞龙", 10, 10, 10);
+        MonsterObject plane = new MonsterObject("飞行器", 10, 10, 10);
+
+        assertEquals(MonsterKind.BAT, bat.getMonsterKind(), "中文名称蝙蝠应识别为蝙蝠种类");
+        assertEquals(MonsterKind.SLIME, slime.getMonsterKind(), "中文名称史莱姆应识别为史莱姆种类");
+        assertEquals(MonsterKind.SPIDER, spider.getMonsterKind(), "中文名称蜘蛛应识别为蜘蛛种类");
+        assertEquals(MonsterKind.GHOST, ghost.getMonsterKind(), "中文名称幽灵应识别为幽灵种类");
+        assertEquals(MonsterKind.GARGOYLE, gargoyle.getMonsterKind(), "中文名称石像鬼应识别为石像鬼种类");
+        assertEquals(MonsterKind.DRAGON, dragon.getMonsterKind(), "中文名称飞龙应识别为飞龙种类");
+        assertEquals(MonsterKind.PLANE, plane.getMonsterKind(), "中文名称飞行器应识别为飞行器种类");
+        assertFalse(spider.isAirborne(), "蜘蛛应保持地面怪物特征");
+        assertTrue(ghost.isAirborne(), "幽灵应默认可漂浮");
+        assertTrue(dragon.isAirborne(), "飞龙应默认会飞");
+        assertEquals(120, spider.getGravityPercent(), "蜘蛛应使用更高的重力系数");
+        assertEquals(10, ghost.getGravityPercent(), "幽灵应使用很低的重力系数");
+        assertEquals(35, dragon.getGravityPercent(), "飞龙应使用较低的重力系数");
+    }
+
+    @Test
+    void spiderMonsterShouldRenderDistinctLegs() {
+        MonsterObject spider = new MonsterObject("蜘蛛巢穴", 20, 20, 15);
+
+        BufferedImage image = new BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            spider.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        int bodyAlpha = (image.getRGB(spider.getX() + spider.getWidth() / 2, spider.getY() + spider.getHeight() / 2)
+            >>> 24) & 0xFF;
+        int legAlpha = Math.max(
+            Math.max(
+                (image.getRGB(spider.getX() + 1, spider.getY() + 12) >>> 24) & 0xFF,
+                (image.getRGB(spider.getX() + 1, spider.getY() + 17) >>> 24) & 0xFF
+            ),
+            Math.max(
+                (image.getRGB(spider.getX() + spider.getWidth() - 2, spider.getY() + 22) >>> 24) & 0xFF,
+                (image.getRGB(spider.getX() + spider.getWidth() - 2, spider.getY() + 27) >>> 24) & 0xFF
+            )
+        );
+        assertTrue(bodyAlpha > 0, "蜘蛛身体应被正常渲染");
+        assertTrue(legAlpha > 0, "蜘蛛应具有延伸到边缘的腿部渲染");
+    }
+
+    @Test
+    void ghostMonsterShouldRenderTranslucentBody() {
+        MonsterObject ghost = new MonsterObject("幽灵", 20, 20, 15);
+
+        BufferedImage image = new BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            ghost.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        int alpha = (image.getRGB(ghost.getX() + ghost.getWidth() / 2, ghost.getY() + ghost.getHeight() / 2)
+            >>> 24) & 0xFF;
+        assertTrue(alpha > 0, "幽灵应被渲染出来");
+        assertTrue(alpha < 255, "幽灵应保持半透明效果");
+    }
+
+    @Test
+    void lightOrbShouldRespawnAfterBeingCollected() {
+        GameWorld world = new GameWorld(220, 160);
+        PlayerObject player = new PlayerObject("hero", 64, 48);
+        ItemObject lightOrb = new ItemObject("orb", 64, 48, 28, 28, "lightorb", 25, "Orb");
+
+        world.addObject(player);
+        world.addObject(lightOrb);
+
+        int originalRadius = player.getLightRadius();
+        world.update(1.0 / 60.0);
+
+        assertFalse(lightOrb.isActive(), "光源应在拾取后暂时失活");
+        assertTrue(lightOrb.isRenewable(), "光源应默认可再生");
+        assertTrue(player.getLightRadius() > originalRadius, "拾取光源后视野应扩大");
+        assertEquals(1, world.getItemsCollected(), "拾取光源应计入收集进度");
+
+        world.update(14.0);
+        assertFalse(lightOrb.isActive(), "再生冷却未结束前光源不应重新出现");
+
+        world.update(1.0);
+        assertTrue(lightOrb.isActive(), "光源应在延迟结束后重新出现");
+    }
+
+    @Test
+    void revivableMonsterShouldReturnAfterDelay() {
+        GameWorld world = new GameWorld(240, 180);
+        MonsterObject monster = new MonsterObject("slime", 96, 64, 30);
+        monster.setRevivable(true);
+        monster.setReviveDelaySeconds(1.0);
+
+        world.addObject(monster);
+
+        monster.takeDamage(world, monster.getHealth());
+        monster.update(world, 1.0);
+
+        assertTrue(monster.isDying(), "怪物死亡后应进入死亡动画状态");
+        assertFalse(monster.isActive(), "死亡动画结束后怪物应失活");
+        assertEquals(1, world.getKills(), "怪物死亡应计入击杀进度");
+
+        world.update(0.5);
+
+        assertTrue(monster.isDying(), "复活冷却期间怪物仍应处于死亡状态");
+        assertFalse(monster.isActive(), "复活冷却期间怪物不应重新激活");
+
+        world.update(0.6);
+
+        assertTrue(monster.isActive(), "到达复活延迟后怪物应重新激活");
+        assertFalse(monster.isDying(), "复活后怪物不应继续保持死亡状态");
+        assertEquals(monster.getMaxHealth(), monster.getHealth(), "复活后怪物生命值应恢复满值");
+    }
+
+    @Test
     void monsterShouldPatrolWithinWorldBounds() {
         GameWorld world = new GameWorld(120, 90);
         MonsterObject monster = new MonsterObject("slime", 60, 10, 25);
@@ -170,6 +315,117 @@ class GameObjectModelTest {
 
         assertTrue(monster.getX() >= 0);
         assertTrue(monster.getX() <= world.getWidth() - monster.getWidth());
+    }
+
+    @Test
+    void worldRespawnShouldRestoreDeadPlayerWithoutResettingProgress() {
+        GameWorld world = new GameWorld(240, 180);
+        PlayerObject player = new PlayerObject("hero", 64, 48);
+        player.setLevel(4);
+        player.gainExperience(120);
+        player.setThrottlePower(1000);
+        world.addObject(player);
+        world.setRespawnPoint(24, 36);
+        world.recordKill();
+        world.recordItemCollection();
+
+        player.takeDamage(world, player.getHealth());
+        player.update(world, 1.0);
+
+        assertTrue(player.isDying(), "玩家死亡后应进入死亡动画状态");
+        assertFalse(player.isActive(), "死亡动画结束后玩家应失活");
+
+        boolean respawned = world.respawnPlayer();
+
+        assertTrue(respawned, "世界应能重生当前玩家");
+        assertTrue(player.isActive(), "重生后玩家应重新激活");
+        assertFalse(player.isDying(), "重生后玩家不应继续保持死亡状态");
+        assertEquals(24, player.getX(), "重生后玩家应回到出生点 X");
+        assertEquals(36, player.getY(), "重生后玩家应回到出生点 Y");
+        assertEquals(4, player.getLevel(), "重生不应重置玩家等级");
+        assertEquals(120, player.getExperience(), "重生不应重置玩家经验");
+        assertEquals(1, world.getKills(), "重生不应重置击杀进度");
+        assertEquals(1, world.getItemsCollected(), "重生不应重置收集进度");
+    }
+
+    @Test
+    void monsterShouldJumpOverObstacleAhead() {
+        GameWorld world = new GameWorld(220, 160);
+        world.setGravityEnabled(true);
+        world.setGravityStrength(900);
+
+        SceneObject ground = new SceneObject("ground", 0, 120, 220, 40, true, false);
+        WallObject obstacle = new WallObject("wall", 90, 76, 20, 44);
+        MonsterObject monster = new MonsterObject("slime", 40, 76, 25);
+        monster.setSpeed(0);
+
+        world.addObject(ground);
+        world.addObject(obstacle);
+        world.addObject(monster);
+
+        int originalY = monster.getY();
+        world.update(1.0 / 60.0);
+
+        assertTrue(monster.getY() < originalY, "怪物应会尝试跳跃越过前方障碍");
+    }
+
+    @Test
+    void monsterShouldDodgeIncomingProjectile() {
+        GameWorld world = new GameWorld(320, 180);
+        SceneObject ground = new SceneObject("ground", 0, 114, 320, 66, true, false);
+        PlayerObject player = new PlayerObject("hero", 20, 70);
+        MonsterObject monster = new MonsterObject("slime", 160, 70, 25);
+        monster.setSpeed(0);
+        ProjectileObject projectile = new ProjectileObject("bullet", 40, 88, 360, 0, 10, player);
+
+        world.addObject(ground);
+        world.addObject(player);
+        world.addObject(monster);
+        world.addObject(projectile);
+
+        int originalX = monster.getX();
+        world.update(1.0 / 60.0);
+
+        assertTrue(monster.getX() > originalX, "怪物应向远离来袭投射物的方向闪躲");
+    }
+
+    @Test
+    void monsterShouldChaseVisiblePlayerWhenHealthy() {
+        GameWorld world = new GameWorld(320, 180);
+        SceneObject ground = new SceneObject("ground", 0, 114, 320, 66, true, false);
+        PlayerObject player = new PlayerObject("hero", 220, 70);
+        MonsterObject monster = new MonsterObject("slime", 80, 70, 25);
+        monster.setSpeed(30);
+
+        world.addObject(ground);
+        world.addObject(player);
+        world.addObject(monster);
+
+        int originalX = monster.getX();
+        world.update(1.0 / 60.0);
+
+        assertTrue(monster.getX() > originalX, "怪物应主动追向可见玩家");
+    }
+
+    @Test
+    void lowHealthRangedMonsterShouldRetreatFromPlayer() {
+        GameWorld world = new GameWorld(320, 180);
+        SceneObject ground = new SceneObject("ground", 0, 114, 320, 66, true, false);
+        PlayerObject player = new PlayerObject("hero", 100, 70);
+        MonsterObject monster = new MonsterObject("archer", 140, 70, 25);
+        monster.setSpeed(30);
+        monster.setRangedAttacker(true);
+        monster.setShootRange(420);
+        monster.setHealth(10);
+
+        world.addObject(ground);
+        world.addObject(player);
+        world.addObject(monster);
+
+        int originalX = monster.getX();
+        world.update(1.0 / 60.0);
+
+        assertTrue(monster.getX() > originalX, "残血远程怪应优先拉开距离");
     }
 
     @Test

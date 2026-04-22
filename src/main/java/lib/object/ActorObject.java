@@ -90,6 +90,12 @@ public abstract class ActorObject extends BaseObject {
         return Math.max(0.0, Math.min(1.0, deathTimer / DEATH_ANIMATION_DURATION));
     }
 
+    protected final void revive() {
+        this.dying = false;
+        this.deathTimer = 0.0;
+        setActive(true);
+    }
+
     protected final void renderDeathAnimation(Graphics2D graphics, Consumer<Graphics2D> baseRender) {
         double progress = getDeathAnimationProgress();
         Graphics2D g2d = (Graphics2D) graphics.create();

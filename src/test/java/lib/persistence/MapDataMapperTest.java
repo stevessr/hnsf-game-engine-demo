@@ -131,4 +131,34 @@ public class MapDataMapperTest {
         assertEquals(Color.BLACK.getRGB(), resetPixel.getRGB(), "切换地图后未解锁区域应恢复为黑色");
         assertNotEquals(Color.BLACK.getRGB(), playerPixel.getRGB(), "新玩家附近应保持可见");
     }
+
+    @Test
+    public void testApplyToWorldShouldPreservePlayerMovementSettings() {
+        GameWorld world = new GameWorld(200, 200, Color.WHITE);
+        PlayerObject oldPlayer = new PlayerObject("hero", 20, 20);
+        oldPlayer.setThrottlePower(1000);
+        oldPlayer.setDeceleration(0.88);
+        world.addObject(oldPlayer);
+
+        MapData nextMap = new MapData();
+        nextMap.setWidth(200);
+        nextMap.setHeight(200);
+        nextMap.setBackgroundColor(Color.GRAY);
+
+        ObjectData nextPlayer = new ObjectData();
+        nextPlayer.setType(GameObjectType.PLAYER);
+        nextPlayer.setName("hero");
+        nextPlayer.setX(40);
+        nextPlayer.setY(40);
+        nextPlayer.setWidth(48);
+        nextPlayer.setHeight(48);
+        nextPlayer.setColor(Color.BLUE);
+        nextMap.addObject(nextPlayer);
+
+        MapDataMapper.applyToWorld(world, nextMap);
+
+        PlayerObject restoredPlayer = world.findPlayer().orElseThrow();
+        assertEquals(1000, restoredPlayer.getThrottlePower(), "切换地图后应保留玩家油门力度");
+        assertEquals(88, restoredPlayer.getDecelerationPercent(), "切换地图后应保留玩家减速度");
+    }
 }

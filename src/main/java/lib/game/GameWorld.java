@@ -36,6 +36,9 @@ public final class GameWorld {
     private int targetItems = 0;
     private int kills = 0;
     private int itemsCollected = 0;
+    private int respawnX = 0;
+    private int respawnY = 0;
+    private boolean respawnPointSet = false;
     private boolean showGoals = true;
     private String failureReason;
     private double screenShakeMagnitude = 0.0;
@@ -89,6 +92,38 @@ public final class GameWorld {
 
     public void recordItemCollection() {
         this.itemsCollected++;
+    }
+
+    public boolean hasRespawnPoint() {
+        return respawnPointSet;
+    }
+
+    public void setRespawnPoint(int x, int y) {
+        this.respawnX = Math.max(0, x);
+        this.respawnY = Math.max(0, y);
+        this.respawnPointSet = true;
+    }
+
+    public boolean respawnPlayer() {
+        PlayerObject player = entityManager.getObjects().stream()
+            .filter(object -> object.getType() == GameObjectType.PLAYER)
+            .filter(PlayerObject.class::isInstance)
+            .map(PlayerObject.class::cast)
+            .findFirst()
+            .orElse(null);
+        if (player == null) {
+            return false;
+        }
+
+        int spawnX = respawnPointSet ? respawnX : player.getX();
+        int spawnY = respawnPointSet ? respawnY : player.getY();
+        int maxX = Math.max(0, width - player.getWidth());
+        int maxY = Math.max(0, height - player.getHeight());
+        int clampedX = Math.max(0, Math.min(maxX, spawnX));
+        int clampedY = Math.max(0, Math.min(maxY, spawnY));
+        player.respawnAt(clampedX, clampedY);
+        setFailureReason(null);
+        return true;
     }
 
     public boolean isShowGoals() {
@@ -260,6 +295,9 @@ public final class GameWorld {
 
     public void addObject(GameObject gameObject) {
         entityManager.add(gameObject);
+        if (!respawnPointSet && gameObject instanceof PlayerObject player) {
+            setRespawnPoint(player.getX(), player.getY());
+        }
     }
 
     public boolean removeObject(GameObject gameObject) {
@@ -321,6 +359,7 @@ public final class GameWorld {
         }
         updateScreenShake(deltaSeconds);
         entityManager.updateAll(this, deltaSeconds);
+        updateInactiveObjects(deltaSeconds);
     }
 
     public void render(Graphics2D graphics) {
@@ -352,6 +391,14 @@ public final class GameWorld {
             screenShakeMagnitude = 0.0;
             screenShakeDuration = 0.0;
             screenShakeElapsed = 0.0;
+        }
+    }
+
+    private void updateInactiveObjects(double deltaSeconds) {
+        for (GameObject object : entityManager.getObjects()) {
+            if (!object.isActive()) {
+                object.updateInactive(this, deltaSeconds);
+            }
         }
     }
 }
