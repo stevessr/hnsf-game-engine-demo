@@ -17,6 +17,7 @@ import lib.object.WallObject;
 import lib.object.dto.MapData;
 import lib.persistence.MapDataMapper;
 import lib.persistence.ProceduralLevelGenerator;
+import lib.render.BackgroundAssets;
 import lib.state.DefaultGameStateMachine;
 
 /**
@@ -131,7 +132,9 @@ public final class LevelManager {
             return createGeneratedProceduralLevel(PROC_CAVE, PROC_CAVE, System.currentTimeMillis());
         }
         if (normalized.equals(AIR_RAID_DEMO)) {
-            return MapDataMapper.fromWorld(createAirRaidDemoWorld(), AIR_RAID_DEMO);
+            GameWorld airRaidWorld = createAirRaidDemoWorld();
+            BackgroundAssets.applyLevelBackground(airRaidWorld, AIR_RAID_DEMO);
+            return MapDataMapper.fromWorld(airRaidWorld, AIR_RAID_DEMO);
         }
 
         GameWorld levelWorld = switch (normalized) {
@@ -147,6 +150,7 @@ public final class LevelManager {
             case LEVEL_4 -> createBossArenaWorld();
             default -> createTutorialLevelWorld();
         };
+        BackgroundAssets.applyLevelBackground(levelWorld, normalized);
         return MapDataMapper.fromWorld(levelWorld, normalized);
     }
 
@@ -175,6 +179,7 @@ public final class LevelManager {
             mapData.setWinCondition(WinConditionType.KILL_TARGET_COUNT);
             mapData.setTargetKills(10);
         }
+        BackgroundAssets.applyLevelBackground(mapData, normalizedTemplate);
         return mapData;
     }
 

@@ -279,6 +279,13 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             return;
         }
 
+        int hoveredIndex = findHoveredOptionIndex(
+            menu,
+            inputController.getMouseManager().getMouseX(),
+            inputController.getMouseManager().getMouseY()
+        );
+        menu.setHoveredIndex(hoveredIndex);
+
         if (actionMapper.isKeyboardJustActivated(InputAction.PAUSE, keyboard)) {
             if (isOptionsMenu(menu)) {
                 playMenuBackSound(world);
@@ -304,9 +311,13 @@ public final class DefaultGameStateMachine implements GameStateMachine {
             syncActiveDialog(world, "切换到", menu.getSelectedOption());
         }
         if (actionMapper.isMouseJustActivated(InputAction.MENU_CONFIRM, inputController.getMouseManager())) {
-            int hoveredIndex = findHoveredOptionIndex(menu, inputController.getMouseManager().getMouseX(), inputController.getMouseManager().getMouseY());
-            if (hoveredIndex >= 0) {
-                menu.setSelectedIndex(hoveredIndex);
+            int clickedHoverIndex = findHoveredOptionIndex(
+                menu,
+                inputController.getMouseManager().getMouseX(),
+                inputController.getMouseManager().getMouseY()
+            );
+            if (clickedHoverIndex >= 0) {
+                menu.setSelectedIndex(clickedHoverIndex);
             }
             syncActiveDialog(world, "已确认", menu.getSelectedOption());
             handleMenuSelection(menu, context);

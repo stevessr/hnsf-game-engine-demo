@@ -607,7 +607,8 @@ public class App {
 
     private static MenuObject createMainMenu(GameWorld world, boolean active, int uiFontSize) {
         List<String> options = List.of("Start", "Levels", "Generate Forest", "Generate Cave", "Editor", "Options", "Exit");
-        MenuObject menu = new MenuObject(MAIN_MENU_NAME, 24, 24, 260, 180, "Demo Menu", options);
+        MenuObject menu = new MenuObject(MAIN_MENU_NAME, 24, 24, 260, 180, "Primary Software", options);
+        menu.setSubtitle("Adventure Prototype");
         menu.setActive(active);
         menu.setSelectedIndex(0);
         menu.setFontSize(uiFontSize);

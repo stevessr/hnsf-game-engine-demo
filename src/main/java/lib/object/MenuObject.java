@@ -1,17 +1,22 @@
 package lib.object;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
+import java.awt.GradientPaint;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class MenuObject extends BaseObject {
     private String title;
     private String subtitle;
     private List<String> options;
     private int selectedIndex;
+    private int hoveredIndex;
     private int fontSize;
 
     public MenuObject(String name, int x, int y, int width, int height, String title, List<String> options) {
@@ -20,6 +25,7 @@ public final class MenuObject extends BaseObject {
         this.subtitle = null;
         this.options = normalizeOptions(options);
         this.selectedIndex = 0;
+        this.hoveredIndex = -1;
         this.fontSize = 18;
     }
 
@@ -46,6 +52,7 @@ public final class MenuObject extends BaseObject {
     public void setOptions(List<String> options) {
         this.options = normalizeOptions(options);
         this.selectedIndex = clampIndex(selectedIndex);
+        this.hoveredIndex = hoveredIndex < 0 ? -1 : clampIndex(hoveredIndex);
     }
 
     public int getSelectedIndex() {
@@ -54,6 +61,14 @@ public final class MenuObject extends BaseObject {
 
     public void setSelectedIndex(int selectedIndex) {
         this.selectedIndex = clampIndex(selectedIndex);
+    }
+
+    public int getHoveredIndex() {
+        return hoveredIndex;
+    }
+
+    public void setHoveredIndex(int hoveredIndex) {
+        this.hoveredIndex = hoveredIndex < 0 ? -1 : clampIndex(hoveredIndex);
     }
 
     public String getSelectedOption() {
@@ -69,18 +84,15 @@ public final class MenuObject extends BaseObject {
     }
 
     public int getTitleAreaHeight() {
-        int titleHeight = fontSize == 18 ? 42 : Math.max(30, fontSize + 14);
+        int titleHeight = Math.max(44, fontSize + 22);
         if (subtitle != null && !subtitle.isBlank()) {
-            return titleHeight + Math.max(20, fontSize);
+            return titleHeight + Math.max(22, fontSize + 6);
         }
         return titleHeight;
     }
 
     public int getOptionLineHeight() {
-        if (fontSize == 18) {
-            return 18;
-        }
-        return Math.max(20, fontSize + 8);
+        return Math.max(30, fontSize + 16);
     }
 
     public int getOptionStartY() {
@@ -88,7 +100,7 @@ public final class MenuObject extends BaseObject {
     }
 
     public int getPreferredHeight() {
-        return getTitleAreaHeight() + (options.size() * getOptionLineHeight()) + 12;
+        return getTitleAreaHeight() + (options.size() * getOptionLineHeight()) + 18;
     }
 
     public void nextOption() {
@@ -101,69 +113,149 @@ public final class MenuObject extends BaseObject {
 
     @Override
     public void render(Graphics2D graphics) {
-        Font originalFont = graphics.getFont();
-        Font font = originalFont.deriveFont((float) fontSize);
-        graphics.setFont(font);
-        
-        // 渲染阴影
-        graphics.setColor(new Color(0, 0, 0, 80));
-        graphics.fillRoundRect(getX() + 4, getY() + 4, getWidth(), getHeight(), 18, 18);
+        Graphics2D g2d = (Graphics2D) graphics.create();
+        Font originalFont = g2d.getFont();
+        try {
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 
-        // 背景渐变
-        java.awt.GradientPaint gp = new java.awt.GradientPaint(
-            getX(), getY(), new Color(28, 32, 45, 245),
-            getX(), getY() + getHeight(), new Color(48, 55, 75, 245)
-        );
-        graphics.setPaint(gp);
-        graphics.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 18, 18);
-        
-        graphics.setColor(new Color(255, 255, 255, 60));
-        graphics.drawRoundRect(getX(), getY(), getWidth(), getHeight(), 18, 18);
-        
-        FontMetrics metrics = graphics.getFontMetrics(font);
-        
-        // 居中标题
-        graphics.setColor(Color.WHITE);
-        int titleWidth = metrics.stringWidth(title);
-        int titleX = getX() + (getWidth() - titleWidth) / 2;
-        int titleBaseline = getY() + (fontSize == 18 ? 20 : Math.max(20, metrics.getAscent() + 10));
-        graphics.drawString(title, titleX, titleBaseline);
+            int x = getX();
+            int y = getY();
+            int width = getWidth();
+            int height = getHeight();
+            Color panelBase = getColor() == null ? new Color(28, 32, 45, 230) : getColor();
+            Color panelTop = brighten(panelBase, 18, 240);
+            Color panelBottom = darken(panelBase, 26, 244);
+            Color accent = resolveAccentColor();
+            Color accentSecondary = mix(accent, new Color(120, 222, 255), 0.35, 255);
 
-        int dividerY = titleBaseline + 8;
-        if (subtitle != null && !subtitle.isBlank()) {
-            Font subtitleFont = originalFont.deriveFont((float) Math.max(10, fontSize - 3));
-            graphics.setFont(subtitleFont);
-            FontMetrics subtitleMetrics = graphics.getFontMetrics(subtitleFont);
-            graphics.setColor(new Color(255, 220, 220));
-            int subtitleWidth = subtitleMetrics.stringWidth(subtitle);
-            int subtitleX = getX() + (getWidth() - subtitleWidth) / 2;
-            int subtitleBaseline = titleBaseline + subtitleMetrics.getHeight();
-            graphics.drawString(subtitle, subtitleX, subtitleBaseline);
-            graphics.setFont(font);
-            dividerY = subtitleBaseline + 8;
-        }
-        
-        // 标题下方装饰线
-        graphics.setColor(new Color(255, 255, 255, 40));
-        graphics.drawLine(getX() + 20, dividerY, getX() + getWidth() - 20, dividerY);
+            g2d.setColor(new Color(0, 0, 0, 62));
+            g2d.fillRoundRect(x + 8, y + 10, width, height, 24, 24);
+            g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 38));
+            g2d.fillRoundRect(x - 4, y - 4, width + 8, height + 8, 28, 28);
 
-        for (int index = 0; index < options.size(); index++) {
-            int lineY = getOptionStartY() + (index * getOptionLineHeight()) + (fontSize == 18 ? 0 : metrics.getAscent());
-            boolean isSelected = (index == selectedIndex);
-            
-            if (isSelected) {
-                // 选中项的高亮背景
-                graphics.setColor(new Color(255, 215, 100, 40));
-                graphics.fillRoundRect(getX() + 8, lineY - metrics.getAscent() + 2, getWidth() - 16, getOptionLineHeight(), 8, 8);
-                graphics.setColor(new Color(255, 220, 120));
-            } else {
-                graphics.setColor(new Color(200, 200, 200));
+            g2d.setPaint(new GradientPaint(x, y, panelTop, x, y + height, panelBottom));
+            g2d.fillRoundRect(x, y, width, height, 22, 22);
+
+            g2d.setPaint(new GradientPaint(
+                x,
+                y,
+                new Color(255, 255, 255, 42),
+                x,
+                y + height / 2,
+                new Color(255, 255, 255, 0)
+            ));
+            g2d.fillRoundRect(x + 2, y + 2, width - 4, Math.max(20, height / 2), 20, 20);
+
+            g2d.setColor(new Color(255, 255, 255, 74));
+            g2d.setStroke(new BasicStroke(1.4f));
+            g2d.drawRoundRect(x, y, width, height, 22, 22);
+            g2d.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 86));
+            g2d.drawRoundRect(x + 1, y + 1, width - 2, height - 2, 22, 22);
+
+            Font titleFont = originalFont.deriveFont(Font.BOLD, Math.max(20f, fontSize + 6f));
+            g2d.setFont(titleFont);
+            FontMetrics titleMetrics = g2d.getFontMetrics(titleFont);
+            int titleWidth = titleMetrics.stringWidth(title);
+            int titleX = x + (width - titleWidth) / 2;
+            int titleBaseline = y + Math.max(30, titleMetrics.getAscent() + 14);
+
+            g2d.setColor(new Color(0, 0, 0, 120));
+            g2d.drawString(title, titleX + 2, titleBaseline + 2);
+            g2d.setPaint(new GradientPaint(
+                titleX,
+                y,
+                mix(accent, Color.WHITE, 0.48, 255),
+                titleX,
+                titleBaseline,
+                accentSecondary
+            ));
+            g2d.drawString(title, titleX, titleBaseline);
+
+            int dividerY = titleBaseline + 12;
+            if (subtitle != null && !subtitle.isBlank()) {
+                Font subtitleFont = originalFont.deriveFont((float) Math.max(11, fontSize - 2));
+                g2d.setFont(subtitleFont);
+                FontMetrics subtitleMetrics = g2d.getFontMetrics(subtitleFont);
+                int subtitleWidth = subtitleMetrics.stringWidth(subtitle);
+                int subtitleX = x + (width - subtitleWidth) / 2;
+                int subtitleBaseline = titleBaseline + subtitleMetrics.getHeight();
+                g2d.setColor(new Color(235, 243, 255, 215));
+                g2d.drawString(subtitle, subtitleX, subtitleBaseline);
+                dividerY = subtitleBaseline + 10;
             }
-            
-            String prefix = isSelected ? "▶ " : "  ";
-            graphics.drawString(prefix + options.get(index), getX() + 20, lineY);
+
+            g2d.setPaint(new GradientPaint(
+                x + 22,
+                dividerY,
+                new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 28),
+                x + width - 22,
+                dividerY,
+                new Color(accentSecondary.getRed(), accentSecondary.getGreen(), accentSecondary.getBlue(), 88)
+            ));
+            g2d.drawLine(x + 22, dividerY, x + width - 22, dividerY);
+
+            Font optionFont = originalFont.deriveFont((float) fontSize);
+            g2d.setFont(optionFont);
+            FontMetrics optionMetrics = g2d.getFontMetrics(optionFont);
+            int lineHeight = getOptionLineHeight();
+
+            for (int index = 0; index < options.size(); index++) {
+                boolean isSelected = index == selectedIndex;
+                boolean isHovered = index == hoveredIndex;
+                int buttonX = x + 12;
+                int buttonY = getOptionStartY() + index * lineHeight + 2;
+                int buttonWidth = width - 24;
+                int buttonHeight = lineHeight - 6;
+
+                if (isHovered || isSelected) {
+                    Color glowColor = isHovered
+                        ? mix(accentSecondary, Color.WHITE, 0.15, 96)
+                        : mix(accent, Color.WHITE, 0.10, 76);
+                    g2d.setColor(glowColor);
+                    g2d.fillRoundRect(
+                        buttonX - 4,
+                        buttonY - 4,
+                        buttonWidth + 8,
+                        buttonHeight + 8,
+                        18,
+                        18
+                    );
+                }
+
+                Color buttonTop = isHovered
+                    ? mix(accentSecondary, panelTop, 0.48, 232)
+                    : isSelected
+                        ? mix(accent, panelTop, 0.42, 224)
+                        : mix(panelTop, Color.WHITE, 0.12, 192);
+                Color buttonBottom = isHovered
+                    ? mix(accent, panelBottom, 0.35, 238)
+                    : isSelected
+                        ? mix(accentSecondary, panelBottom, 0.25, 228)
+                        : darken(panelBottom, 6, 182);
+                g2d.setPaint(new GradientPaint(
+                    buttonX,
+                    buttonY,
+                    buttonTop,
+                    buttonX,
+                    buttonY + buttonHeight,
+                    buttonBottom
+                ));
+                g2d.fillRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 16, 16);
+
+                g2d.setColor(new Color(255, 255, 255, isHovered || isSelected ? 112 : 48));
+                g2d.drawRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 16, 16);
+
+                String label = isSelected ? "▶ " + options.get(index) : options.get(index);
+                int textX = buttonX + 16;
+                int textY = buttonY + (buttonHeight - optionMetrics.getHeight()) / 2 + optionMetrics.getAscent();
+                g2d.setColor(isHovered || isSelected ? new Color(255, 250, 240) : new Color(210, 220, 232));
+                g2d.drawString(label, textX, textY);
+            }
+        } finally {
+            g2d.setFont(originalFont);
+            g2d.dispose();
         }
-        graphics.setFont(originalFont);
     }
 
     private static String normalizeText(String value, String fallback) {
@@ -197,5 +289,52 @@ public final class MenuObject extends BaseObject {
 
     private int clampIndex(int index) {
         return Math.max(0, Math.min(options.size() - 1, index));
+    }
+
+    private Color resolveAccentColor() {
+        String normalizedName = getName() == null ? "" : getName().toLowerCase(Locale.ROOT);
+        if (normalizedName.contains("pause") || normalizedName.contains("options")) {
+            return new Color(118, 200, 255);
+        }
+        if (normalizedName.contains("victory")) {
+            return new Color(126, 235, 168);
+        }
+        if (normalizedName.contains("gameover")) {
+            return new Color(255, 126, 126);
+        }
+        if (normalizedName.contains("level")) {
+            return new Color(120, 228, 255);
+        }
+        return new Color(255, 214, 120);
+    }
+
+    private static Color brighten(Color color, int amount, int alpha) {
+        return new Color(
+            clampColor(color.getRed() + amount),
+            clampColor(color.getGreen() + amount),
+            clampColor(color.getBlue() + amount),
+            clampColor(alpha)
+        );
+    }
+
+    private static Color darken(Color color, int amount, int alpha) {
+        return new Color(
+            clampColor(color.getRed() - amount),
+            clampColor(color.getGreen() - amount),
+            clampColor(color.getBlue() - amount),
+            clampColor(alpha)
+        );
+    }
+
+    private static Color mix(Color first, Color second, double ratio, int alpha) {
+        double safeRatio = Math.max(0.0, Math.min(1.0, ratio));
+        int red = (int) Math.round(first.getRed() * safeRatio + second.getRed() * (1.0 - safeRatio));
+        int green = (int) Math.round(first.getGreen() * safeRatio + second.getGreen() * (1.0 - safeRatio));
+        int blue = (int) Math.round(first.getBlue() * safeRatio + second.getBlue() * (1.0 - safeRatio));
+        return new Color(clampColor(red), clampColor(green), clampColor(blue), clampColor(alpha));
+    }
+
+    private static int clampColor(int value) {
+        return Math.max(0, Math.min(255, value));
     }
 }

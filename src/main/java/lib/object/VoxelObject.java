@@ -4,7 +4,9 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.awt.TexturePaint;
+
 import lib.render.TextureManager;
+import lib.render.SpriteAssets;
 
 public final class VoxelObject extends SceneObject {
     public VoxelObject(String name, int x, int y, int size) {
@@ -22,19 +24,39 @@ public final class VoxelObject extends SceneObject {
     @Override
     public void render(Graphics2D graphics) {
         Paint originalPaint = graphics.getPaint();
-        
-        // 尝试加载贴图
+
         TexturePaint tp = null;
         if (getTexturePath() != null) {
             tp = TextureManager.createTexturePaint(getTexturePath(), getWidth(), getHeight());
         }
-        
+
         if (tp != null) {
             graphics.setPaint(tp);
+        } else if (SpriteAssets.drawVoxel(graphics, this)) {
+            graphics.setColor(new Color(0, 0, 0, 80));
+            graphics.drawRect(getX(), getY(), getWidth(), getHeight());
+            graphics.setColor(new Color(255, 255, 255, 100));
+            graphics.drawLine(getX(), getY(), getX() + getWidth(), getY());
+            graphics.drawLine(getX(), getY(), getX(), getY() + getHeight());
+
+            graphics.setColor(new Color(0, 0, 0, 110));
+            graphics.drawLine(
+                getX(),
+                getY() + getHeight() - 1,
+                getX() + getWidth(),
+                getY() + getHeight() - 1
+            );
+            graphics.drawLine(
+                getX() + getWidth() - 1,
+                getY(),
+                getX() + getWidth() - 1,
+                getY() + getHeight()
+            );
+            graphics.setPaint(originalPaint);
+            return;
         } else {
             graphics.setColor(getColor());
-            
-            // 基于材质绘制特殊效果
+
             String mat = getMaterial();
             if ("grass".equalsIgnoreCase(mat)) {
                 graphics.setColor(new Color(34, 139, 34));

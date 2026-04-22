@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 
 import lib.game.GameWorld;
+import lib.render.SpriteAssets;
 
 public class SceneObject extends BaseObject {
     private boolean solid;
@@ -172,8 +173,11 @@ public class SceneObject extends BaseObject {
             renderTree(graphics);
             return;
         }
-        graphics.setColor(getColor());
-        graphics.fillRect(getX(), getY(), getWidth(), getHeight());
+        boolean rendered = SpriteAssets.drawScene(graphics, this);
+        if (!rendered) {
+            graphics.setColor(getColor());
+            graphics.fillRect(getX(), getY(), getWidth(), getHeight());
+        }
         if (solid) {
             graphics.setColor(Color.DARK_GRAY);
             graphics.drawRect(getX(), getY(), getWidth(), getHeight());

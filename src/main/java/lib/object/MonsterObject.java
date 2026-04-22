@@ -7,6 +7,7 @@ import java.util.Locale;
 
 import lib.game.GameWorld;
 import lib.physics.MovementResult;
+import lib.render.SpriteAssets;
 
 public final class MonsterObject extends ActorObject {
     private static final int DEFAULT_HEAL_DROP_SIZE = 28;
@@ -586,6 +587,9 @@ public final class MonsterObject extends ActorObject {
     }
 
     private void renderBase(Graphics2D graphics) {
+        if (SpriteAssets.drawMonster(graphics, this, getFacingDirection() < 0)) {
+            return;
+        }
         MonsterKind kind = resolveMonsterKind();
         switch (kind) {
             case BAT -> {

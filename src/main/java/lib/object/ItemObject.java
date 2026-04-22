@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 import java.util.Locale;
 
 import lib.game.GameWorld;
+import lib.render.SpriteAssets;
 
 /**
  * 可拾取物品对象。
@@ -113,6 +114,9 @@ public final class ItemObject extends BaseObject {
 
     @Override
     public void render(Graphics2D graphics) {
+        if (SpriteAssets.drawItem(graphics, this)) {
+            return;
+        }
         graphics.setColor(getColor());
         graphics.fillRoundRect(getX(), getY(), getWidth(), getHeight(), 10, 10);
         graphics.setColor(Color.WHITE);

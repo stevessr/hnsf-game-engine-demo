@@ -1,8 +1,10 @@
 package lib.render;
 
+import java.awt.AlphaComposite;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -49,6 +51,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
     private final MinimapOverlay minimapOverlay;
     private final GoalOverlay goalOverlay;
     private final lib.manager.AITestManager aiTestManager;
+    private final BufferedImage mainMenuBackdrop;
+    private final BufferedImage pauseMenuBackdrop;
     private GameRuntimeActions runtimeActions = GameRuntimeActions.noOp();
     private long lastUpdateNanos;
     private int targetFPS = 60;
@@ -68,6 +72,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         this.minimapOverlay = new MinimapOverlay();
         this.goalOverlay = new GoalOverlay();
         this.aiTestManager = new lib.manager.AITestManager();
+        this.mainMenuBackdrop = BackgroundAssets.loadMainMenuBackdrop();
+        this.pauseMenuBackdrop = BackgroundAssets.loadPauseMenuBackdrop();
         
         this.camera = new Camera(960, 540);
         world.setCamera(camera);
@@ -568,10 +574,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
                 int viewH = getViewportHeight();
                 int offsetX = (int) ((getWidth() - viewW * scale) / 2);
                 int offsetY = (int) ((getHeight() - viewH * scale) / 2);
-                
-                int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
-                int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
-                
+
+                int logicalX = resolveInputX(event, scale, offsetX);
+                int logicalY = resolveInputY(event, scale, offsetY);
+
                 inputController.getMouseManager().pressButton(event.getButton(), logicalX, logicalY);
             }
 
@@ -582,8 +588,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
                 int viewH = getViewportHeight();
                 int offsetX = (int) ((getWidth() - viewW * scale) / 2);
                 int offsetY = (int) ((getHeight() - viewH * scale) / 2);
-                int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
-                int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
+                int logicalX = resolveInputX(event, scale, offsetX);
+                int logicalY = resolveInputY(event, scale, offsetY);
                 inputController.getMouseManager().releaseButton(event.getButton(), logicalX, logicalY);
             }
 
@@ -594,8 +600,8 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
                 int viewH = getViewportHeight();
                 int offsetX = (int) ((getWidth() - viewW * scale) / 2);
                 int offsetY = (int) ((getHeight() - viewH * scale) / 2);
-                int logicalX = (int)((event.getX() - offsetX) / scale) + camera.getX();
-                int logicalY = (int)((event.getY() - offsetY) / scale) + camera.getY();
+                int logicalX = resolveInputX(event, scale, offsetX);
+                int logicalY = resolveInputY(event, scale, offsetY);
                 inputController.getMouseManager().moveTo(logicalX, logicalY);
             }
 
@@ -606,6 +612,27 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         };
         addMouseListener(mouseAdapter);
         addMouseMotionListener(mouseAdapter);
+    }
+
+    private int resolveInputX(MouseEvent event, double scale, int offsetX) {
+        int screenX = (int) ((event.getX() - offsetX) / scale);
+        if (usesScreenSpaceInput()) {
+            return screenX;
+        }
+        return screenX + camera.getX();
+    }
+
+    private int resolveInputY(MouseEvent event, double scale, int offsetY) {
+        int screenY = (int) ((event.getY() - offsetY) / scale);
+        if (usesScreenSpaceInput()) {
+            return screenY;
+        }
+        return screenY + camera.getY();
+    }
+
+    private boolean usesScreenSpaceInput() {
+        GameState currentState = world == null ? GameState.PLAYING : world.getCurrentState();
+        return currentState.allowsMenuNavigation() || currentState.allowsDialogInteraction();
     }
 
     private void showDebugConsole() {
@@ -710,7 +737,10 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             graphics2d.scale(scale, scale);
             graphics2d.setClip(0, 0, viewW, viewH);
 
-            world.render(graphics2d);
+            world.renderBackgroundLayer(graphics2d);
+            world.renderWorldLayer(graphics2d);
+            renderStateBackdrop(graphics2d, viewW, viewH);
+            world.renderUiLayer(graphics2d);
             hintsOverlay.render(graphics2d, viewW, viewH, world, aiTestManager.isEnabled());
             
             if (debugEnabled) {
@@ -721,5 +751,22 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
         } finally {
             graphics2d.dispose();
         }
+    }
+
+    private void renderStateBackdrop(Graphics2D graphics, int viewWidth, int viewHeight) {
+        BufferedImage backdrop = switch (world.getCurrentState()) {
+            case MENU -> mainMenuBackdrop;
+            case PAUSED -> pauseMenuBackdrop;
+            default -> null;
+        };
+        if (backdrop == null) {
+            return;
+        }
+
+        float alpha = world.getCurrentState() == GameState.PAUSED ? 0.82f : 0.96f;
+        var previousComposite = graphics.getComposite();
+        graphics.setComposite(AlphaComposite.SrcOver.derive(alpha));
+        graphics.drawImage(backdrop, 0, 0, viewWidth, viewHeight, null);
+        graphics.setComposite(previousComposite);
     }
 }

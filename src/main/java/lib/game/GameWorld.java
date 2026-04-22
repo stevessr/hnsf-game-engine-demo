@@ -422,17 +422,30 @@ public final class GameWorld {
     }
 
     public void render(Graphics2D graphics) {
-        renderBackground(graphics);
+        renderBackgroundLayer(graphics);
+        renderWorldLayer(graphics);
+        renderUiLayer(graphics);
+    }
 
+    public void renderBackgroundLayer(Graphics2D graphics) {
+        renderBackground(graphics);
+    }
+
+    public void renderWorldLayer(Graphics2D graphics) {
         Graphics2D worldGraphics = (Graphics2D) graphics.create();
-        if (camera != null) {
-            worldGraphics.translate(-camera.getX() + getScreenShakeOffsetX(), -camera.getY() + getScreenShakeOffsetY());
+        try {
+            if (camera != null) {
+                worldGraphics.translate(-camera.getX() + getScreenShakeOffsetX(), -camera.getY() + getScreenShakeOffsetY());
+            }
+
+            entityManager.renderWorld(worldGraphics);
+            lightingManager.render(worldGraphics, this);
+        } finally {
+            worldGraphics.dispose();
         }
-        
-        entityManager.renderWorld(worldGraphics);
-        lightingManager.render(worldGraphics, this);
-        worldGraphics.dispose();
-        
+    }
+
+    public void renderUiLayer(Graphics2D graphics) {
         entityManager.renderUI(graphics);
     }
 

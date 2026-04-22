@@ -8,6 +8,7 @@ import java.awt.Graphics2D;
 
 import lib.game.GameWorld;
 import lib.physics.MovementResult;
+import lib.render.SpriteAssets;
 
 public final class PlayerObject extends ActorObject {
     private static final double DEFAULT_DECELERATION = 0.92;
@@ -675,6 +676,10 @@ public final class PlayerObject extends ActorObject {
     private void renderBase(Graphics2D graphics) {
         long now = System.nanoTime();
         if (now - lastDamageTimeNanos < INVULNERABILITY_DURATION_NANOS && (now / 100_000_000L) % 2 == 0) {
+            return;
+        }
+
+        if (SpriteAssets.drawPlayer(graphics, this)) {
             return;
         }
 

@@ -271,6 +271,7 @@ public final class GameInputController {
             return;
         }
         DialogObject dialog = findFirstActiveDialog(world);
+        menu.setHoveredIndex(findHoveredOptionIndex(menu));
         if (actionMapper.isKeyboardJustActivated(InputAction.MENU_PREVIOUS, keyboardManager)) {
             menu.previousOption();
             syncDialog(dialog, "切换到", menu.getSelectedOption());
@@ -321,12 +322,15 @@ public final class GameInputController {
     private int findHoveredOptionIndex(MenuObject menu) {
         int mx = mouseManager.getMouseX();
         int my = mouseManager.getMouseY();
-        
+
+        if (!isInsideMenu(menu, mx, my)) {
+            return -1;
+        }
         int optionStartY = menu.getOptionStartY();
         int optionHeight = menu.getOptionLineHeight();
         int relativeY = my - optionStartY;
         int hoveredIndex = relativeY / optionHeight;
-        
+
         if (hoveredIndex < 0 || hoveredIndex >= menu.getOptions().size()) {
             return -1;
         }
