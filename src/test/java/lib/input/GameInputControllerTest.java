@@ -142,6 +142,37 @@ class GameInputControllerTest {
     }
 
     @Test
+    void bombShouldChargeWhileHeldAndFireOnRelease() {
+        GameInputController inputController = GameInputController.createDefault();
+        GameWorld world = new GameWorld(280, 180);
+        PlayerObject player = new PlayerObject("hero", 100, 100);
+        player.setProjectileType(ProjectileType.BOMB);
+        world.addObject(player);
+
+        inputController.getMouseManager().moveTo(240, 120);
+        inputController.getMouseManager().pressButton(MouseEvent.BUTTON1, 240, 120);
+        inputController.applyInputs(world);
+        inputController.finishFrame();
+
+        assertTrue(world.getObjectsByType(GameObjectType.PROJECTILE).isEmpty(), "炸弹蓄力期间不应立即发射");
+
+        for (int i = 0; i < 60; i++) {
+            inputController.getMouseManager().moveTo(240 + i, 120);
+            inputController.applyInputs(world);
+            inputController.finishFrame();
+        }
+
+        inputController.getMouseManager().releaseButton(MouseEvent.BUTTON1, 300, 120);
+        inputController.applyInputs(world);
+        inputController.finishFrame();
+
+        assertEquals(1, world.getObjectsByType(GameObjectType.PROJECTILE).size(), "松开后应发射蓄力炸弹");
+        ProjectileObject projectile = (ProjectileObject) world.getObjectsByType(GameObjectType.PROJECTILE).get(0);
+        double speed = Math.hypot(projectile.getVelocityX(), projectile.getVelocityY());
+        assertTrue(speed > 550.0, "蓄力炸弹应具有更高的初速度");
+    }
+
+    @Test
     void bKeyShouldCyclePlayerProjectileType() {
         GameInputController inputController = GameInputController.createDefault();
         GameWorld world = new GameWorld(240, 180);

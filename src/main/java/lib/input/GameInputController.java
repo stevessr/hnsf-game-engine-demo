@@ -11,6 +11,7 @@ import lib.object.GameObjectType;
 import lib.object.MenuObject;
 import lib.object.PlayerObject;
 import lib.object.VoxelObject;
+import lib.object.ProjectileType;
 import lib.state.GameSettings;
 import lib.state.GameStateContext;
 
@@ -73,7 +74,11 @@ public final class GameInputController {
     }
 
     public void applyPlayerMovement(GameWorld world, GameSettings settings, PlayerObject player, double deltaSeconds) {
-        if (player == null || !player.isActive() || hasActiveUiOverlay(world)) {
+        if (player == null || !player.isActive()) {
+            return;
+        }
+        if (hasActiveUiOverlay(world)) {
+            player.cancelBombCharge();
             return;
         }
 
@@ -89,9 +94,38 @@ public final class GameInputController {
             player.jump(world);
         }
 
-        if (actionMapper.isMouseJustActivated(InputAction.SHOOT, mouseManager)) {
+        double frameDeltaSeconds = deltaSeconds > 0.0 ? deltaSeconds : 1.0 / 60.0;
+        boolean shootActive = actionMapper.isActive(InputAction.SHOOT, keyboardManager, mouseManager);
+        boolean shootJustActivated = actionMapper.isJustActivated(InputAction.SHOOT, keyboardManager, mouseManager);
+        if (player.getProjectileType() == ProjectileType.BOMB) {
+            if (shootActive) {
+                boolean usesMouse = actionMapper.isMouseActive(InputAction.SHOOT, mouseManager)
+                    || actionMapper.isMouseJustActivated(InputAction.SHOOT, mouseManager);
+                if (!player.isBombChargeActive()) {
+                    player.beginBombCharge(
+                        resolveShootDirX(player, usesMouse),
+                        resolveShootDirY(player, usesMouse),
+                        usesMouse
+                    );
+                }
+                player.updateBombCharge(
+                    resolveShootDirX(player, player.isBombChargeMouseDriven()),
+                    resolveShootDirY(player, player.isBombChargeMouseDriven()),
+                    frameDeltaSeconds
+                );
+            } else if (player.isBombChargeActive()) {
+                if (player.isBombChargeMouseDriven()) {
+                    player.updateBombCharge(
+                        resolveShootDirX(player, true),
+                        resolveShootDirY(player, true),
+                        0.0
+                    );
+                }
+                player.releaseBombCharge(world);
+            }
+        } else if (actionMapper.isMouseJustActivated(InputAction.SHOOT, mouseManager)) {
             player.shoot(world, mouseManager.getMouseX(), mouseManager.getMouseY());
-        } else if (actionMapper.isKeyboardJustActivated(InputAction.SHOOT, keyboardManager)) {
+        } else if (shootJustActivated) {
             player.shoot(world);
         }
 
@@ -133,7 +167,6 @@ public final class GameInputController {
             ax /= mag;
             ay /= mag;
         }
-        double frameDeltaSeconds = deltaSeconds > 0.0 ? deltaSeconds : 1.0 / 60.0;
         boolean movingInput = ax != 0.0 || ay != 0.0;
         boolean sprintHeld = actionMapper.isKeyboardActive(InputAction.SPRINT, keyboardManager);
 
@@ -166,6 +199,44 @@ public final class GameInputController {
 
         world.getSoundManager().playSound("wind");
         lastSprintWindSoundTimeNanos = now;
+    }
+
+    private double resolveShootDirX(PlayerObject player, boolean allowMouse) {
+        if (player == null) {
+            return 1.0;
+        }
+        if (allowMouse) {
+            double dx = mouseManager.getMouseX() - (player.getX() + player.getWidth() / 2.0);
+            double dy = mouseManager.getMouseY() - (player.getY() + player.getHeight() / 2.0);
+            double length = Math.hypot(dx, dy);
+            if (length > 0.0001) {
+                return dx / length;
+            }
+        }
+        double length = Math.hypot(player.getLastDirectionX(), player.getLastDirectionY());
+        if (length > 0.0001) {
+            return player.getLastDirectionX() / length;
+        }
+        return 1.0;
+    }
+
+    private double resolveShootDirY(PlayerObject player, boolean allowMouse) {
+        if (player == null) {
+            return 0.0;
+        }
+        if (allowMouse) {
+            double dx = mouseManager.getMouseX() - (player.getX() + player.getWidth() / 2.0);
+            double dy = mouseManager.getMouseY() - (player.getY() + player.getHeight() / 2.0);
+            double length = Math.hypot(dx, dy);
+            if (length > 0.0001) {
+                return dy / length;
+            }
+        }
+        double length = Math.hypot(player.getLastDirectionX(), player.getLastDirectionY());
+        if (length > 0.0001) {
+            return player.getLastDirectionY() / length;
+        }
+        return 0.0;
     }
 
     public void applyVoxelSystem(GameWorld world) {

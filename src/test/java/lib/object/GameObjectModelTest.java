@@ -746,6 +746,23 @@ class GameObjectModelTest {
     }
 
     @Test
+    void bombExplosionShouldDamageTheThrower() {
+        GameWorld world = new GameWorld(200, 160);
+        PlayerObject player = new PlayerObject("hero", 80, 80);
+        player.setHealth(120);
+        ProjectileObject bomb = ProjectileObject.createBomb("bomb", 80, 80, 0, 0, 12, player, 72, 24, 0.1);
+
+        world.addObject(player);
+        world.addObject(bomb);
+
+        for (int i = 0; i < 180 && bomb.isActive(); i++) {
+            world.update(1.0 / 60.0);
+        }
+
+        assertTrue(player.getHealth() < 120, "扔出去的炸弹爆炸时应能伤到自己");
+    }
+
+    @Test
     void unsupportedSceneObjectShouldCollapseAndCanSetDeathReason() {
         GameWorld world = new GameWorld(180, 220);
         world.setGravityEnabled(true);

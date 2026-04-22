@@ -520,7 +520,7 @@ public final class ProjectileObject extends BaseObject {
         int centerX = getX() + getWidth() / 2;
         int centerY = getY() + getHeight() / 2;
         for (GameObject other : List.copyOf(world.getActiveObjects())) {
-            if (other == null || other == this || other == shooter || !other.isActive()) {
+            if (other == null || other == this || !other.isActive()) {
                 continue;
             }
             int otherCenterX = other.getX() + other.getWidth() / 2;

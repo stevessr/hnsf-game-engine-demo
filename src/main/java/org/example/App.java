@@ -165,7 +165,7 @@ public class App {
             "- WASD/Arrows: Move\n" +
             "- Shift: Sprint (uses stamina; stop moving to recover)\n" +
             "- Space: Jump\n" +
-            "- K: Shoot\n" +
+            "- K: Shoot / Hold to charge bomb throws\n" +
             "- B: Switch Bullet Type (Normal / Flare / Bomb / Pierce / Homing / Ice / Laser / Seeker)\n" +
             "- T: Cycle Throttle\n" +
             "- C: Cycle Color\n" +
