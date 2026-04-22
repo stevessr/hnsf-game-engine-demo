@@ -41,9 +41,14 @@ public final class MapEditorController {
     private EditMode editMode = EditMode.SELECT;
     private Point dragOffset;
     private Point lastPaintPoint;
+    private Point dragStartPos;
+    private java.awt.Dimension dragStartSize;
+    private int resizeHandle = -1; // -1: none, 0: top-left, 1: top-right, 2: bottom-left, 3: bottom-right
     private Consumer<GameObject> selectionListener = object -> {
     };
     private Consumer<EditMode> modeChangeListener = mode -> {
+    };
+    private Runnable saveListener = () -> {
     };
     private final Deque<EditorCommand> undoStack = new ArrayDeque<>();
     private final Deque<EditorCommand> redoStack = new ArrayDeque<>();
@@ -66,6 +71,11 @@ public final class MapEditorController {
         } : modeChangeListener;
     }
 
+    public void setSaveListener(Runnable saveListener) {
+        this.saveListener = saveListener == null ? () -> {
+        } : saveListener;
+    }
+
     public void bind() {
         panel.addMouseListener(new MouseAdapter() {
             @Override
@@ -75,8 +85,7 @@ public final class MapEditorController {
 
             @Override
             public void mouseReleased(MouseEvent event) {
-                dragOffset = null;
-                lastPaintPoint = null;
+                handleMouseReleased(event);
             }
         });
         panel.addMouseMotionListener(new MouseAdapter() {
@@ -127,6 +136,7 @@ public final class MapEditorController {
 
     public void setSelectedObject(GameObject selectedObject) {
         this.selectedObject = selectedObject;
+        overlay.setSelectedObject(selectedObject);
         notifySelectionChanged();
     }
 
@@ -139,6 +149,7 @@ public final class MapEditorController {
             this.editMode = editMode;
             dragOffset = null;
             lastPaintPoint = null;
+            dragStartPos = null;
             overlay.setModeInfo(editMode.name());
             modeChangeListener.accept(editMode);
             panel.repaint();
@@ -174,6 +185,7 @@ public final class MapEditorController {
         GameObject removed = selectedObject;
         world.removeObject(removed);
         selectedObject = null;
+        overlay.setSelectedObject(null);
         notifySelectionChanged();
         pushCommand(new RemoveCommand(removed));
         panel.repaint();
@@ -187,8 +199,14 @@ public final class MapEditorController {
         if (sourceData == null) {
             return;
         }
+        
+        String name = sourceData.getName();
+        if (name.contains("-copy-")) {
+            name = name.substring(0, name.lastIndexOf("-copy-"));
+        }
+        sourceData.setName(name + "-copy-" + System.currentTimeMillis() % 10000);
+        
         int offset = gridSnap ? Math.max(1, gridSize) : 10;
-        sourceData.setName(sourceData.getName() + "-copy-" + System.currentTimeMillis());
         sourceData.setX(sourceData.getX() + offset);
         sourceData.setY(sourceData.getY() + offset);
         EditorBounds.Rect normalized = EditorBounds.normalizeRect(
@@ -209,6 +227,7 @@ public final class MapEditorController {
         }
         world.addObject(duplicated);
         selectedObject = duplicated;
+        overlay.setSelectedObject(duplicated);
         notifySelectionChanged();
         pushCommand(new AddCommand(duplicated));
         panel.repaint();
@@ -226,6 +245,8 @@ public final class MapEditorController {
         EditorCommand command = undoStack.pop();
         command.undo();
         redoStack.push(command);
+        overlay.setSelectedObject(selectedObject);
+        notifySelectionChanged();
         panel.repaint();
     }
 
@@ -236,6 +257,18 @@ public final class MapEditorController {
         EditorCommand command = redoStack.pop();
         command.redo();
         undoStack.push(command);
+        overlay.setSelectedObject(selectedObject);
+        notifySelectionChanged();
+        panel.repaint();
+    }
+
+    public void executePropertyChange(Runnable action, Runnable undoAction) {
+        if (action == null || undoAction == null) {
+            return;
+        }
+        PropertyCommand command = new PropertyCommand(action, undoAction);
+        command.redo();
+        pushCommand(command);
         panel.repaint();
     }
 
@@ -251,11 +284,26 @@ public final class MapEditorController {
             paintObjectAt(point);
             return;
         }
+
+        // Check for resize handles if an object is selected
+        if (selectedObject != null) {
+            resizeHandle = getResizeHandleAt(point);
+            if (resizeHandle != -1) {
+                dragStartPos = new Point(selectedObject.getX(), selectedObject.getY());
+                dragStartSize = new java.awt.Dimension(selectedObject.getWidth(), selectedObject.getHeight());
+                panel.repaint();
+                return;
+            }
+        }
+
         GameObject hit = findObjectAt(point);
         if (hit != null) {
             selectedObject = hit;
+            overlay.setSelectedObject(hit);
             notifySelectionChanged();
             dragOffset = new Point(point.x - hit.getX(), point.y - hit.getY());
+            dragStartPos = new Point(hit.getX(), hit.getY());
+            dragStartSize = new java.awt.Dimension(hit.getWidth(), hit.getHeight());
             panel.repaint();
             return;
         }
@@ -263,10 +311,41 @@ public final class MapEditorController {
         if (created != null) {
             world.addObject(created);
             selectedObject = created;
+            overlay.setSelectedObject(created);
             notifySelectionChanged();
             pushCommand(new AddCommand(created));
         }
         panel.repaint();
+    }
+
+    private void handleMouseReleased(MouseEvent event) {
+        if (selectedObject != null && dragStartPos != null) {
+            if (resizeHandle != -1) {
+                if (selectedObject.getX() != dragStartPos.x || selectedObject.getY() != dragStartPos.y ||
+                    selectedObject.getWidth() != dragStartSize.width || selectedObject.getHeight() != dragStartSize.height) {
+                    pushCommand(new ResizeCommand(
+                        selectedObject,
+                        dragStartPos.x, dragStartPos.y,
+                        dragStartSize.width, dragStartSize.height,
+                        selectedObject.getX(), selectedObject.getY(),
+                        selectedObject.getWidth(), selectedObject.getHeight()
+                    ));
+                }
+            } else if (selectedObject.getX() != dragStartPos.x || selectedObject.getY() != dragStartPos.y) {
+                pushCommand(new MoveCommand(
+                    selectedObject,
+                    dragStartPos.x,
+                    dragStartPos.y,
+                    selectedObject.getX(),
+                    selectedObject.getY()
+                ));
+            }
+        }
+        dragOffset = null;
+        lastPaintPoint = null;
+        dragStartPos = null;
+        dragStartSize = null;
+        resizeHandle = -1;
     }
 
     private void handleMouseDragged(MouseEvent event) {
@@ -279,9 +358,20 @@ public final class MapEditorController {
             eraseObjectAt(point);
             return;
         }
-        if (selectedObject == null || dragOffset == null) {
+        if (selectedObject == null) {
             return;
         }
+
+        if (resizeHandle != -1) {
+            handleResizeDragging(point);
+            panel.repaint();
+            return;
+        }
+
+        if (dragOffset == null) {
+            return;
+        }
+        
         int targetX = point.x - dragOffset.x;
         int targetY = point.y - dragOffset.y;
         if (gridSnap) {
@@ -289,16 +379,68 @@ public final class MapEditorController {
             targetY = snap(targetY, gridSize);
         }
         EditorBounds.Rect normalized = EditorBounds.normalizePosition(selectedObject, targetX, targetY, world.getWidth(), world.getHeight());
-        MoveCommand command = new MoveCommand(
-            selectedObject,
-            selectedObject.getX(),
-            selectedObject.getY(),
-            normalized.x(),
-            normalized.y()
-        );
-        command.redo();
-        pushCommand(command);
+        selectedObject.setPosition(normalized.x(), normalized.y());
         panel.repaint();
+    }
+
+    private int getResizeHandleAt(Point p) {
+        if (selectedObject == null) return -1;
+        int x = selectedObject.getX();
+        int y = selectedObject.getY();
+        int w = selectedObject.getWidth();
+        int h = selectedObject.getHeight();
+        int hs = 8; // Larger hit area for handles
+        
+        if (new Rectangle(x - hs, y - hs, hs * 2, hs * 2).contains(p)) return 0;
+        if (new Rectangle(x + w - hs, y - hs, hs * 2, hs * 2).contains(p)) return 1;
+        if (new Rectangle(x - hs, y + h - hs, hs * 2, hs * 2).contains(p)) return 2;
+        if (new Rectangle(x + w - hs, y + h - hs, hs * 2, hs * 2).contains(p)) return 3;
+        
+        return -1;
+    }
+
+    private void handleResizeDragging(Point p) {
+        int x = selectedObject.getX();
+        int y = selectedObject.getY();
+        int w = selectedObject.getWidth();
+        int h = selectedObject.getHeight();
+        
+        int px = gridSnap ? snap(p.x, gridSize) : p.x;
+        int py = gridSnap ? snap(p.y, gridSize) : p.y;
+        
+        int minSize = 4;
+        
+        switch (resizeHandle) {
+            case 0 -> { // Top-left
+                int newX = Math.min(px, x + w - minSize);
+                int newY = Math.min(py, y + h - minSize);
+                selectedObject.setPosition(newX, newY);
+                selectedObject.setSize(x + w - newX, y + h - newY);
+            }
+            case 1 -> { // Top-right
+                int newY = Math.min(py, y + h - minSize);
+                selectedObject.setPosition(x, newY);
+                selectedObject.setSize(Math.max(minSize, px - x), y + h - newY);
+            }
+            case 2 -> { // Bottom-left
+                int newX = Math.min(px, x + w - minSize);
+                selectedObject.setPosition(newX, y);
+                selectedObject.setSize(x + w - newX, Math.max(minSize, py - y));
+            }
+            case 3 -> { // Bottom-right
+                selectedObject.setSize(Math.max(minSize, px - x), Math.max(minSize, py - y));
+            }
+        }
+        
+        // Normalize bounds
+        EditorBounds.Rect norm = EditorBounds.normalizeRect(
+            selectedObject.getX(), selectedObject.getY(),
+            selectedObject.getWidth(), selectedObject.getHeight(),
+            world.getWidth(), world.getHeight()
+        );
+        selectedObject.setPosition(norm.x(), norm.y());
+        selectedObject.setSize(norm.width(), norm.height());
+        notifySelectionChanged();
     }
 
     private void paintObjectAt(Point point) {
@@ -317,6 +459,7 @@ public final class MapEditorController {
         }
         world.addObject(created);
         selectedObject = created;
+        overlay.setSelectedObject(created);
         notifySelectionChanged();
         pushCommand(new AddCommand(created));
         panel.repaint();
@@ -330,6 +473,7 @@ public final class MapEditorController {
         world.removeObject(hit);
         if (hit == selectedObject) {
             selectedObject = null;
+            overlay.setSelectedObject(null);
             notifySelectionChanged();
         }
         pushCommand(new RemoveCommand(hit));
@@ -339,6 +483,10 @@ public final class MapEditorController {
     private void handleKeyPressed(KeyEvent event) {
         if (event.isControlDown() && event.getKeyCode() == KeyEvent.VK_D) {
             duplicateSelected();
+            return;
+        }
+        if (event.isControlDown() && event.getKeyCode() == KeyEvent.VK_S) {
+            saveListener.run();
             return;
         }
         if (event.getKeyCode() == KeyEvent.VK_DELETE) {
@@ -478,8 +626,10 @@ public final class MapEditorController {
         if (selectedObject == null || (dx == 0 && dy == 0)) {
             return;
         }
-        int targetX = selectedObject.getX() + dx;
-        int targetY = selectedObject.getY() + dy;
+        int fromX = selectedObject.getX();
+        int fromY = selectedObject.getY();
+        int targetX = fromX + dx;
+        int targetY = fromY + dy;
         if (gridSnap) {
             targetX = snap(targetX, gridSize);
             targetY = snap(targetY, gridSize);
@@ -487,12 +637,11 @@ public final class MapEditorController {
         EditorBounds.Rect normalized = EditorBounds.normalizePosition(selectedObject, targetX, targetY, world.getWidth(), world.getHeight());
         targetX = normalized.x();
         targetY = normalized.y();
-        if (targetX == selectedObject.getX() && targetY == selectedObject.getY()) {
+        if (targetX == fromX && targetY == fromY) {
             return;
         }
-        MoveCommand command = new MoveCommand(selectedObject, selectedObject.getX(), selectedObject.getY(), targetX, targetY);
-        command.redo();
-        pushCommand(command);
+        selectedObject.setPosition(targetX, targetY);
+        pushCommand(new MoveCommand(selectedObject, fromX, fromY, targetX, targetY));
         panel.repaint();
     }
 
@@ -516,11 +665,17 @@ public final class MapEditorController {
         @Override
         public void undo() {
             world.removeObject(object);
+            if (selectedObject == object) {
+                selectedObject = null;
+                overlay.setSelectedObject(null);
+            }
         }
 
         @Override
         public void redo() {
             world.addObject(object);
+            selectedObject = object;
+            overlay.setSelectedObject(object);
         }
     }
 
@@ -534,11 +689,17 @@ public final class MapEditorController {
         @Override
         public void undo() {
             world.addObject(object);
+            selectedObject = object;
+            overlay.setSelectedObject(object);
         }
 
         @Override
         public void redo() {
             world.removeObject(object);
+            if (selectedObject == object) {
+                selectedObject = null;
+                overlay.setSelectedObject(null);
+            }
         }
     }
 
@@ -560,11 +721,71 @@ public final class MapEditorController {
         @Override
         public void undo() {
             object.setPosition(fromX, fromY);
+            selectedObject = object;
+            overlay.setSelectedObject(object);
         }
 
         @Override
         public void redo() {
             object.setPosition(toX, toY);
+            selectedObject = object;
+            overlay.setSelectedObject(object);
+        }
+    }
+
+    private final class ResizeCommand implements EditorCommand {
+        private final GameObject object;
+        private final int fromX, fromY, fromW, fromH;
+        private final int toX, toY, toW, toH;
+
+        private ResizeCommand(GameObject object, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH) {
+            this.object = object;
+            this.fromX = fromX; this.fromY = fromY;
+            this.fromW = fromW; this.fromH = fromH;
+            this.toX = toX; this.toY = toY;
+            this.toW = toW; this.toH = toH;
+        }
+
+        @Override
+        public void undo() {
+            object.setPosition(fromX, fromY);
+            object.setSize(fromW, fromH);
+            selectedObject = object;
+            overlay.setSelectedObject(object);
+            notifySelectionChanged();
+        }
+
+        @Override
+        public void redo() {
+            object.setPosition(toX, toY);
+            object.setSize(toW, toH);
+            selectedObject = object;
+            overlay.setSelectedObject(object);
+            notifySelectionChanged();
+        }
+    }
+
+    private final class PropertyCommand implements EditorCommand {
+        private final Runnable action;
+        private final Runnable undoAction;
+
+        private PropertyCommand(Runnable action, Runnable undoAction) {
+            this.action = action;
+            this.undoAction = undoAction;
+        }
+
+        @Override
+        public void undo() {
+            undoAction.run();
+            notifySelectionChanged();
+            panel.repaint();
+        }
+
+        @Override
+        public void redo() {
+            action.run();
+            notifySelectionChanged();
+            panel.repaint();
         }
     }
 }

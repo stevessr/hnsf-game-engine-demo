@@ -3,11 +3,13 @@ package lib.editor;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import lib.object.GameObject;
 
 public final class EditorOverlay {
     private boolean showGrid = true;
     private int gridSize = 20;
     private String modeInfo = "SELECT";
+    private GameObject selectedObject;
 
     public boolean isShowGrid() {
         return showGrid;
@@ -29,6 +31,10 @@ public final class EditorOverlay {
         this.modeInfo = modeInfo;
     }
 
+    public void setSelectedObject(GameObject selectedObject) {
+        this.selectedObject = selectedObject;
+    }
+
     public void render(Graphics2D graphics, int width, int height) {
         if (showGrid) {
             graphics.setColor(new Color(255, 255, 255, 20));
@@ -41,7 +47,24 @@ public final class EditorOverlay {
             }
         }
 
+        if (selectedObject != null) {
+            renderSelection(graphics);
+        }
+
         renderLegend(graphics, width, height);
+    }
+
+    private void renderSelection(Graphics2D g) {
+        g.setColor(new Color(255, 255, 0, 180));
+        g.setStroke(new BasicStroke(2f));
+        g.drawRect(selectedObject.getX() - 1, selectedObject.getY() - 1, selectedObject.getWidth() + 2, selectedObject.getHeight() + 2);
+        
+        // Handles for resizing (corners) - visual only for now
+        int hs = 6; // handle size
+        g.fillRect(selectedObject.getX() - hs/2, selectedObject.getY() - hs/2, hs, hs);
+        g.fillRect(selectedObject.getX() + selectedObject.getWidth() - hs/2, selectedObject.getY() - hs/2, hs, hs);
+        g.fillRect(selectedObject.getX() - hs/2, selectedObject.getY() + selectedObject.getHeight() - hs/2, hs, hs);
+        g.fillRect(selectedObject.getX() + selectedObject.getWidth() - hs/2, selectedObject.getY() + selectedObject.getHeight() - hs/2, hs, hs);
     }
 
     private void renderLegend(Graphics2D g, int width, int height) {
@@ -64,11 +87,13 @@ public final class EditorOverlay {
         line += 15;
         g.drawString("Ctrl+Z/Y: Undo/Redo", x + 10, line);
         line += 15;
+        g.drawString("Ctrl+S  : Save Map", x + 10, line);
+        line += 15;
         g.drawString("Ctrl+D  : Duplicate", x + 10, line);
         line += 15;
         g.drawString("Del     : Delete", x + 10, line);
         line += 15;
-        g.drawString("Arrows  : Nudge (Shift x10)", x + 10, line);
+        g.drawString("Arrows  : Nudge / Drag Corners", x + 10, line);
         line += 15;
         g.drawString("G/S/B/E : Toggle/Mode", x + 10, line);
     }

@@ -179,6 +179,7 @@ public final class EditorWindow extends JFrame {
             modeSelector.setSelectedItem(formatEditMode(mode));
             updatingControls = false;
         });
+        controller.setSaveListener(this::saveMap);
         refreshLevelSelector();
         updateWorldControlsFromWorld();
         updateInspectorFromSelection(null);
@@ -410,6 +411,7 @@ public final class EditorWindow extends JFrame {
 
     private void initActions() {
         typeSelector.addActionListener(event -> {
+            if (updatingControls) return;
             GameObjectType selected = (GameObjectType) typeSelector.getSelectedItem();
             if (selected != null) {
                 controller.setSelectedType(selected);
@@ -424,19 +426,30 @@ public final class EditorWindow extends JFrame {
         });
 
         colorButton.addActionListener(event -> {
-            Color chosen = JColorChooser.showDialog(this, "选择颜色", colorButton.getBackground());
+            if (updatingControls) return;
+            GameObject selected = controller.getSelectedObject();
+            if (selected == null) return;
+            Color oldColor = selected.getColor();
+            Color chosen = JColorChooser.showDialog(this, "选择颜色", oldColor);
             if (chosen != null) {
-                colorButton.setBackground(chosen);
-                colorButton.setOpaque(true);
-                controller.setBrushColor(chosen);
-                if (controller.getSelectedObject() != null) {
-                    controller.getSelectedObject().setColor(chosen);
-                    previewPanel.repaint();
-                }
+                controller.executePropertyChange(
+                    () -> {
+                        selected.setColor(chosen);
+                        colorButton.setBackground(chosen);
+                        controller.setBrushColor(chosen);
+                    },
+                    () -> {
+                        selected.setColor(oldColor);
+                        colorButton.setBackground(oldColor);
+                        controller.setBrushColor(oldColor);
+                    }
+                );
             }
         });
 
+        // Map Level properties
         levelSelector.addActionListener(event -> {
+            if (updatingControls) return;
             String selected = (String) levelSelector.getSelectedItem();
             if (selected != null && !selected.isBlank()) {
                 mapNameField.setText(selected);
@@ -444,34 +457,61 @@ public final class EditorWindow extends JFrame {
         });
 
         widthSpinner.addChangeListener(event -> {
-            if (updatingControls) {
-                return;
-            }
-            world.setSize((int) widthSpinner.getValue(), world.getHeight());
+            if (updatingControls) return;
+            int oldVal = world.getWidth();
+            int newVal = (int) widthSpinner.getValue();
+            if (oldVal == newVal) return;
+            world.setSize(newVal, world.getHeight());
             normalizeWorldObjectsWithinBounds();
             syncPreviewSize();
         });
         heightSpinner.addChangeListener(event -> {
-            if (updatingControls) {
-                return;
-            }
-            world.setSize(world.getWidth(), (int) heightSpinner.getValue());
+            if (updatingControls) return;
+            int oldVal = world.getHeight();
+            int newVal = (int) heightSpinner.getValue();
+            if (oldVal == newVal) return;
+            world.setSize(world.getWidth(), newVal);
             normalizeWorldObjectsWithinBounds();
             syncPreviewSize();
         });
+        
         gravityToggle.addActionListener(event -> {
-            if (updatingControls) {
-                return;
-            }
+            if (updatingControls) return;
             world.setGravityEnabled(gravityToggle.isSelected());
             previewPanel.repaint();
         });
         gravityStrengthSpinner.addChangeListener(event -> {
-            if (updatingControls) {
-                return;
-            }
+            if (updatingControls) return;
             world.setGravityStrength((int) gravityStrengthSpinner.getValue());
         });
+
+        // Inspector properties
+        xSpinner.addChangeListener(e -> syncPosition());
+        ySpinner.addChangeListener(e -> syncPosition());
+        wSpinner.addChangeListener(e -> syncSize());
+        hSpinner.addChangeListener(e -> syncSize());
+
+        texturePathField.addActionListener(e -> {
+            if (updatingControls) return;
+            GameObject selected = controller.getSelectedObject();
+            if (selected instanceof BaseObject bo) {
+                bo.setTexturePath(texturePathField.getText().isBlank() ? null : texturePathField.getText());
+            }
+        });
+        materialField.addActionListener(e -> {
+            if (updatingControls) return;
+            GameObject selected = controller.getSelectedObject();
+            if (selected instanceof BaseObject bo) {
+                bo.setMaterial(materialField.getText().isBlank() ? null : materialField.getText());
+            }
+        });
+
+        addActorListeners();
+        addMonsterListeners();
+        addSceneListeners();
+        addItemListeners();
+        addPlayerListeners();
+
         backgroundModeSelector.addActionListener(event -> {
             if (updatingControls) {
                 return;
@@ -569,54 +609,185 @@ public final class EditorWindow extends JFrame {
             }
             previewPanel.repaint();
         });
-        destructibleToggle.addActionListener(event -> {
-            if (updatingControls) {
-                return;
+    }
+
+    private void syncPosition() {
+        if (updatingControls) return;
+        GameObject selected = controller.getSelectedObject();
+        if (selected == null) return;
+        int nx = (int) xSpinner.getValue();
+        int ny = (int) ySpinner.getValue();
+        if (selected.getX() == nx && selected.getY() == ny) return;
+        selected.setPosition(nx, ny);
+        previewPanel.repaint();
+    }
+
+    private void syncSize() {
+        if (updatingControls) return;
+        GameObject selected = controller.getSelectedObject();
+        if (selected == null) return;
+        int nw = (int) wSpinner.getValue();
+        int nh = (int) hSpinner.getValue();
+        if (selected.getWidth() == nw && selected.getHeight() == nh) return;
+        selected.setSize(nw, nh);
+        previewPanel.repaint();
+    }
+
+    private void addActorListeners() {
+        healthSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof ActorObject actor) {
+                actor.setHealth((int) healthSpinner.getValue());
             }
-            durabilitySpinner.setEnabled(destructibleToggle.isSelected() && controller.getSelectedObject() instanceof SceneObject);
         });
-        rangedAttackToggle.addActionListener(event -> {
-            if (updatingControls) {
-                return;
-            }
-            boolean enabled = rangedAttackToggle.isSelected() && controller.getSelectedObject() instanceof MonsterObject;
-            shootRangeSpinner.setEnabled(enabled);
-            projectileSpeedSpinner.setEnabled(enabled);
-            shootCooldownSpinner.setEnabled(enabled);
-        });
-        monsterKindSelector.addActionListener(event -> {
-            if (updatingControls) {
-                return;
-            }
-            GameObject selected = controller.getSelectedObject();
-            if (selected instanceof MonsterObject monster) {
-                MonsterKind kind = (MonsterKind) monsterKindSelector.getSelectedItem();
-                if (kind != null) {
-                    monsterGravitySpinner.setValue(kind.getDefaultGravityPercent());
-                }
-                monsterGravitySpinner.setEnabled(true);
-                monsterRevivableToggle.setEnabled(true);
-                monsterReviveDelaySpinner.setEnabled(monsterRevivableToggle.isSelected());
+        attackSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof ActorObject actor) {
+                actor.setAttack((int) attackSpinner.getValue());
             }
         });
-        monsterGravitySpinner.addChangeListener(event -> {
-            if (updatingControls) {
-                return;
+        speedSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof ActorObject actor) {
+                actor.setSpeed((int) speedSpinner.getValue());
             }
-            monsterGravitySpinner.setEnabled(controller.getSelectedObject() instanceof MonsterObject);
         });
-        monsterRevivableToggle.addActionListener(event -> {
-            if (updatingControls) {
-                return;
+    }
+
+    private void addMonsterListeners() {
+        monsterHealDropSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof MonsterObject monster) {
+                monster.setHealDropAmount((int) monsterHealDropSpinner.getValue());
             }
-            monsterReviveDelaySpinner.setEnabled(monsterRevivableToggle.isSelected() && controller.getSelectedObject() instanceof MonsterObject);
         });
-        collapseToggle.addActionListener(event -> {
-            if (updatingControls) {
-                return;
+        rangedAttackToggle.addActionListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof MonsterObject monster) {
+                monster.setRangedAttacker(rangedAttackToggle.isSelected());
+                updateInspectorFromSelection(monster);
             }
-            boolean enabled = collapseToggle.isSelected() && controller.getSelectedObject() instanceof SceneObject;
-            collapseDamageSpinner.setEnabled(enabled);
+        });
+        shootRangeSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof MonsterObject monster) {
+                monster.setShootRange((int) shootRangeSpinner.getValue());
+            }
+        });
+        projectileSpeedSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof MonsterObject monster) {
+                monster.setProjectileSpeed((int) projectileSpeedSpinner.getValue());
+            }
+        });
+        shootCooldownSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof MonsterObject monster) {
+                monster.setShootCooldown(((Number) shootCooldownSpinner.getValue()).doubleValue());
+            }
+        });
+        monsterKindSelector.addActionListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof MonsterObject monster) {
+                monster.setMonsterKind((MonsterKind) monsterKindSelector.getSelectedItem());
+                updateInspectorFromSelection(monster);
+            }
+        });
+        monsterGravitySpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof MonsterObject monster) {
+                monster.setGravityPercent((int) monsterGravitySpinner.getValue());
+            }
+        });
+        monsterRevivableToggle.addActionListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof MonsterObject monster) {
+                monster.setRevivable(monsterRevivableToggle.isSelected());
+                updateInspectorFromSelection(monster);
+            }
+        });
+        monsterReviveDelaySpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof MonsterObject monster) {
+                monster.setReviveDelaySeconds(((Number) monsterReviveDelaySpinner.getValue()).doubleValue());
+            }
+        });
+    }
+
+    private void addSceneListeners() {
+        destructibleToggle.addActionListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof SceneObject scene) {
+                scene.setDestructible(destructibleToggle.isSelected());
+                updateInspectorFromSelection(scene);
+            }
+        });
+        durabilitySpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof SceneObject scene) {
+                scene.setDurability((int) durabilitySpinner.getValue());
+            }
+        });
+        collapseToggle.addActionListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof SceneObject scene) {
+                scene.setCollapseWhenUnsupported(collapseToggle.isSelected());
+                updateInspectorFromSelection(scene);
+            }
+        });
+        collapseDamageSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof SceneObject scene) {
+                scene.setCollapseDamage((int) collapseDamageSpinner.getValue());
+            }
+        });
+        breakAfterStepsSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof SceneObject scene) {
+                scene.setBreakAfterSteps((int) breakAfterStepsSpinner.getValue());
+            }
+        });
+    }
+
+    private void addItemListeners() {
+        itemKindField.addActionListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof ItemObject item) {
+                item.setKind(itemKindField.getText());
+            }
+        });
+        itemValueSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof ItemObject item) {
+                item.setValue((int) itemValueSpinner.getValue());
+            }
+        });
+        itemMessageField.addActionListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof ItemObject item) {
+                item.setMessage(itemMessageField.getText());
+            }
+        });
+    }
+
+    private void addPlayerListeners() {
+        damageToggle.addActionListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof PlayerObject player) {
+                player.setComplementaryColorDamageEnabled(damageToggle.isSelected());
+            }
+        });
+        damageSpinner.addChangeListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof PlayerObject player) {
+                player.setComplementaryColorDamage((int) damageSpinner.getValue());
+            }
+        });
+        projectileTypeSelector.addActionListener(e -> {
+            if (updatingControls) return;
+            if (controller.getSelectedObject() instanceof PlayerObject player) {
+                player.setProjectileType((ProjectileType) projectileTypeSelector.getSelectedItem());
+            }
         });
     }
 
