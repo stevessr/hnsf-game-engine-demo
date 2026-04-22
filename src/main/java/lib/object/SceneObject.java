@@ -1,7 +1,11 @@
 package lib.object;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.util.List;
 import java.util.Locale;
 
@@ -173,6 +177,10 @@ public class SceneObject extends BaseObject {
             renderTree(graphics);
             return;
         }
+        if (isSignLike()) {
+            renderSign(graphics);
+            return;
+        }
         boolean rendered = SpriteAssets.drawScene(graphics, this);
         if (!rendered) {
             graphics.setColor(getColor());
@@ -277,6 +285,75 @@ public class SceneObject extends BaseObject {
         }
         String name = getName();
         return name != null && name.toLowerCase(Locale.ROOT).contains("tree");
+    }
+
+    private boolean isSignLike() {
+        String material = getMaterial();
+        if (material != null && "sign".equalsIgnoreCase(material)) {
+            return true;
+        }
+        String name = getName();
+        return name != null && name.toLowerCase(Locale.ROOT).contains("sign");
+    }
+
+    private void renderSign(Graphics2D graphics) {
+        Graphics2D g2d = (Graphics2D) graphics.create();
+        try {
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            int x = getX();
+            int y = getY();
+            int width = Math.max(96, getWidth());
+            int height = Math.max(72, getHeight());
+            int boardHeight = Math.max(42, height - 20);
+            int postWidth = Math.max(8, width / 12);
+            int postX = x + width / 2 - postWidth / 2;
+
+            Color wood = getColor() == null ? new Color(126, 90, 54) : getColor();
+            Color woodDark = new Color(
+                Math.max(0, wood.getRed() - 28),
+                Math.max(0, wood.getGreen() - 24),
+                Math.max(0, wood.getBlue() - 20),
+                255
+            );
+            Color boardFace = new Color(245, 228, 182, 236);
+
+            g2d.setColor(woodDark);
+            g2d.fillRoundRect(postX, y + boardHeight - 4, postWidth, height - boardHeight + 12, 6, 6);
+            g2d.fillRoundRect(x + 4, y + 6, width, boardHeight, 14, 14);
+
+            g2d.setColor(boardFace);
+            g2d.fillRoundRect(x, y, width, boardHeight, 14, 14);
+            g2d.setColor(new Color(255, 255, 255, 54));
+            g2d.fillRoundRect(x + 3, y + 3, width - 6, Math.max(12, boardHeight / 3), 12, 12);
+            g2d.setColor(woodDark);
+            g2d.setStroke(new BasicStroke(2.0f));
+            g2d.drawRoundRect(x, y, width, boardHeight, 14, 14);
+
+            String rawText = getTexturePath();
+            if (rawText == null || rawText.isBlank()) {
+                rawText = getName();
+            }
+            String[] lines = rawText == null ? new String[]{"Guide"} : rawText.split("\\|");
+            Font titleFont = new Font("SansSerif", Font.BOLD, Math.max(11, Math.min(15, width / 11)));
+            Font bodyFont = new Font("SansSerif", Font.PLAIN, Math.max(10, Math.min(13, width / 13)));
+            int currentY = y + 16;
+
+            for (int index = 0; index < lines.length && index < 3; index++) {
+                String line = lines[index] == null ? "" : lib.utils.Unicode2Gbk.convert(lines[index].trim());
+                Font font = index == 0 ? titleFont : bodyFont;
+                g2d.setFont(font);
+                FontMetrics metrics = g2d.getFontMetrics(font);
+                int textX = x + Math.max(10, (width - metrics.stringWidth(line)) / 2);
+                currentY += metrics.getAscent();
+                g2d.setColor(index == 0 ? new Color(70, 52, 24) : new Color(82, 70, 44));
+                g2d.drawString(line, textX, currentY);
+                currentY += Math.max(4, metrics.getDescent());
+            }
+        } finally {
+            g2d.dispose();
+        }
     }
 
     private void renderTree(Graphics2D graphics) {

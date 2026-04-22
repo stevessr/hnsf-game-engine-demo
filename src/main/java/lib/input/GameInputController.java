@@ -326,15 +326,7 @@ public final class GameInputController {
         if (!isInsideMenu(menu, mx, my)) {
             return -1;
         }
-        int optionStartY = menu.getOptionStartY();
-        int optionHeight = menu.getOptionLineHeight();
-        int relativeY = my - optionStartY;
-        int hoveredIndex = relativeY / optionHeight;
-
-        if (hoveredIndex < 0 || hoveredIndex >= menu.getOptions().size()) {
-            return -1;
-        }
-        return hoveredIndex;
+        return menu.findOptionIndexAt(mx, my);
     }
 
     private boolean isInsideMenu(MenuObject menu, int mouseX, int mouseY) {

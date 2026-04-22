@@ -937,6 +937,61 @@ class GameObjectModelTest {
     }
 
     @Test
+    void menuShouldSupportMultiColumnLayoutAndMouseHitDetection() {
+        MenuObject menu = new MenuObject(
+            "options-menu",
+            20,
+            20,
+            720,
+            280,
+            "Options",
+            List.of(
+                "Sound", "Master Audio", "Damage Audio", "Shoot Audio",
+                "Menu Audio", "Effect Audio", "Resolution", "FPS",
+                "Throttle", "Deceleration", "Gravity", "Lighting",
+                "Ambient", "Intensity", "UI Font", "Back"
+            )
+        );
+        menu.setOptionColumns(2);
+        menu.setSize(720, menu.getPreferredHeight());
+
+        assertEquals(8, menu.getOptionRows());
+        assertTrue(menu.getPreferredHeight() < 400, "双列布局应显著减少菜单高度");
+
+        var firstOption = menu.getOptionBounds(0);
+        var secondColumnFirstOption = menu.getOptionBounds(8);
+        assertTrue(secondColumnFirstOption.x > firstOption.x, "第二列应位于第一列右侧");
+        assertEquals(0, menu.findOptionIndexAt(firstOption.x + 12, firstOption.y + 12));
+        assertEquals(8, menu.findOptionIndexAt(secondColumnFirstOption.x + 12, secondColumnFirstOption.y + 12));
+    }
+
+    @Test
+    void menuShouldScrollLargeOptionListsWithoutGrowingFullscreen() {
+        MenuObject menu = new MenuObject(
+            "level-select-menu",
+            20,
+            20,
+            420,
+            220,
+            "Select Level",
+            List.of(
+                "tutorial", "demo-map", "level-1", "level-2", "level-3",
+                "level-4", "air-raid-demo", "showcase-demo", "procedural-forest",
+                "procedural-cave", "seed-101", "seed-202", "seed-303", "Back"
+            )
+        );
+        menu.setMaxVisibleRows(6);
+        menu.setSize(420, menu.getPreferredHeight());
+
+        assertEquals(6, menu.getVisibleRowCount());
+        assertTrue(menu.getPreferredHeight() < 320, "滚动列表应保持紧凑高度");
+
+        menu.setSelectedIndex(10);
+        assertTrue(menu.getScrollOffset() > 0, "选中超出可视范围的项目时应自动滚动");
+        assertEquals(10, menu.findOptionIndexAt(menu.getOptionBounds(10).x + 10, menu.getOptionBounds(10).y + 10));
+    }
+
+    @Test
     void uiObjectsShouldRenderTheirPanels() {
         MenuObject menu = new MenuObject("menu", 10, 10, 120, 80, "Main", List.of("Start"));
         DialogObject dialog = new DialogObject("dialog", 20, 60, 140, 50, "Guide", "Hello");

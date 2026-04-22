@@ -21,6 +21,8 @@ public final class MenuObject extends BaseObject {
     private int hoveredIndex;
     private int fontSize;
     private int optionColumns;
+    private int maxVisibleRows;
+    private int scrollOffset;
 
     public MenuObject(String name, int x, int y, int width, int height, String title, List<String> options) {
         super(GameObjectType.MENU, name, x, y, width, height, new Color(28, 32, 45, 230), true);
@@ -31,6 +33,8 @@ public final class MenuObject extends BaseObject {
         this.hoveredIndex = -1;
         this.fontSize = 18;
         this.optionColumns = 1;
+        this.maxVisibleRows = Integer.MAX_VALUE;
+        this.scrollOffset = 0;
     }
 
     public String getTitle() {
@@ -57,6 +61,8 @@ public final class MenuObject extends BaseObject {
         this.options = normalizeOptions(options);
         this.selectedIndex = clampIndex(selectedIndex);
         this.hoveredIndex = hoveredIndex < 0 ? -1 : clampIndex(hoveredIndex);
+        clampScrollOffset();
+        ensureSelectedVisible();
     }
 
     public int getSelectedIndex() {
@@ -65,6 +71,7 @@ public final class MenuObject extends BaseObject {
 
     public void setSelectedIndex(int selectedIndex) {
         this.selectedIndex = clampIndex(selectedIndex);
+        ensureSelectedVisible();
     }
 
     public int getHoveredIndex() {
@@ -93,6 +100,27 @@ public final class MenuObject extends BaseObject {
 
     public void setOptionColumns(int optionColumns) {
         this.optionColumns = Math.max(1, Math.min(4, optionColumns));
+        clampScrollOffset();
+        ensureSelectedVisible();
+    }
+
+    public int getMaxVisibleRows() {
+        return maxVisibleRows;
+    }
+
+    public void setMaxVisibleRows(int maxVisibleRows) {
+        this.maxVisibleRows = maxVisibleRows <= 0 ? Integer.MAX_VALUE : maxVisibleRows;
+        clampScrollOffset();
+        ensureSelectedVisible();
+    }
+
+    public int getScrollOffset() {
+        return scrollOffset;
+    }
+
+    public void setScrollOffset(int scrollOffset) {
+        this.scrollOffset = scrollOffset;
+        clampScrollOffset();
     }
 
     public int getTitleAreaHeight() {
@@ -112,11 +140,15 @@ public final class MenuObject extends BaseObject {
     }
 
     public int getPreferredHeight() {
-        return getTitleAreaHeight() + (getOptionRows() * getOptionLineHeight()) + 18;
+        return getTitleAreaHeight() + (getVisibleRowCount() * getOptionLineHeight()) + 18;
     }
 
     public int getOptionRows() {
         return Math.max(1, (options.size() + optionColumns - 1) / optionColumns);
+    }
+
+    public int getVisibleRowCount() {
+        return Math.max(1, Math.min(getOptionRows(), maxVisibleRows));
     }
 
     public Rectangle getOptionBounds(int index) {
@@ -126,17 +158,23 @@ public final class MenuObject extends BaseObject {
         int rows = getOptionRows();
         int column = index / rows;
         int row = index % rows;
+        int visibleRow = row - scrollOffset;
+        if (visibleRow < 0 || visibleRow >= getVisibleRowCount()) {
+            return new Rectangle();
+        }
         int gap = getOptionColumnGap();
-        int buttonWidth = Math.max(120, (getWidth() - 24 - gap * (optionColumns - 1)) / optionColumns);
+        int scrollBarAllowance = hasVerticalScrollBar() ? 18 : 0;
+        int buttonWidth = Math.max(120, (getWidth() - 24 - gap * (optionColumns - 1) - scrollBarAllowance) / optionColumns);
         int buttonHeight = getOptionLineHeight() - 6;
         int buttonX = getX() + 12 + column * (buttonWidth + gap);
-        int buttonY = getOptionStartY() + row * getOptionLineHeight() + 2;
+        int buttonY = getOptionStartY() + visibleRow * getOptionLineHeight() + 2;
         return new Rectangle(buttonX, buttonY, buttonWidth, buttonHeight);
     }
 
     public int findOptionIndexAt(int mouseX, int mouseY) {
         for (int index = 0; index < options.size(); index++) {
-            if (getOptionBounds(index).contains(mouseX, mouseY)) {
+            Rectangle bounds = getOptionBounds(index);
+            if (!bounds.isEmpty() && bounds.contains(mouseX, mouseY)) {
                 return index;
             }
         }
@@ -144,11 +182,11 @@ public final class MenuObject extends BaseObject {
     }
 
     public void nextOption() {
-        selectedIndex = (selectedIndex + 1) % options.size();
+        setSelectedIndex((selectedIndex + 1) % options.size());
     }
 
     public void previousOption() {
-        selectedIndex = (selectedIndex - 1 + options.size()) % options.size();
+        setSelectedIndex((selectedIndex - 1 + options.size()) % options.size());
     }
 
     @Override
@@ -244,6 +282,9 @@ public final class MenuObject extends BaseObject {
                 boolean isSelected = index == selectedIndex;
                 boolean isHovered = index == hoveredIndex;
                 Rectangle bounds = getOptionBounds(index);
+                if (bounds.isEmpty()) {
+                    continue;
+                }
                 int buttonX = bounds.x;
                 int buttonY = bounds.y;
                 int buttonWidth = bounds.width;
@@ -284,8 +325,8 @@ public final class MenuObject extends BaseObject {
                 ));
                 g2d.fillRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 16, 16);
 
-	                g2d.setColor(new Color(255, 255, 255, isHovered || isSelected ? 112 : 48));
-	                g2d.drawRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 16, 16);
+                g2d.setColor(new Color(255, 255, 255, isHovered || isSelected ? 112 : 48));
+                g2d.drawRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 16, 16);
 
                 int textX = buttonX + 16;
                 if (isSelected) {
@@ -305,6 +346,7 @@ public final class MenuObject extends BaseObject {
                 g2d.drawString(options.get(index), textX, textY);
                 g2d.setClip(previousClip);
             }
+            renderScrollBar(g2d);
         } finally {
             g2d.setFont(originalFont);
             g2d.dispose();
@@ -346,6 +388,47 @@ public final class MenuObject extends BaseObject {
 
     private int getOptionColumnGap() {
         return optionColumns > 1 ? 14 : 0;
+    }
+
+    private boolean hasVerticalScrollBar() {
+        return getOptionRows() > getVisibleRowCount();
+    }
+
+    private void clampScrollOffset() {
+        int maxScroll = Math.max(0, getOptionRows() - getVisibleRowCount());
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
+    }
+
+    private void ensureSelectedVisible() {
+        int rows = getOptionRows();
+        int visibleRows = getVisibleRowCount();
+        int selectedRow = clampIndex(selectedIndex) % rows;
+        if (selectedRow < scrollOffset) {
+            scrollOffset = selectedRow;
+        } else if (selectedRow >= scrollOffset + visibleRows) {
+            scrollOffset = selectedRow - visibleRows + 1;
+        }
+        clampScrollOffset();
+    }
+
+    private void renderScrollBar(Graphics2D graphics) {
+        if (!hasVerticalScrollBar()) {
+            return;
+        }
+        int totalRows = getOptionRows();
+        int visibleRows = getVisibleRowCount();
+        int trackX = getX() + getWidth() - 14;
+        int trackY = getOptionStartY() + 8;
+        int trackHeight = Math.max(40, visibleRows * getOptionLineHeight() - 12);
+        int thumbHeight = Math.max(24, (int) Math.round(trackHeight * (visibleRows / (double) totalRows)));
+        int maxScroll = Math.max(1, totalRows - visibleRows);
+        int thumbTravel = Math.max(0, trackHeight - thumbHeight);
+        int thumbY = trackY + (int) Math.round((scrollOffset / (double) maxScroll) * thumbTravel);
+
+        graphics.setColor(new Color(255, 255, 255, 28));
+        graphics.fillRoundRect(trackX, trackY, 6, trackHeight, 6, 6);
+        graphics.setColor(new Color(140, 220, 255, 138));
+        graphics.fillRoundRect(trackX, thumbY, 6, thumbHeight, 6, 6);
     }
 
     private Color resolveAccentColor() {

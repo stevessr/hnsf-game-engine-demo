@@ -741,16 +741,30 @@ public final class SwingGamePanel extends JPanel implements GameSettings {
             world.renderWorldLayer(graphics2d);
             renderStateBackdrop(graphics2d, viewW, viewH);
             world.renderUiLayer(graphics2d);
-            hintsOverlay.render(graphics2d, viewW, viewH, world, aiTestManager.isEnabled());
+            if (shouldRenderGameplayHud(world)) {
+                hintsOverlay.render(graphics2d, viewW, viewH, world, aiTestManager.isEnabled());
+            }
             
             if (debugEnabled) {
                 debugManager.render(graphics2d, world, viewW, viewH);
             }
-            minimapOverlay.render(graphics2d, world, viewW, viewH);
-            goalOverlay.render(graphics2d, world, viewW, viewH);
+            if (shouldRenderGameplayHud(world)) {
+                minimapOverlay.render(graphics2d, world, viewW, viewH);
+                goalOverlay.render(graphics2d, world, viewW, viewH);
+            }
         } finally {
             graphics2d.dispose();
         }
+    }
+
+    private boolean shouldRenderGameplayHud(GameWorld currentWorld) {
+        if (currentWorld == null) {
+            return false;
+        }
+        return switch (currentWorld.getCurrentState()) {
+            case MENU, PAUSED -> false;
+            default -> true;
+        };
     }
 
     private void renderStateBackdrop(Graphics2D graphics, int viewWidth, int viewHeight) {

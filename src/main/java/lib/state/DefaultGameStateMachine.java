@@ -494,7 +494,8 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         removeMenu(world, OPTIONS_MENU_NAME);
         world.getObjectsByType(GameObjectType.MENU).stream().filter(GameObject::isActive).forEach(obj -> obj.setActive(false));
 
-        int menuWidth = 320;
+        int viewWidth = resolveViewportWidth(world);
+        int viewHeight = resolveViewportHeight(world);
         int fontSize = settings != null ? settings.getUIFontSize() : 18;
         int lineHeight = Math.max(20, fontSize + 8);
         int throttle = settings != null ? settings.getThrottlePower() : 600;
@@ -528,11 +529,26 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         options.add("UI Font: " + fontSize);
         options.add("Key Bindings");
         options.add("Back");
-        int menuHeight = Math.max(280, 56 + (options.size() * lineHeight) + 12);
 
-        MenuObject optionsMenu = new MenuObject(OPTIONS_MENU_NAME, 0, 0, menuWidth, menuHeight, "Options", options);
+        int optionColumns = 1;
+        int maxMenuHeight = Math.max(280, viewHeight - 48);
+        while (optionColumns < 3) {
+            int rows = Math.max(1, (options.size() + optionColumns - 1) / optionColumns);
+            int estimatedHeight = Math.max(280, 56 + (rows * lineHeight) + 12);
+            if (estimatedHeight <= maxMenuHeight) {
+                break;
+            }
+            optionColumns++;
+        }
+
+        int menuWidth = optionColumns > 1
+            ? Math.max(520, Math.min(viewWidth - 48, 760))
+            : Math.max(340, Math.min(viewWidth - 64, 420));
+        MenuObject optionsMenu = new MenuObject(OPTIONS_MENU_NAME, 0, 0, menuWidth, maxMenuHeight, "Options", options);
         optionsMenu.setFontSize(fontSize);
-        optionsMenu.setSize(menuWidth, Math.max(menuHeight, optionsMenu.getPreferredHeight()));
+        optionsMenu.setOptionColumns(optionColumns);
+        int menuHeight = Math.min(maxMenuHeight, Math.max(280, optionsMenu.getPreferredHeight()));
+        optionsMenu.setSize(menuWidth, menuHeight);
         world.addObject(optionsMenu);
         recenterUI(world);
     }
@@ -1154,14 +1170,7 @@ public final class DefaultGameStateMachine implements GameStateMachine {
         if (!isInsideMenu(menu, mouseX, mouseY)) {
             return -1;
         }
-        int optionStartY = menu.getOptionStartY();
-        int optionHeight = menu.getOptionLineHeight();
-        int relativeY = mouseY - optionStartY;
-        int hoveredIndex = relativeY / optionHeight;
-        if (hoveredIndex < 0 || hoveredIndex >= menu.getOptions().size()) {
-            return -1;
-        }
-        return hoveredIndex;
+        return menu.findOptionIndexAt(mouseX, mouseY);
     }
 
     private boolean isInsideMenu(MenuObject menu, int mouseX, int mouseY) {

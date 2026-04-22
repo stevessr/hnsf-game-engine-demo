@@ -184,6 +184,21 @@ class LevelManagerAndItemTest {
                 .anyMatch(SceneObject::isCollapseWhenUnsupported),
             "展示关卡应包含失去支撑后会坍塌的结构"
         );
+        assertTrue(
+            showcaseWorld.getObjects().stream()
+                .filter(SceneObject.class::isInstance)
+                .map(SceneObject.class::cast)
+                .filter(scene -> "sign".equalsIgnoreCase(scene.getMaterial()))
+                .count() >= 6,
+            "展示关卡应包含分区说明牌"
+        );
+        MonsterObject bossDragon = showcaseWorld.getObjectsByType(GameObjectType.MONSTER).stream()
+            .filter(MonsterObject.class::isInstance)
+            .map(MonsterObject.class::cast)
+            .filter(monster -> monster.getMonsterKind() == MonsterKind.DRAGON)
+            .findFirst()
+            .orElseThrow();
+        assertTrue(bossDragon.getX() >= 4000, "龙应位于关卡末段的专属 Boss 展示区");
     }
 
     @Test

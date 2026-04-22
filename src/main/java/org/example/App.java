@@ -45,6 +45,8 @@ public class App {
     private static final int DEFAULT_WIDTH = 960;
     private static final int DEFAULT_HEIGHT = 540;
     private static final String DEFAULT_START_MAP = "tutorial";
+    private static final String GAME_TITLE = "暮光之旅";
+    private static final String GAME_SUBTITLE = "Twilight Journey";
     private static final String MAIN_MENU_NAME = "main-menu";
     private static final String LEVEL_SELECT_MENU_NAME = "level-select-menu";
     private static final String PAUSE_MENU_NAME = "pause-menu";
@@ -77,7 +79,7 @@ public class App {
 
         GameWorld world = loadGameWorld(repository, levelManager, DEFAULT_START_MAP, 18);
         SwingGamePanel panel = new SwingGamePanel(world);
-        JFrame frame = new JFrame("Primary Software Game Demo");
+        JFrame frame = new JFrame(GAME_TITLE + " · " + GAME_SUBTITLE);
         
         setupMainFrame(frame, panel, world, repository, levelManager, activeLevelName);
         frame.setVisible(true);
@@ -160,7 +162,8 @@ public class App {
         JMenu helpMenu = new JMenu("帮助 (Help)");
         JMenuItem aboutItem = new JMenuItem("关于 (About)");
         aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(frame, 
-            "Primary Software Game Engine Prototype\n\n" +
+            GAME_TITLE + " (" + GAME_SUBTITLE + ")\n\n" +
+            "Fantasy action adventure prototype\n\n" +
             "Controls:\n" +
             "- WASD/Arrows: Move\n" +
             "- Shift: Sprint (uses stamina; stop moving to recover)\n" +
@@ -607,8 +610,8 @@ public class App {
 
     private static MenuObject createMainMenu(GameWorld world, boolean active, int uiFontSize) {
         List<String> options = List.of("Start", "Levels", "Generate Forest", "Generate Cave", "Editor", "Options", "Exit");
-        MenuObject menu = new MenuObject(MAIN_MENU_NAME, 24, 24, 260, 180, "Primary Software", options);
-        menu.setSubtitle("Adventure Prototype");
+        MenuObject menu = new MenuObject(MAIN_MENU_NAME, 24, 24, 260, 180, GAME_TITLE, options);
+        menu.setSubtitle(GAME_SUBTITLE);
         menu.setActive(active);
         menu.setSelectedIndex(0);
         menu.setFontSize(uiFontSize);
@@ -627,11 +630,13 @@ public class App {
         }
         options.add("Back");
         int maxOptionLength = options.stream().mapToInt(s -> s == null ? 0 : s.length()).max().orElse(12);
-        MenuObject menu = new MenuObject(LEVEL_SELECT_MENU_NAME, 24, 24, Math.max(320, 18 * maxOptionLength), 180, "Select Level", options);
+        int menuWidth = Math.max(360, Math.min(560, 16 * maxOptionLength));
+        MenuObject menu = new MenuObject(LEVEL_SELECT_MENU_NAME, 24, 24, menuWidth, 180, "Select Level", options);
         menu.setActive(active);
         menu.setSelectedIndex(0);
         menu.setFontSize(uiFontSize);
-        menu.setSize(menu.getWidth(), Math.max(180, menu.getPreferredHeight()));
+        menu.setMaxVisibleRows(10);
+        menu.setSize(menu.getWidth(), Math.max(220, menu.getPreferredHeight()));
         centerMenu(menu, world);
         return menu;
     }
