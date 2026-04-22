@@ -43,6 +43,7 @@ import lib.object.MonsterKind;
 import lib.object.PlayerObject;
 import lib.object.SceneObject;
 import lib.object.dto.MapBackgroundMode;
+import lib.object.dto.MapBackgroundPreset;
 import lib.persistence.MapDataMapper;
 import lib.persistence.MapRepository;
 
@@ -63,6 +64,7 @@ public final class EditorWindow extends JFrame {
     private final JComboBox<WinConditionType> winConditionSelector;
     private final JSpinner targetKillsSpinner;
     private final JSpinner targetItemsSpinner;
+    private final JComboBox<MapBackgroundPreset> backgroundPresetSelector;
     private final JComboBox<MapBackgroundMode> backgroundModeSelector;
     private final JButton backgroundColorButton;
     private final JTextField backgroundImageField;
@@ -122,6 +124,7 @@ public final class EditorWindow extends JFrame {
         this.winConditionSelector = new JComboBox<>(WinConditionType.values());
         this.targetKillsSpinner = new JSpinner(new SpinnerNumberModel(world.getTargetKills(), 0, 999, 1));
         this.targetItemsSpinner = new JSpinner(new SpinnerNumberModel(world.getTargetItems(), 0, 999, 1));
+        this.backgroundPresetSelector = new JComboBox<>(MapBackgroundPreset.values());
         this.backgroundModeSelector = new JComboBox<>(MapBackgroundMode.values());
         this.backgroundColorButton = new JButton("背景颜色");
         this.backgroundColorButton.setOpaque(true);
@@ -225,6 +228,8 @@ public final class EditorWindow extends JFrame {
         form.add(widthSpinner);
         form.add(new JLabel("高度"));
         form.add(heightSpinner);
+        form.add(new JLabel("预设风格"));
+        form.add(backgroundPresetSelector);
         form.add(new JLabel("背景模式"));
         form.add(backgroundModeSelector);
         form.add(new JLabel("背景主色"));
@@ -470,6 +475,24 @@ public final class EditorWindow extends JFrame {
             world.setBackgroundMode(selected);
             updateBackgroundImageControls();
             previewPanel.repaint();
+        });
+        backgroundPresetSelector.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            MapBackgroundPreset selected = (MapBackgroundPreset) backgroundPresetSelector.getSelectedItem();
+            if (selected == null) {
+                selected = MapBackgroundPreset.DEFAULT;
+            }
+            world.setBackgroundPreset(selected);
+            Color suggested = selected.getSuggestedBaseColor();
+            if (suggested != null) {
+                world.setBackgroundColor(suggested);
+            }
+            if (world.getBackgroundMode() != MapBackgroundMode.IMAGE) {
+                world.setBackgroundMode(MapBackgroundMode.GRADIENT);
+            }
+            updateWorldControlsFromWorld();
         });
         backgroundColorButton.addActionListener(event -> {
             if (updatingControls) {
@@ -780,6 +803,7 @@ public final class EditorWindow extends JFrame {
         try {
             gravityToggle.setSelected(world.isGravityEnabled());
             gravityStrengthSpinner.setValue(world.getGravityStrength());
+            backgroundPresetSelector.setSelectedItem(world.getBackgroundPreset());
             backgroundModeSelector.setSelectedItem(world.getBackgroundMode());
             backgroundColorButton.setBackground(world.getBackgroundColor());
             backgroundImageField.setText(resolveBackgroundImageLabel());

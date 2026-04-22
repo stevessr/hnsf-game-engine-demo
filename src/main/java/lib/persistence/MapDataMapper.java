@@ -14,6 +14,7 @@ import lib.game.WinConditionType;
 import lib.object.GameObject;
 import lib.object.GameObjectFactory;
 import lib.object.PlayerObject;
+import lib.object.dto.MapBackgroundPreset;
 import lib.object.dto.MapBackgroundMode;
 import lib.object.dto.MapData;
 import lib.object.dto.ObjectData;
@@ -43,6 +44,7 @@ public final class MapDataMapper {
         mapData.setHeight(world.getHeight());
         mapData.setBackgroundColor(world.getBackgroundColor());
         mapData.setBackgroundMode(world.getBackgroundMode());
+        mapData.setBackgroundPreset(world.getBackgroundPreset());
         mapData.setBackgroundImageName(world.getBackgroundImageName());
         mapData.setBackgroundImageData(encodeImage(world.getBackgroundImage()));
         mapData.setGravityEnabled(world.isGravityEnabled());
@@ -75,6 +77,7 @@ public final class MapDataMapper {
         json.put("height", mapData.getHeight());
         json.put("backgroundColor", mapData.getBackgroundColor().getRGB());
         json.put("backgroundMode", mapData.getBackgroundMode().name());
+        json.put("backgroundPreset", mapData.getBackgroundPreset().name());
         if (mapData.getBackgroundImageName() != null) {
             json.put("backgroundImageName", mapData.getBackgroundImageName());
         }
@@ -125,6 +128,7 @@ public final class MapDataMapper {
         mapData.setBackgroundColor(new Color(json.optInt("backgroundColor", -13421773), true));
         boolean backgroundModeProvided = json.has("backgroundMode");
         mapData.setBackgroundMode(MapBackgroundMode.fromSerialized(json.optString("backgroundMode", null)));
+        mapData.setBackgroundPreset(MapBackgroundPreset.fromSerialized(json.optString("backgroundPreset", null)));
         mapData.setBackgroundImageName(json.optString("backgroundImageName", null));
         mapData.setBackgroundImageData(json.optString("backgroundImageData", null));
         if (backgroundModeProvided && !mapData.hasBackgroundImage() && mapData.getBackgroundMode() == MapBackgroundMode.IMAGE) {
@@ -181,6 +185,7 @@ public final class MapDataMapper {
         }
         GameWorld world = new GameWorld(mapData.getWidth(), mapData.getHeight(), mapData.getBackgroundColor());
         world.setBackgroundMode(mapData.getBackgroundMode());
+        world.setBackgroundPreset(mapData.getBackgroundPreset());
         BufferedImage backgroundImage = decodeImage(mapData.getBackgroundImageData());
         world.setBackgroundImage(backgroundImage, mapData.getBackgroundImageName());
         world.setGravityEnabled(mapData.isGravityEnabled());
@@ -215,6 +220,7 @@ public final class MapDataMapper {
         world.setSize(mapData.getWidth(), mapData.getHeight());
         world.setBackgroundColor(mapData.getBackgroundColor());
         world.setBackgroundMode(mapData.getBackgroundMode());
+        world.setBackgroundPreset(mapData.getBackgroundPreset());
         BufferedImage backgroundImage = decodeImage(mapData.getBackgroundImageData());
         world.setBackgroundImage(backgroundImage, mapData.getBackgroundImageName());
         world.setGravityEnabled(mapData.isGravityEnabled());

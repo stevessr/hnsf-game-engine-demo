@@ -14,6 +14,7 @@ import lib.game.GameWorld;
 import lib.object.GameObjectType;
 import lib.object.PlayerObject;
 import lib.object.dto.MapBackgroundMode;
+import lib.object.dto.MapBackgroundPreset;
 import lib.object.dto.MapData;
 import lib.object.dto.ObjectData;
 
@@ -157,6 +158,24 @@ public class MapDataMapperTest {
         assertNotNull(restored.getBackgroundImage());
         assertEquals(background.getRGB(0, 0), restored.getBackgroundImage().getRGB(0, 0));
         assertEquals(background.getRGB(1, 1), restored.getBackgroundImage().getRGB(1, 1));
+    }
+
+    @Test
+    public void testBackgroundPresetRoundTripThroughMapper() {
+        GameWorld world = new GameWorld(80, 60, new Color(54, 92, 56));
+        world.setBackgroundPreset(MapBackgroundPreset.FOREST);
+
+        MapData mapData = MapDataMapper.fromWorld(world, "forest");
+        assertEquals(MapBackgroundPreset.FOREST, mapData.getBackgroundPreset());
+
+        JSONObject json = MapDataMapper.exportToJson(mapData);
+        assertEquals(MapBackgroundPreset.FOREST.name(), json.getString("backgroundPreset"));
+
+        MapData imported = MapDataMapper.importFromJson(json);
+        assertEquals(MapBackgroundPreset.FOREST, imported.getBackgroundPreset());
+
+        GameWorld restored = MapDataMapper.toWorld(imported);
+        assertEquals(MapBackgroundPreset.FOREST, restored.getBackgroundPreset());
     }
 
     @Test

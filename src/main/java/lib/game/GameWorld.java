@@ -2,7 +2,6 @@ package lib.game;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.LinearGradientPaint;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +12,7 @@ import lib.object.GameObject;
 import lib.object.GameObjectType;
 import lib.object.PlayerObject;
 import lib.object.SceneObject;
+import lib.object.dto.MapBackgroundPreset;
 import lib.object.dto.MapBackgroundMode;
 import lib.physics.MovementResult;
 import lib.physics.PhysicsEngine;
@@ -33,6 +33,7 @@ public final class GameWorld {
     private int height;
     private Color backgroundColor;
     private MapBackgroundMode backgroundMode = MapBackgroundMode.GRADIENT;
+    private MapBackgroundPreset backgroundPreset = MapBackgroundPreset.DEFAULT;
     private BufferedImage backgroundImage;
     private String backgroundImageName;
     private boolean gravityEnabled;
@@ -263,6 +264,14 @@ public final class GameWorld {
         this.backgroundMode = backgroundMode == null ? MapBackgroundMode.GRADIENT : backgroundMode;
     }
 
+    public MapBackgroundPreset getBackgroundPreset() {
+        return backgroundPreset;
+    }
+
+    public void setBackgroundPreset(MapBackgroundPreset backgroundPreset) {
+        this.backgroundPreset = backgroundPreset == null ? MapBackgroundPreset.DEFAULT : backgroundPreset;
+    }
+
     public BufferedImage getBackgroundImage() {
         return backgroundImage;
     }
@@ -427,6 +436,7 @@ public final class GameWorld {
     private void renderBackground(Graphics2D graphics) {
         MapBackgroundMode mode = backgroundMode == null ? MapBackgroundMode.GRADIENT : backgroundMode;
         Color baseColor = backgroundColor == null ? new Color(32, 36, 48) : backgroundColor;
+        MapBackgroundPreset preset = backgroundPreset == null ? MapBackgroundPreset.DEFAULT : backgroundPreset;
         switch (mode) {
             case SOLID -> {
                 graphics.setColor(baseColor);
@@ -436,46 +446,12 @@ public final class GameWorld {
                 if (backgroundImage != null) {
                     graphics.drawImage(backgroundImage, 0, 0, width, height, null);
                 } else {
-                    paintBiomeGradient(graphics, baseColor);
+                    preset.paint(graphics, width, height, baseColor);
                 }
             }
-            case GRADIENT -> paintBiomeGradient(graphics, baseColor);
-            default -> paintBiomeGradient(graphics, baseColor);
+            case GRADIENT -> preset.paint(graphics, width, height, baseColor);
+            default -> preset.paint(graphics, width, height, baseColor);
         }
-    }
-
-    private void paintBiomeGradient(Graphics2D graphics, Color baseColor) {
-        int width = Math.max(1, this.width);
-        int height = Math.max(1, this.height);
-        Color top = mix(baseColor, Color.BLACK, 0.34);
-        Color middle = mix(baseColor, new Color(255, 255, 255), 0.05);
-        Color bottom = mix(baseColor, new Color(255, 255, 255), 0.24);
-        LinearGradientPaint paint = new LinearGradientPaint(
-            0.0f,
-            0.0f,
-            0.0f,
-            (float) height,
-            new float[] {0.0f, 0.58f, 1.0f},
-            new Color[] {top, middle, bottom}
-        );
-        graphics.setPaint(paint);
-        graphics.fillRect(0, 0, width, height);
-    }
-
-    private Color mix(Color base, Color overlay, double ratio) {
-        Color safeBase = base == null ? new Color(32, 36, 48) : base;
-        Color safeOverlay = overlay == null ? Color.BLACK : overlay;
-        double clamped = Math.max(0.0, Math.min(1.0, ratio));
-        int red = (int) Math.round(safeBase.getRed() * (1.0 - clamped) + safeOverlay.getRed() * clamped);
-        int green = (int) Math.round(safeBase.getGreen() * (1.0 - clamped) + safeOverlay.getGreen() * clamped);
-        int blue = (int) Math.round(safeBase.getBlue() * (1.0 - clamped) + safeOverlay.getBlue() * clamped);
-        int alpha = (int) Math.round(safeBase.getAlpha() * (1.0 - clamped) + safeOverlay.getAlpha() * clamped);
-        return new Color(
-            Math.max(0, Math.min(255, red)),
-            Math.max(0, Math.min(255, green)),
-            Math.max(0, Math.min(255, blue)),
-            Math.max(0, Math.min(255, alpha))
-        );
     }
 
     private void updateScreenShake(double deltaSeconds) {

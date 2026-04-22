@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import lib.game.GameWorld;
+import lib.object.dto.MapBackgroundMode;
 
 class GameObjectModelTest {
     @Test
@@ -500,6 +501,7 @@ class GameObjectModelTest {
     @Test
     void worldShouldRenderSceneObjectOverBackground() {
         GameWorld world = new GameWorld(80, 80, Color.BLACK);
+        world.setBackgroundMode(MapBackgroundMode.SOLID);
         SceneObject scene = new SceneObject("wall", 10, 10, 20, 20, true, false);
         scene.setColor(new Color(10, 200, 100));
         world.addObject(scene);

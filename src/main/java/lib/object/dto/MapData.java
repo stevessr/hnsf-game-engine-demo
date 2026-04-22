@@ -13,6 +13,7 @@ public final class MapData {
     private int height;
     private Color backgroundColor;
     private MapBackgroundMode backgroundMode = MapBackgroundMode.GRADIENT;
+    private MapBackgroundPreset backgroundPreset = MapBackgroundPreset.DEFAULT;
     private String backgroundImageName;
     private String backgroundImageData;
     private boolean gravityEnabled;
@@ -122,6 +123,14 @@ public final class MapData {
 
     public void setBackgroundMode(MapBackgroundMode backgroundMode) {
         this.backgroundMode = backgroundMode == null ? MapBackgroundMode.GRADIENT : backgroundMode;
+    }
+
+    public MapBackgroundPreset getBackgroundPreset() {
+        return backgroundPreset;
+    }
+
+    public void setBackgroundPreset(MapBackgroundPreset backgroundPreset) {
+        this.backgroundPreset = backgroundPreset == null ? MapBackgroundPreset.DEFAULT : backgroundPreset;
     }
 
     public String getBackgroundImageName() {
