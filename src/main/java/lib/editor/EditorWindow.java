@@ -36,6 +36,7 @@ import lib.object.GameObjectType;
 import lib.object.ItemObject;
 import lib.object.MenuObject;
 import lib.object.MonsterObject;
+import lib.object.MonsterKind;
 import lib.object.PlayerObject;
 import lib.object.SceneObject;
 import lib.persistence.MapDataMapper;
@@ -79,6 +80,8 @@ public final class EditorWindow extends JFrame {
     private final JSpinner shootRangeSpinner;
     private final JSpinner projectileSpeedSpinner;
     private final JSpinner shootCooldownSpinner;
+    private final JComboBox<MonsterKind> monsterKindSelector;
+    private final JSpinner monsterGravitySpinner;
     private final JCheckBox monsterRevivableToggle;
     private final JSpinner monsterReviveDelaySpinner;
     private final JCheckBox destructibleToggle;
@@ -132,6 +135,8 @@ public final class EditorWindow extends JFrame {
         this.shootRangeSpinner = new JSpinner(new SpinnerNumberModel(360, 40, 4000, 10));
         this.projectileSpeedSpinner = new JSpinner(new SpinnerNumberModel(320, 80, 4000, 10));
         this.shootCooldownSpinner = new JSpinner(new SpinnerNumberModel(1.2, 0.1, 10.0, 0.1));
+        this.monsterKindSelector = new JComboBox<>(MonsterKind.values());
+        this.monsterGravitySpinner = new JSpinner(new SpinnerNumberModel(100, 0, 200, 1));
         this.monsterRevivableToggle = new JCheckBox("可复活", false);
         this.monsterReviveDelaySpinner = new JSpinner(new SpinnerNumberModel(6.0, 0.0, 3600.0, 0.5));
         this.destructibleToggle = new JCheckBox("可破坏", false);
@@ -264,6 +269,10 @@ public final class EditorWindow extends JFrame {
         form.add(projectileSpeedSpinner);
         form.add(new JLabel("射击冷却"));
         form.add(shootCooldownSpinner);
+        form.add(new JLabel("怪物种类"));
+        form.add(monsterKindSelector);
+        form.add(new JLabel("重力系数%"));
+        form.add(monsterGravitySpinner);
         form.add(new JLabel("可复活"));
         form.add(monsterRevivableToggle);
         form.add(new JLabel("复活延迟（秒）"));
@@ -495,6 +504,27 @@ public final class EditorWindow extends JFrame {
             projectileSpeedSpinner.setEnabled(enabled);
             shootCooldownSpinner.setEnabled(enabled);
         });
+        monsterKindSelector.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            GameObject selected = controller.getSelectedObject();
+            if (selected instanceof MonsterObject monster) {
+                MonsterKind kind = (MonsterKind) monsterKindSelector.getSelectedItem();
+                if (kind != null) {
+                    monsterGravitySpinner.setValue(kind.getDefaultGravityPercent());
+                }
+                monsterGravitySpinner.setEnabled(true);
+                monsterRevivableToggle.setEnabled(true);
+                monsterReviveDelaySpinner.setEnabled(monsterRevivableToggle.isSelected());
+            }
+        });
+        monsterGravitySpinner.addChangeListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            monsterGravitySpinner.setEnabled(controller.getSelectedObject() instanceof MonsterObject);
+        });
         monsterRevivableToggle.addActionListener(event -> {
             if (updatingControls) {
                 return;
@@ -579,6 +609,10 @@ public final class EditorWindow extends JFrame {
                 shootRangeSpinner.setValue(monster.getShootRange());
                 projectileSpeedSpinner.setValue(monster.getProjectileSpeed());
                 shootCooldownSpinner.setValue(monster.getShootCooldown());
+                monsterKindSelector.setEnabled(true);
+                monsterKindSelector.setSelectedItem(monster.getMonsterKind());
+                monsterGravitySpinner.setEnabled(true);
+                monsterGravitySpinner.setValue(monster.getGravityPercent());
                 monsterRevivableToggle.setEnabled(true);
                 monsterRevivableToggle.setSelected(monster.isRevivable());
                 monsterReviveDelaySpinner.setEnabled(monster.isRevivable());
@@ -594,6 +628,10 @@ public final class EditorWindow extends JFrame {
                 shootRangeSpinner.setValue(360);
                 projectileSpeedSpinner.setValue(320);
                 shootCooldownSpinner.setValue(1.2);
+                monsterKindSelector.setEnabled(false);
+                monsterKindSelector.setSelectedItem(MonsterKind.DEFAULT);
+                monsterGravitySpinner.setEnabled(false);
+                monsterGravitySpinner.setValue(100);
                 monsterRevivableToggle.setEnabled(false);
                 monsterRevivableToggle.setSelected(false);
                 monsterReviveDelaySpinner.setEnabled(false);
@@ -663,6 +701,10 @@ public final class EditorWindow extends JFrame {
         shootRangeSpinner.setEnabled(false);
         projectileSpeedSpinner.setEnabled(false);
         shootCooldownSpinner.setEnabled(false);
+        monsterKindSelector.setEnabled(false);
+        monsterKindSelector.setSelectedItem(MonsterKind.DEFAULT);
+        monsterGravitySpinner.setEnabled(false);
+        monsterGravitySpinner.setValue(100);
         monsterRevivableToggle.setEnabled(false);
         monsterRevivableToggle.setSelected(false);
         monsterReviveDelaySpinner.setEnabled(false);
@@ -756,6 +798,9 @@ public final class EditorWindow extends JFrame {
 
         if (selected instanceof MonsterObject monster) {
             monster.setHealDropAmount((int) monsterHealDropSpinner.getValue());
+            MonsterKind kind = (MonsterKind) monsterKindSelector.getSelectedItem();
+            monster.setMonsterKind(kind == null ? MonsterKind.DEFAULT : kind);
+            monster.setGravityPercent((int) monsterGravitySpinner.getValue());
             monster.setRangedAttacker(rangedAttackToggle.isSelected());
             monster.setShootRange((int) shootRangeSpinner.getValue());
             monster.setProjectileSpeed((int) projectileSpeedSpinner.getValue());

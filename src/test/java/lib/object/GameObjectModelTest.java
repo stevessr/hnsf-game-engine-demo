@@ -154,6 +154,99 @@ class GameObjectModelTest {
     }
 
     @Test
+    void batMonsterShouldInferFlyingTraitsAndRenderDistinctWings() {
+        MonsterObject bat = new MonsterObject("bat-cave", 20, 20, 15);
+
+        assertEquals(MonsterKind.BAT, bat.getMonsterKind(), "名称包含 bat 的怪物应自动识别为蝙蝠");
+        assertTrue(bat.isAirborne(), "蝙蝠应默认会飞");
+        assertEquals(50, bat.getGravityPercent(), "蝙蝠应使用较低的重力系数");
+
+        BufferedImage image = new BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            bat.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        int wingAlpha = (image.getRGB(bat.getX() + 2, bat.getY() + 5) >>> 24) & 0xFF;
+        int bodyAlpha = (image.getRGB(bat.getX() + bat.getWidth() / 2, bat.getY() + bat.getHeight() / 2) >>> 24) & 0xFF;
+        assertTrue(wingAlpha > 0, "蝙蝠翅膀应延伸到边缘区域");
+        assertTrue(bodyAlpha > 0, "蝙蝠身体应被正常渲染");
+    }
+
+    @Test
+    void monsterKindInferenceShouldSupportChineseNames() {
+        MonsterObject bat = new MonsterObject("蝙蝠", 10, 10, 10);
+        MonsterObject slime = new MonsterObject("史莱姆", 10, 10, 10);
+        MonsterObject spider = new MonsterObject("蜘蛛", 10, 10, 10);
+        MonsterObject ghost = new MonsterObject("幽灵", 10, 10, 10);
+        MonsterObject gargoyle = new MonsterObject("石像鬼", 10, 10, 10);
+        MonsterObject dragon = new MonsterObject("飞龙", 10, 10, 10);
+        MonsterObject plane = new MonsterObject("飞行器", 10, 10, 10);
+
+        assertEquals(MonsterKind.BAT, bat.getMonsterKind(), "中文名称蝙蝠应识别为蝙蝠种类");
+        assertEquals(MonsterKind.SLIME, slime.getMonsterKind(), "中文名称史莱姆应识别为史莱姆种类");
+        assertEquals(MonsterKind.SPIDER, spider.getMonsterKind(), "中文名称蜘蛛应识别为蜘蛛种类");
+        assertEquals(MonsterKind.GHOST, ghost.getMonsterKind(), "中文名称幽灵应识别为幽灵种类");
+        assertEquals(MonsterKind.GARGOYLE, gargoyle.getMonsterKind(), "中文名称石像鬼应识别为石像鬼种类");
+        assertEquals(MonsterKind.DRAGON, dragon.getMonsterKind(), "中文名称飞龙应识别为飞龙种类");
+        assertEquals(MonsterKind.PLANE, plane.getMonsterKind(), "中文名称飞行器应识别为飞行器种类");
+        assertFalse(spider.isAirborne(), "蜘蛛应保持地面怪物特征");
+        assertTrue(ghost.isAirborne(), "幽灵应默认可漂浮");
+        assertTrue(dragon.isAirborne(), "飞龙应默认会飞");
+        assertEquals(120, spider.getGravityPercent(), "蜘蛛应使用更高的重力系数");
+        assertEquals(10, ghost.getGravityPercent(), "幽灵应使用很低的重力系数");
+        assertEquals(35, dragon.getGravityPercent(), "飞龙应使用较低的重力系数");
+    }
+
+    @Test
+    void spiderMonsterShouldRenderDistinctLegs() {
+        MonsterObject spider = new MonsterObject("蜘蛛巢穴", 20, 20, 15);
+
+        BufferedImage image = new BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            spider.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        int bodyAlpha = (image.getRGB(spider.getX() + spider.getWidth() / 2, spider.getY() + spider.getHeight() / 2)
+            >>> 24) & 0xFF;
+        int legAlpha = Math.max(
+            Math.max(
+                (image.getRGB(spider.getX() + 1, spider.getY() + 12) >>> 24) & 0xFF,
+                (image.getRGB(spider.getX() + 1, spider.getY() + 17) >>> 24) & 0xFF
+            ),
+            Math.max(
+                (image.getRGB(spider.getX() + spider.getWidth() - 2, spider.getY() + 22) >>> 24) & 0xFF,
+                (image.getRGB(spider.getX() + spider.getWidth() - 2, spider.getY() + 27) >>> 24) & 0xFF
+            )
+        );
+        assertTrue(bodyAlpha > 0, "蜘蛛身体应被正常渲染");
+        assertTrue(legAlpha > 0, "蜘蛛应具有延伸到边缘的腿部渲染");
+    }
+
+    @Test
+    void ghostMonsterShouldRenderTranslucentBody() {
+        MonsterObject ghost = new MonsterObject("幽灵", 20, 20, 15);
+
+        BufferedImage image = new BufferedImage(120, 120, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            ghost.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        int alpha = (image.getRGB(ghost.getX() + ghost.getWidth() / 2, ghost.getY() + ghost.getHeight() / 2)
+            >>> 24) & 0xFF;
+        assertTrue(alpha > 0, "幽灵应被渲染出来");
+        assertTrue(alpha < 255, "幽灵应保持半透明效果");
+    }
+
+    @Test
     void lightOrbShouldRespawnAfterBeingCollected() {
         GameWorld world = new GameWorld(220, 160);
         PlayerObject player = new PlayerObject("hero", 64, 48);

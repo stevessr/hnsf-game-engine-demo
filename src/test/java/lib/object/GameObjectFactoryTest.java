@@ -31,6 +31,7 @@ public class GameObjectFactoryTest {
     @Test
     public void testMonsterSerialization() {
         MonsterObject monster = new MonsterObject("Griz", 300, 400, 100);
+        monster.setMonsterKind(MonsterKind.BAT);
         monster.setAggressive(true);
         monster.setAttack(15);
         monster.setHealDropAmount(20);
@@ -38,18 +39,17 @@ public class GameObjectFactoryTest {
         monster.setShootRange(420);
         monster.setProjectileSpeed(500);
         monster.setShootCooldown(0.8);
-        monster.setAirborne(true);
         monster.setBomber(true);
         monster.setBombRadius(96);
+        monster.setGravityPercent(50);
         monster.setRevivable(true);
         monster.setReviveDelaySeconds(7.5);
-        monster.setMaterial("plane");
-        monster.setSize(96, 40);
         
         ObjectData data = GameObjectFactory.toObjectData(monster);
         assertEquals(GameObjectType.MONSTER, data.getType());
         
         MonsterObject restored = (MonsterObject) GameObjectFactory.fromObjectData(data);
+        assertEquals(MonsterKind.BAT, restored.getMonsterKind());
         assertEquals(100, restored.getRewardExperience());
         assertTrue(restored.isAggressive());
         assertEquals(15, restored.getAttack());
@@ -61,8 +61,25 @@ public class GameObjectFactoryTest {
         assertTrue(restored.isAirborne());
         assertTrue(restored.isBomber());
         assertEquals(96, restored.getBombRadius());
+        assertEquals(50, restored.getGravityPercent());
         assertTrue(restored.isRevivable());
         assertEquals(7.5, restored.getReviveDelaySeconds());
+    }
+
+    @Test
+    public void testGhostMonsterSerialization() {
+        MonsterObject monster = new MonsterObject("Haunt", 120, 220, 80);
+        monster.setMonsterKind(MonsterKind.GHOST);
+        monster.setAggressive(true);
+        monster.setGravityPercent(10);
+
+        ObjectData data = GameObjectFactory.toObjectData(monster);
+        MonsterObject restored = (MonsterObject) GameObjectFactory.fromObjectData(data);
+
+        assertEquals(MonsterKind.GHOST, restored.getMonsterKind());
+        assertTrue(restored.isAirborne());
+        assertEquals(10, restored.getGravityPercent());
+        assertEquals(monster.getColor(), restored.getColor());
     }
 
     @Test

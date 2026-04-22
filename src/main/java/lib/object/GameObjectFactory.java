@@ -53,6 +53,7 @@ public final class GameObjectFactory {
             extra.put("complementaryColorDamageEnabled", player.isComplementaryColorDamageEnabled());
             extra.put("complementaryColorDamage", player.getComplementaryColorDamage());
         } else if (object instanceof MonsterObject monster) {
+            extra.put("monsterKind", monster.getMonsterKind().name());
             extra.put("rewardExperience", monster.getRewardExperience());
             extra.put("aggressive", monster.isAggressive());
             extra.put("health", monster.getHealth());
@@ -66,6 +67,7 @@ public final class GameObjectFactory {
             extra.put("airborne", monster.isAirborne());
             extra.put("bomber", monster.isBomber());
             extra.put("bombRadius", monster.getBombRadius());
+            extra.put("gravityPercent", monster.getGravityPercent());
             extra.put("revivable", monster.isRevivable());
             extra.put("reviveDelaySeconds", monster.getReviveDelaySeconds());
         } else if (object instanceof ItemObject item) {
@@ -130,10 +132,22 @@ public final class GameObjectFactory {
             bo.setMaterial(data.getMaterial());
         }
 
+        JSONObject extra = parseExtra(data.getExtraJson());
         object.setPosition(data.getX(), data.getY());
         object.setSize(data.getWidth(), data.getHeight());
         object.setColor(resolveColor(data.getColor()));
-        JSONObject extra = parseExtra(data.getExtraJson());
+        if (object instanceof MonsterObject monster) {
+            MonsterKind monsterKind = extra.has("monsterKind")
+                ? MonsterKind.fromSerialized(extra.optString("monsterKind", null))
+                : MonsterKind.infer(data.getName(), data.getMaterial());
+            monster.setMonsterKind(monsterKind);
+            if (extra.has("gravityPercent")) {
+                monster.setGravityPercent(extra.optInt("gravityPercent", monster.getGravityPercent()));
+            }
+            if (extra.has("airborne")) {
+                monster.setAirborne(extra.optBoolean("airborne", monster.isAirborne()));
+            }
+        }
         if (object instanceof SceneObject scene) {
             applySceneExtra(scene, extra);
         }
@@ -180,8 +194,12 @@ public final class GameObjectFactory {
         JSONObject extra = parseExtra(data.getExtraJson());
         int rewardExperience = extra.optInt("rewardExperience", 0);
         MonsterObject monster = new MonsterObject(data.getName(), data.getX(), data.getY(), rewardExperience);
-        if (isPlaneLike(data)) {
-            monster.setAirborne(true);
+        MonsterKind monsterKind = extra.has("monsterKind")
+            ? MonsterKind.fromSerialized(extra.optString("monsterKind", null))
+            : MonsterKind.infer(data.getName(), data.getMaterial());
+        monster.setMonsterKind(monsterKind);
+        if (extra.has("gravityPercent")) {
+            monster.setGravityPercent(extra.optInt("gravityPercent", monster.getGravityPercent()));
         }
         if (extra.has("aggressive")) {
             monster.setAggressive(extra.optBoolean("aggressive", monster.isAggressive()));
@@ -335,21 +353,6 @@ public final class GameObjectFactory {
         if (extra.has("breakAfterSteps")) {
             scene.setBreakAfterSteps(extra.optInt("breakAfterSteps", scene.getBreakAfterSteps()));
         }
-    }
-
-    private static boolean isPlaneLike(ObjectData data) {
-        if (data == null) {
-            return false;
-        }
-        String material = data.getMaterial();
-        if (material != null) {
-            String normalizedMaterial = material.toLowerCase();
-            if (normalizedMaterial.contains("plane") || normalizedMaterial.contains("aircraft")) {
-                return true;
-            }
-        }
-        String name = data.getName();
-        return name != null && name.toLowerCase().contains("plane");
     }
 
     private static JSONObject parseExtra(String extraJson) {
