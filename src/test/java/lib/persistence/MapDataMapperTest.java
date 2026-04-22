@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import lib.game.GameWorld;
 import lib.object.GameObjectType;
 import lib.object.PlayerObject;
+import lib.object.dto.MapBackgroundMode;
 import lib.object.dto.MapData;
 import lib.object.dto.ObjectData;
 
@@ -65,6 +66,7 @@ public class MapDataMapperTest {
         assertEquals(mappedBack.getName(), importedData.getName());
         assertEquals(mappedBack.getWidth(), importedData.getWidth());
         assertEquals(mappedBack.getBackgroundColor().getRGB(), importedData.getBackgroundColor().getRGB());
+        assertEquals(MapBackgroundMode.GRADIENT, importedData.getBackgroundMode());
         assertEquals(1, importedData.getObjects().size());
         assertEquals("test-wall", importedData.getObjects().get(0).getName());
     }
@@ -130,6 +132,49 @@ public class MapDataMapperTest {
         Color playerPixel = new Color(secondImage.getRGB(160, 160), true);
         assertEquals(Color.BLACK.getRGB(), resetPixel.getRGB(), "切换地图后未解锁区域应恢复为黑色");
         assertNotEquals(Color.BLACK.getRGB(), playerPixel.getRGB(), "新玩家附近应保持可见");
+    }
+
+    @Test
+    public void testBackgroundImageRoundTripThroughMapper() throws Exception {
+        GameWorld world = new GameWorld(80, 60, Color.BLACK);
+        world.setBackgroundMode(MapBackgroundMode.IMAGE);
+
+        BufferedImage background = new BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB);
+        background.setRGB(0, 0, new Color(240, 80, 80).getRGB());
+        background.setRGB(1, 0, new Color(80, 240, 120).getRGB());
+        background.setRGB(0, 1, new Color(70, 120, 240).getRGB());
+        background.setRGB(1, 1, new Color(240, 220, 90).getRGB());
+        world.setBackgroundImage(background, "custom-bg.png");
+
+        MapData mapData = MapDataMapper.fromWorld(world, "custom");
+        assertEquals(MapBackgroundMode.IMAGE, mapData.getBackgroundMode());
+        assertNotNull(mapData.getBackgroundImageData());
+        assertEquals("custom-bg.png", mapData.getBackgroundImageName());
+
+        GameWorld restored = MapDataMapper.toWorld(mapData);
+        assertEquals(MapBackgroundMode.IMAGE, restored.getBackgroundMode());
+        assertEquals("custom-bg.png", restored.getBackgroundImageName());
+        assertNotNull(restored.getBackgroundImage());
+        assertEquals(background.getRGB(0, 0), restored.getBackgroundImage().getRGB(0, 0));
+        assertEquals(background.getRGB(1, 1), restored.getBackgroundImage().getRGB(1, 1));
+    }
+
+    @Test
+    public void testGradientBackgroundShouldRenderThemeColors() {
+        GameWorld world = new GameWorld(40, 80, new Color(90, 150, 90));
+        world.setBackgroundMode(MapBackgroundMode.GRADIENT);
+
+        BufferedImage image = new BufferedImage(40, 80, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            world.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color top = new Color(image.getRGB(20, 4), true);
+        Color bottom = new Color(image.getRGB(20, 74), true);
+        assertNotEquals(top.getRGB(), bottom.getRGB(), "渐变背景顶部和底部颜色应不同");
     }
 
     @Test

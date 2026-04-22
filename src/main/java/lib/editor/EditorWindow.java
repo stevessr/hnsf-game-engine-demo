@@ -5,9 +5,12 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
@@ -39,6 +42,7 @@ import lib.object.MonsterObject;
 import lib.object.MonsterKind;
 import lib.object.PlayerObject;
 import lib.object.SceneObject;
+import lib.object.dto.MapBackgroundMode;
 import lib.persistence.MapDataMapper;
 import lib.persistence.MapRepository;
 
@@ -59,6 +63,11 @@ public final class EditorWindow extends JFrame {
     private final JComboBox<WinConditionType> winConditionSelector;
     private final JSpinner targetKillsSpinner;
     private final JSpinner targetItemsSpinner;
+    private final JComboBox<MapBackgroundMode> backgroundModeSelector;
+    private final JButton backgroundColorButton;
+    private final JTextField backgroundImageField;
+    private final JButton importBackgroundImageButton;
+    private final JButton clearBackgroundImageButton;
     private final JSpinner xSpinner;
     private final JSpinner ySpinner;
     private final JSpinner wSpinner;
@@ -113,6 +122,14 @@ public final class EditorWindow extends JFrame {
         this.winConditionSelector = new JComboBox<>(WinConditionType.values());
         this.targetKillsSpinner = new JSpinner(new SpinnerNumberModel(world.getTargetKills(), 0, 999, 1));
         this.targetItemsSpinner = new JSpinner(new SpinnerNumberModel(world.getTargetItems(), 0, 999, 1));
+        this.backgroundModeSelector = new JComboBox<>(MapBackgroundMode.values());
+        this.backgroundColorButton = new JButton("背景颜色");
+        this.backgroundColorButton.setOpaque(true);
+        this.backgroundColorButton.setBackground(world.getBackgroundColor());
+        this.backgroundImageField = new JTextField("");
+        this.backgroundImageField.setEditable(false);
+        this.importBackgroundImageButton = new JButton("导入图片");
+        this.clearBackgroundImageButton = new JButton("清除图片");
         this.xSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 4000, 1));
         this.ySpinner = new JSpinner(new SpinnerNumberModel(0, 0, 4000, 1));
         this.wSpinner = new JSpinner(new SpinnerNumberModel(80, 4, 4000, 1));
@@ -208,6 +225,19 @@ public final class EditorWindow extends JFrame {
         form.add(widthSpinner);
         form.add(new JLabel("高度"));
         form.add(heightSpinner);
+        form.add(new JLabel("背景模式"));
+        form.add(backgroundModeSelector);
+        form.add(new JLabel("背景主色"));
+        form.add(backgroundColorButton);
+        form.add(new JLabel("背景图片"));
+        JPanel backgroundImageRow = new JPanel(new BorderLayout(4, 0));
+        backgroundImageField.setColumns(12);
+        backgroundImageRow.add(backgroundImageField, BorderLayout.CENTER);
+        JPanel backgroundImageButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        backgroundImageButtons.add(importBackgroundImageButton);
+        backgroundImageButtons.add(clearBackgroundImageButton);
+        backgroundImageRow.add(backgroundImageButtons, BorderLayout.EAST);
+        form.add(backgroundImageRow);
         form.add(new JLabel("重力开关"));
         form.add(gravityToggle);
         form.add(new JLabel("重力强度"));
@@ -432,6 +462,28 @@ public final class EditorWindow extends JFrame {
             }
             world.setGravityStrength((int) gravityStrengthSpinner.getValue());
         });
+        backgroundModeSelector.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            MapBackgroundMode selected = (MapBackgroundMode) backgroundModeSelector.getSelectedItem();
+            world.setBackgroundMode(selected);
+            updateBackgroundImageControls();
+            previewPanel.repaint();
+        });
+        backgroundColorButton.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            Color chosen = JColorChooser.showDialog(this, "选择背景颜色", backgroundColorButton.getBackground());
+            if (chosen != null) {
+                world.setBackgroundColor(chosen);
+                backgroundColorButton.setBackground(chosen);
+                previewPanel.repaint();
+            }
+        });
+        importBackgroundImageButton.addActionListener(event -> importBackgroundImage());
+        clearBackgroundImageButton.addActionListener(event -> clearBackgroundImage());
         winConditionSelector.addActionListener(event -> {
             if (updatingControls) {
                 return;
@@ -728,6 +780,9 @@ public final class EditorWindow extends JFrame {
         try {
             gravityToggle.setSelected(world.isGravityEnabled());
             gravityStrengthSpinner.setValue(world.getGravityStrength());
+            backgroundModeSelector.setSelectedItem(world.getBackgroundMode());
+            backgroundColorButton.setBackground(world.getBackgroundColor());
+            backgroundImageField.setText(resolveBackgroundImageLabel());
             winConditionSelector.setSelectedItem(world.getWinCondition());
             targetKillsSpinner.setValue(world.getTargetKills());
             targetItemsSpinner.setValue(world.getTargetItems());
@@ -735,10 +790,60 @@ public final class EditorWindow extends JFrame {
             snapToggle.setSelected(controller.isGridSnap());
             gridSizeSpinner.setValue(controller.getGridSize());
             modeSelector.setSelectedItem(formatEditMode(controller.getEditMode()));
+            updateBackgroundImageControls();
         } finally {
             updatingControls = false;
         }
         overlay.setGridSize(controller.getGridSize());
+        previewPanel.repaint();
+    }
+
+    private String resolveBackgroundImageLabel() {
+        if (world.getBackgroundImageName() != null && !world.getBackgroundImageName().isBlank()) {
+            return world.getBackgroundImageName();
+        }
+        if (world.getBackgroundImage() != null) {
+            return "已导入图片";
+        }
+        return "";
+    }
+
+    private void updateBackgroundImageControls() {
+        backgroundImageField.setText(resolveBackgroundImageLabel());
+        clearBackgroundImageButton.setEnabled(world.getBackgroundImage() != null);
+        importBackgroundImageButton.setEnabled(true);
+    }
+
+    private void importBackgroundImage() {
+        javax.swing.JFileChooser chooser = new javax.swing.JFileChooser();
+        if (chooser.showOpenDialog(this) != javax.swing.JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File file = chooser.getSelectedFile();
+        if (file == null) {
+            return;
+        }
+        try {
+            BufferedImage image = ImageIO.read(file);
+            if (image == null) {
+                JOptionPane.showMessageDialog(this, "无法识别图片文件", "提示", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            world.setBackgroundImage(image, file.getName());
+            world.setBackgroundMode(MapBackgroundMode.IMAGE);
+            updateWorldControlsFromWorld();
+            previewPanel.repaint();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "导入背景图片失败: " + ex.getMessage(), "提示", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void clearBackgroundImage() {
+        world.clearBackgroundImage();
+        if (world.getBackgroundMode() == MapBackgroundMode.IMAGE) {
+            world.setBackgroundMode(MapBackgroundMode.GRADIENT);
+        }
+        updateWorldControlsFromWorld();
         previewPanel.repaint();
     }
 

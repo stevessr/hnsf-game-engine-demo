@@ -1,6 +1,11 @@
 package lib.persistence;
 
 import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
+import javax.imageio.ImageIO;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -9,6 +14,7 @@ import lib.game.WinConditionType;
 import lib.object.GameObject;
 import lib.object.GameObjectFactory;
 import lib.object.PlayerObject;
+import lib.object.dto.MapBackgroundMode;
 import lib.object.dto.MapData;
 import lib.object.dto.ObjectData;
 
@@ -36,6 +42,9 @@ public final class MapDataMapper {
         mapData.setWidth(world.getWidth());
         mapData.setHeight(world.getHeight());
         mapData.setBackgroundColor(world.getBackgroundColor());
+        mapData.setBackgroundMode(world.getBackgroundMode());
+        mapData.setBackgroundImageName(world.getBackgroundImageName());
+        mapData.setBackgroundImageData(encodeImage(world.getBackgroundImage()));
         mapData.setGravityEnabled(world.isGravityEnabled());
         mapData.setGravityStrength(world.getGravityStrength());
         mapData.setWinCondition(world.getWinCondition());
@@ -65,6 +74,13 @@ public final class MapDataMapper {
         json.put("width", mapData.getWidth());
         json.put("height", mapData.getHeight());
         json.put("backgroundColor", mapData.getBackgroundColor().getRGB());
+        json.put("backgroundMode", mapData.getBackgroundMode().name());
+        if (mapData.getBackgroundImageName() != null) {
+            json.put("backgroundImageName", mapData.getBackgroundImageName());
+        }
+        if (mapData.getBackgroundImageData() != null) {
+            json.put("backgroundImageData", mapData.getBackgroundImageData());
+        }
         json.put("gravityEnabled", mapData.isGravityEnabled());
         json.put("gravityStrength", mapData.getGravityStrength());
         json.put("winCondition", mapData.getWinCondition().name());
@@ -107,6 +123,16 @@ public final class MapDataMapper {
         mapData.setWidth(json.optInt("width", 960));
         mapData.setHeight(json.optInt("height", 540));
         mapData.setBackgroundColor(new Color(json.optInt("backgroundColor", -13421773), true));
+        boolean backgroundModeProvided = json.has("backgroundMode");
+        mapData.setBackgroundMode(MapBackgroundMode.fromSerialized(json.optString("backgroundMode", null)));
+        mapData.setBackgroundImageName(json.optString("backgroundImageName", null));
+        mapData.setBackgroundImageData(json.optString("backgroundImageData", null));
+        if (backgroundModeProvided && !mapData.hasBackgroundImage() && mapData.getBackgroundMode() == MapBackgroundMode.IMAGE) {
+            mapData.setBackgroundMode(MapBackgroundMode.GRADIENT);
+        }
+        if (!backgroundModeProvided && mapData.hasBackgroundImage() && mapData.getBackgroundMode() == MapBackgroundMode.GRADIENT) {
+            mapData.setBackgroundMode(MapBackgroundMode.IMAGE);
+        }
         mapData.setGravityEnabled(json.optBoolean("gravityEnabled", false));
         mapData.setGravityStrength(json.optInt("gravityStrength", 900));
         
@@ -154,6 +180,9 @@ public final class MapDataMapper {
             return null;
         }
         GameWorld world = new GameWorld(mapData.getWidth(), mapData.getHeight(), mapData.getBackgroundColor());
+        world.setBackgroundMode(mapData.getBackgroundMode());
+        BufferedImage backgroundImage = decodeImage(mapData.getBackgroundImageData());
+        world.setBackgroundImage(backgroundImage, mapData.getBackgroundImageName());
         world.setGravityEnabled(mapData.isGravityEnabled());
         world.setGravityStrength(mapData.getGravityStrength());
         world.setWinCondition(mapData.getWinCondition());
@@ -185,6 +214,9 @@ public final class MapDataMapper {
 
         world.setSize(mapData.getWidth(), mapData.getHeight());
         world.setBackgroundColor(mapData.getBackgroundColor());
+        world.setBackgroundMode(mapData.getBackgroundMode());
+        BufferedImage backgroundImage = decodeImage(mapData.getBackgroundImageData());
+        world.setBackgroundImage(backgroundImage, mapData.getBackgroundImageName());
         world.setGravityEnabled(mapData.isGravityEnabled());
         world.setGravityStrength(mapData.getGravityStrength());
         world.setWinCondition(mapData.getWinCondition());
@@ -211,6 +243,34 @@ public final class MapDataMapper {
                     player.setDeceleration(preservedDeceleration / 100.0);
                 }
             });
+        }
+    }
+
+    private static String encodeImage(BufferedImage image) {
+        if (image == null) {
+            return null;
+        }
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            ImageIO.write(image, "png", outputStream);
+            return Base64.getEncoder().encodeToString(outputStream.toByteArray());
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private static BufferedImage decodeImage(String imageData) {
+        if (imageData == null || imageData.isBlank()) {
+            return null;
+        }
+        String normalized = imageData.trim();
+        int commaIndex = normalized.indexOf(',');
+        if (normalized.startsWith("data:") && commaIndex >= 0) {
+            normalized = normalized.substring(commaIndex + 1);
+        }
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(normalized))) {
+            return ImageIO.read(inputStream);
+        } catch (Exception ex) {
+            return null;
         }
     }
 }

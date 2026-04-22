@@ -5,12 +5,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import lib.game.WinConditionType;
+
 public final class MapData {
     private long id;
     private String name;
     private int width;
     private int height;
     private Color backgroundColor;
+    private MapBackgroundMode backgroundMode = MapBackgroundMode.GRADIENT;
+    private String backgroundImageName;
+    private String backgroundImageData;
     private boolean gravityEnabled;
     private int gravityStrength;
     private WinConditionType winCondition = WinConditionType.REACH_GOAL;
@@ -110,6 +114,38 @@ public final class MapData {
             return;
         }
         this.backgroundColor = backgroundColor;
+    }
+
+    public MapBackgroundMode getBackgroundMode() {
+        return backgroundMode;
+    }
+
+    public void setBackgroundMode(MapBackgroundMode backgroundMode) {
+        this.backgroundMode = backgroundMode == null ? MapBackgroundMode.GRADIENT : backgroundMode;
+    }
+
+    public String getBackgroundImageName() {
+        return backgroundImageName;
+    }
+
+    public void setBackgroundImageName(String backgroundImageName) {
+        this.backgroundImageName = backgroundImageName == null || backgroundImageName.isBlank()
+            ? null
+            : backgroundImageName.trim();
+    }
+
+    public String getBackgroundImageData() {
+        return backgroundImageData;
+    }
+
+    public void setBackgroundImageData(String backgroundImageData) {
+        this.backgroundImageData = backgroundImageData == null || backgroundImageData.isBlank()
+            ? null
+            : backgroundImageData.trim();
+    }
+
+    public boolean hasBackgroundImage() {
+        return backgroundImageData != null && !backgroundImageData.isBlank();
     }
 
     public boolean isGravityEnabled() {
