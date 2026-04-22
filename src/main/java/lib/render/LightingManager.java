@@ -123,15 +123,11 @@ public final class LightingManager {
             
             // 更新探索层
             if (explorationMode) {
-                Graphics2D gVis = visibilityBuffer.createGraphics();
-                gVis.setComposite(AlphaComposite.Clear);
-                gVis.fillOval(
-                    player.getX() + player.getWidth() / 2 - radius,
-                    player.getY() + player.getHeight() / 2 - radius,
-                    radius * 2,
-                    radius * 2
+                clearExplorationCircle(
+                    player.getX() + player.getWidth() / 2,
+                    player.getY() + player.getHeight() / 2,
+                    radius
                 );
-                gVis.dispose();
             }
         });
         
@@ -153,6 +149,13 @@ public final class LightingManager {
                     projectile.getLightIntensity(),
                     casters
                 );
+                if (explorationMode && projectile.revealsExplorationFog()) {
+                    clearExplorationCircle(
+                        projectile.getX() + projectile.getWidth() / 2,
+                        projectile.getY() + projectile.getHeight() / 2,
+                        projectile.getLightRadius()
+                    );
+                }
             }
         }
         
@@ -169,6 +172,19 @@ public final class LightingManager {
         }
 
         graphics.drawImage(overlayBuffer, 0, 0, null);
+    }
+
+    private void clearExplorationCircle(int centerX, int centerY, int radius) {
+        if (!explorationMode || visibilityBuffer == null || radius <= 0) {
+            return;
+        }
+        Graphics2D gVis = visibilityBuffer.createGraphics();
+        try {
+            gVis.setComposite(AlphaComposite.Clear);
+            gVis.fillOval(centerX - radius, centerY - radius, radius * 2, radius * 2);
+        } finally {
+            gVis.dispose();
+        }
     }
 
     private void drawLightWithShadows(Graphics2D g, int x, int y, int radius, float intensity, List<GameObject> casters) {

@@ -657,6 +657,68 @@ class GameObjectModelTest {
     }
 
     @Test
+    void flareProjectileShouldRevealExplorationFogAndEmitVisibleLight() {
+        GameWorld world = new GameWorld(100, 100, Color.BLACK);
+        world.setBackgroundMode(MapBackgroundMode.SOLID);
+        world.getLightingManager().setEnabled(true);
+        world.getLightingManager().setExplorationMode(true);
+        world.getLightingManager().setAmbientLight(0.0f);
+
+        ProjectileObject flare = new ProjectileObject("flare", 40, 40, 0, 0, 5, null, ProjectileType.FLARE);
+        world.addObject(flare);
+
+        BufferedImage image = new BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            world.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color litPixel = new Color(image.getRGB(44, 44), true);
+        assertNotEquals(Color.BLACK.getRGB(), litPixel.getRGB(), "照明弹应能同时照亮并探索迷雾");
+        assertTrue(litPixel.getAlpha() > 0, "照明弹探索后应让目标像素可见");
+    }
+
+    @Test
+    void laserProjectileShouldPierceAlliesAndEnableFriendlyFire() {
+        GameWorld world = new GameWorld(260, 160);
+        MonsterObject shooter = new MonsterObject("shooter", 20, 60, 10);
+        shooter.setAggressive(false);
+        shooter.setSpeed(0);
+        MonsterObject allyOne = new MonsterObject("ally-one", 80, 60, 10);
+        allyOne.setAggressive(false);
+        allyOne.setSpeed(0);
+        MonsterObject allyTwo = new MonsterObject("ally-two", 130, 60, 10);
+        allyTwo.setAggressive(false);
+        allyTwo.setSpeed(0);
+        ProjectileObject laser = new ProjectileObject("laser", 34, 64, 540, 0, 12, shooter, ProjectileType.LASER);
+
+        world.addObject(shooter);
+        world.addObject(allyOne);
+        world.addObject(allyTwo);
+        world.addObject(laser);
+
+        int shooterHealth = shooter.getHealth();
+        int allyOneHealth = allyOne.getHealth();
+        int allyTwoHealth = allyTwo.getHealth();
+
+        for (int i = 0; i < 30; i++) {
+            world.update(1.0 / 60.0);
+        }
+
+        assertEquals(shooterHealth, shooter.getHealth(), "射手不应被自身弹丸误伤");
+        assertTrue(allyOne.getHealth() < allyOneHealth, "友伤应允许同阵营目标受击");
+        assertTrue(allyTwo.getHealth() < allyTwoHealth, "穿透弹应能继续命中后方目标");
+    }
+
+    @Test
+    void projectileTypeParsingShouldRecognizeExtendedKinds() {
+        assertEquals(ProjectileType.LASER, ProjectileType.fromSerialized("激光"));
+        assertEquals(ProjectileType.SEEKER, ProjectileType.fromSerialized("seeker"));
+    }
+
+    @Test
     void bombProjectileShouldExplodeAndDamageNearbyTargets() {
         GameWorld world = new GameWorld(260, 180);
         world.setGravityEnabled(true);

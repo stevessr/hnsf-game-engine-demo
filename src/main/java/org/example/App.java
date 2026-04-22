@@ -166,7 +166,7 @@ public class App {
             "- Shift: Sprint (uses stamina; stop moving to recover)\n" +
             "- Space: Jump\n" +
             "- K: Shoot\n" +
-            "- B: Switch Bullet Type (Normal / Flare / Bomb)\n" +
+            "- B: Switch Bullet Type (Normal / Flare / Bomb / Pierce / Homing / Ice / Laser / Seeker)\n" +
             "- T: Cycle Throttle\n" +
             "- C: Cycle Color\n" +
             "- P/Esc: Pause\n\n" +

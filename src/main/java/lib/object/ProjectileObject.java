@@ -2,7 +2,9 @@ package lib.object;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import lib.game.GameWorld;
 
@@ -23,6 +25,11 @@ public final class ProjectileObject extends BaseObject {
     private final double explosionDuration;
     private final int lightRadius;
     private final float lightIntensity;
+    private final double homingStrength;
+    private final boolean revealsExplorationFog;
+    private final int pierceTargets;
+    private int pierceTargetsRemaining;
+    private final Set<GameObject> impactedActors = new HashSet<>();
     private double lifetime = 3.0; // 存活 3 秒
     private double age = 0.0;
     private boolean exploding = false;
@@ -110,6 +117,14 @@ public final class ProjectileObject extends BaseObject {
         return lightIntensity;
     }
 
+    public boolean revealsExplorationFog() {
+        return revealsExplorationFog;
+    }
+
+    public int getPierceTargets() {
+        return pierceTargets;
+    }
+
     public static ProjectileObject createBomb(
         String name,
         int x,
@@ -177,6 +192,10 @@ public final class ProjectileObject extends BaseObject {
         this.lifetime = lifetime;
         this.lightRadius = Math.max(0, lightRadius);
         this.lightIntensity = Math.max(0.0f, Math.min(1.0f, lightIntensity));
+        this.homingStrength = this.projectileType.getHomingStrength();
+        this.revealsExplorationFog = this.projectileType.revealsExplorationFog();
+        this.pierceTargets = this.projectileType.getPierceTargets();
+        this.pierceTargetsRemaining = this.pierceTargets;
     }
 
     @Override
@@ -207,6 +226,10 @@ public final class ProjectileObject extends BaseObject {
         if (gravityAffected) {
             double gravity = world != null && world.isGravityEnabled() ? world.getGravityStrength() : 900.0;
             velocityY += gravity * deltaSeconds;
+        }
+
+        if (homingStrength > 0.0) {
+            applyHoming(world, deltaSeconds);
         }
 
         int nextX = (int) Math.round(getX() + velocityX * deltaSeconds);
@@ -247,12 +270,19 @@ public final class ProjectileObject extends BaseObject {
                 if (isFriendlyFire(actor)) {
                     continue;
                 }
+                if (impactedActors.contains(actor)) {
+                    continue;
+                }
                 if (other instanceof PlayerObject player && player.getHealth() <= damage) {
                     world.setFailureReason(resolvePlayerHitReason());
                 }
                 actor.takeDamage(world, damage);
-                setActive(false);
-                return;
+                impactedActors.add(actor);
+                if (!consumePierce()) {
+                    setActive(false);
+                    return;
+                }
+                continue;
             } else if (other instanceof SceneObject scene) {
                 if (scene.isDestructible()) {
                     scene.applyStructuralDamage(world, damage);
@@ -288,6 +318,14 @@ public final class ProjectileObject extends BaseObject {
             renderFlare(graphics);
             return;
         }
+        if (projectileType == ProjectileType.LASER) {
+            renderLaser(graphics);
+            return;
+        }
+        if (projectileType == ProjectileType.SEEKER) {
+            renderSeeker(graphics);
+            return;
+        }
         if (projectileType == ProjectileType.BOMB) {
             renderBomb(graphics);
             return;
@@ -315,8 +353,47 @@ public final class ProjectileObject extends BaseObject {
         graphics.drawOval(x - 6, y - 6, width + 12, height + 12);
     }
 
+    private void renderLaser(Graphics2D graphics) {
+        Graphics2D g2d = (Graphics2D) graphics.create();
+        try {
+            int cx = getX() + getWidth() / 2;
+            int cy = getY() + getHeight() / 2;
+            double angle = Math.atan2(velocityY, velocityX);
+            g2d.translate(cx, cy);
+            g2d.rotate(angle);
+            g2d.setColor(new Color(120, 255, 255, 110));
+            g2d.fillRoundRect(-13, -3, 26, 6, 6, 6);
+            g2d.setColor(new Color(255, 255, 255, 220));
+            g2d.fillRoundRect(-10, -1, 20, 2, 2, 2);
+            g2d.setColor(new Color(170, 255, 255, 180));
+            g2d.drawLine(-12, 0, 12, 0);
+        } finally {
+            g2d.dispose();
+        }
+    }
+
+    private void renderSeeker(Graphics2D graphics) {
+        int x = getX();
+        int y = getY();
+        int width = getWidth();
+        int height = getHeight();
+        graphics.setColor(new Color(186, 104, 255, 70));
+        graphics.fillOval(x - 5, y - 5, width + 10, height + 10);
+        graphics.setColor(new Color(186, 104, 255, 220));
+        graphics.fillOval(x, y, width, height);
+        graphics.setColor(new Color(255, 255, 255, 220));
+        graphics.fillOval(x + width / 3, y + height / 3, Math.max(2, width / 3), Math.max(2, height / 3));
+        int tailX = (int) Math.round(x + width / 2.0 - Math.signum(velocityX) * 6.0);
+        int tailY = (int) Math.round(y + height / 2.0 - Math.signum(velocityY) * 6.0);
+        graphics.setColor(new Color(255, 220, 255, 160));
+        graphics.drawLine(x + width / 2, y + height / 2, tailX, tailY);
+    }
+
     private boolean isFriendlyFire(ActorObject actor) {
         if (shooter == null || actor == null) {
+            return false;
+        }
+        if (projectileType.canDamageAllies()) {
             return false;
         }
         return (shooter instanceof MonsterObject && actor instanceof MonsterObject)
@@ -351,6 +428,89 @@ public final class ProjectileObject extends BaseObject {
             );
             world.getSoundManager().playSound("explosion");
         }
+    }
+
+    private void applyHoming(GameWorld world, double deltaSeconds) {
+        GameObject target = findHomingTarget(world);
+        if (!(target instanceof ActorObject) || deltaSeconds <= 0.0) {
+            return;
+        }
+
+        double currentSpeed = Math.hypot(velocityX, velocityY);
+        if (currentSpeed <= 0.0001) {
+            return;
+        }
+
+        double centerX = getX() + getWidth() / 2.0;
+        double centerY = getY() + getHeight() / 2.0;
+        double targetCenterX = target.getX() + target.getWidth() / 2.0;
+        double targetCenterY = target.getY() + target.getHeight() / 2.0;
+        double dx = targetCenterX - centerX;
+        double dy = targetCenterY - centerY;
+        double distance = Math.hypot(dx, dy);
+        if (distance <= 0.0001) {
+            return;
+        }
+
+        double blend = Math.min(1.0, homingStrength * Math.max(0.25, deltaSeconds * 60.0));
+        double currentDirX = velocityX / currentSpeed;
+        double currentDirY = velocityY / currentSpeed;
+        double desiredDirX = dx / distance;
+        double desiredDirY = dy / distance;
+        double blendedDirX = currentDirX + (desiredDirX - currentDirX) * blend;
+        double blendedDirY = currentDirY + (desiredDirY - currentDirY) * blend;
+        double blendedLength = Math.hypot(blendedDirX, blendedDirY);
+        if (blendedLength <= 0.0001) {
+            return;
+        }
+
+        velocityX = blendedDirX / blendedLength * currentSpeed;
+        velocityY = blendedDirY / blendedLength * currentSpeed;
+    }
+
+    private GameObject findHomingTarget(GameWorld world) {
+        if (world == null || homingStrength <= 0.0 || shooter == null) {
+            return null;
+        }
+
+        GameObjectType targetType = null;
+        if (shooter instanceof PlayerObject) {
+            targetType = GameObjectType.MONSTER;
+        } else if (shooter instanceof MonsterObject) {
+            targetType = GameObjectType.PLAYER;
+        }
+        if (targetType == null) {
+            return null;
+        }
+
+        GameObject closest = null;
+        double closestDistance = Double.MAX_VALUE;
+        double centerX = getX() + getWidth() / 2.0;
+        double centerY = getY() + getHeight() / 2.0;
+        for (GameObject other : world.getObjectsByType(targetType)) {
+            if (other == null || other == this || other == shooter || !other.isActive()) {
+                continue;
+            }
+            if (!(other instanceof ActorObject)) {
+                continue;
+            }
+            double otherCenterX = other.getX() + other.getWidth() / 2.0;
+            double otherCenterY = other.getY() + other.getHeight() / 2.0;
+            double distance = Math.hypot(otherCenterX - centerX, otherCenterY - centerY);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closest = other;
+            }
+        }
+        return closest;
+    }
+
+    private boolean consumePierce() {
+        if (pierceTargetsRemaining <= 0) {
+            return false;
+        }
+        pierceTargetsRemaining--;
+        return pierceTargetsRemaining > 0;
     }
 
     private void applyExplosionDamage(GameWorld world) {

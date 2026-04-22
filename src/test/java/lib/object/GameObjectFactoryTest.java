@@ -125,6 +125,17 @@ public class GameObjectFactoryTest {
     }
 
     @Test
+    public void testLaserProjectileSerializationShouldPreserveType() {
+        ProjectileObject projectile = new ProjectileObject("laser", 12, 24, 320, -48, 7, null, ProjectileType.LASER);
+
+        ObjectData data = GameObjectFactory.toObjectData(projectile);
+        assertTrue(data.getExtraJson().contains("\"projectileType\":\"LASER\""));
+
+        ProjectileObject restored = (ProjectileObject) GameObjectFactory.fromObjectData(data);
+        assertEquals(ProjectileType.LASER, restored.getProjectileType());
+    }
+
+    @Test
     public void testMenuSerialization() {
         MenuObject menu = new MenuObject("Options", 0, 0, 200, 150, "Settings", List.of("Easy", "Hard"));
         menu.setSelectedIndex(1);
