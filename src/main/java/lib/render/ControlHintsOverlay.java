@@ -121,7 +121,8 @@ public final class ControlHintsOverlay {
                 hints.add(new Hint("WASD", "Move"));
                 hints.add(new Hint("Shift", "Sprint"));
                 hints.add(new Hint("Space", "Jump"));
-                hints.add(new Hint("K / Click", "Shoot"));
+                hints.add(new Hint("K / Click", "Shoot / Hold Bomb"));
+                hints.add(new Hint("B", "Switch Bullet Type"));
                 hints.add(new Hint("MidClick", "Build Voxel"));
                 hints.add(new Hint("RClick", "Destroy Voxel"));
                 hints.add(new Hint("G", "Goals"));

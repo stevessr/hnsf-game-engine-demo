@@ -14,11 +14,13 @@ public class GameObjectFactoryTest {
         PlayerObject player = new PlayerObject("Hero", 100, 200);
         player.setHealth(50);
         player.setLevel(5);
+        player.setProjectileType(ProjectileType.FLARE);
         
         ObjectData data = GameObjectFactory.toObjectData(player);
         assertEquals(GameObjectType.PLAYER, data.getType());
         assertTrue(data.getExtraJson().contains("\"health\":50"));
         assertTrue(data.getExtraJson().contains("\"level\":5"));
+        assertTrue(data.getExtraJson().contains("\"projectileType\":\"FLARE\""));
         
         PlayerObject restored = (PlayerObject) GameObjectFactory.fromObjectData(data);
         assertEquals("Hero", restored.getName());
@@ -26,6 +28,7 @@ public class GameObjectFactoryTest {
         assertEquals(200, restored.getY());
         assertEquals(50, restored.getHealth());
         assertEquals(5, restored.getLevel());
+        assertEquals(ProjectileType.FLARE, restored.getProjectileType());
     }
 
     @Test
@@ -104,6 +107,32 @@ public class GameObjectFactoryTest {
 
         assertTrue(restored.isRenewable());
         assertEquals(15.0, restored.getRespawnDelaySeconds());
+    }
+
+    @Test
+    public void testProjectileSerializationShouldPreserveTypeAndVelocity() {
+        ProjectileObject projectile = new ProjectileObject("flare", 12, 24, 320, -48, 7, null, ProjectileType.FLARE);
+
+        ObjectData data = GameObjectFactory.toObjectData(projectile);
+        assertEquals(GameObjectType.PROJECTILE, data.getType());
+        assertTrue(data.getExtraJson().contains("\"projectileType\":\"FLARE\""));
+
+        ProjectileObject restored = (ProjectileObject) GameObjectFactory.fromObjectData(data);
+        assertEquals(ProjectileType.FLARE, restored.getProjectileType());
+        assertEquals(320.0, restored.getVelocityX());
+        assertEquals(-48.0, restored.getVelocityY());
+        assertEquals(7, restored.getDamage());
+    }
+
+    @Test
+    public void testLaserProjectileSerializationShouldPreserveType() {
+        ProjectileObject projectile = new ProjectileObject("laser", 12, 24, 320, -48, 7, null, ProjectileType.LASER);
+
+        ObjectData data = GameObjectFactory.toObjectData(projectile);
+        assertTrue(data.getExtraJson().contains("\"projectileType\":\"LASER\""));
+
+        ProjectileObject restored = (ProjectileObject) GameObjectFactory.fromObjectData(data);
+        assertEquals(ProjectileType.LASER, restored.getProjectileType());
     }
 
     @Test

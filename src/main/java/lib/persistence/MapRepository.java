@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import lib.object.GameObjectType;
+import lib.object.dto.MapBackgroundPreset;
+import lib.object.dto.MapBackgroundMode;
 import lib.object.dto.MapData;
 import lib.object.dto.ObjectData;
 
@@ -152,6 +154,10 @@ public final class MapRepository {
                     + "width INTEGER NOT NULL,"
                     + "height INTEGER NOT NULL,"
                     + "background_color INTEGER NOT NULL,"
+                    + "background_preset TEXT NOT NULL DEFAULT 'DEFAULT',"
+                    + "background_mode TEXT NOT NULL DEFAULT 'GRADIENT',"
+                    + "background_image_name TEXT,"
+                    + "background_image_data TEXT,"
                     + "gravity_enabled INTEGER NOT NULL DEFAULT 0,"
                     + "gravity_strength INTEGER NOT NULL DEFAULT 900"
                     + ")"
@@ -177,6 +183,10 @@ public final class MapRepository {
             );
             ensureMapColumn(connection, "gravity_enabled", "INTEGER NOT NULL DEFAULT 0");
             ensureMapColumn(connection, "gravity_strength", "INTEGER NOT NULL DEFAULT 900");
+            ensureMapColumn(connection, "background_preset", "TEXT NOT NULL DEFAULT 'DEFAULT'");
+            ensureMapColumn(connection, "background_mode", "TEXT NOT NULL DEFAULT 'GRADIENT'");
+            ensureMapColumn(connection, "background_image_name", "TEXT");
+            ensureMapColumn(connection, "background_image_data", "TEXT");
             ensureObjectColumn(connection, "texture_path", "TEXT");
             ensureObjectColumn(connection, "material", "TEXT");
         } catch (SQLException ex) {
@@ -200,30 +210,38 @@ public final class MapRepository {
 
     private void updateMap(Connection connection, MapData mapData) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-            "UPDATE maps SET name = ?, width = ?, height = ?, background_color = ?, gravity_enabled = ?, gravity_strength = ? WHERE id = ?"
+            "UPDATE maps SET name = ?, width = ?, height = ?, background_color = ?, background_preset = ?, background_mode = ?, background_image_name = ?, background_image_data = ?, gravity_enabled = ?, gravity_strength = ? WHERE id = ?"
         )) {
             statement.setString(1, mapData.getName());
             statement.setInt(2, mapData.getWidth());
             statement.setInt(3, mapData.getHeight());
             statement.setInt(4, mapData.getBackgroundColor().getRGB());
-            statement.setInt(5, mapData.isGravityEnabled() ? 1 : 0);
-            statement.setInt(6, mapData.getGravityStrength());
-            statement.setLong(7, mapData.getId());
+            statement.setString(5, mapData.getBackgroundPreset().name());
+            statement.setString(6, mapData.getBackgroundMode().name());
+            statement.setString(7, mapData.getBackgroundImageName());
+            statement.setString(8, mapData.getBackgroundImageData());
+            statement.setInt(9, mapData.isGravityEnabled() ? 1 : 0);
+            statement.setInt(10, mapData.getGravityStrength());
+            statement.setLong(11, mapData.getId());
             statement.executeUpdate();
         }
     }
 
     private long insertMap(Connection connection, MapData mapData) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-            "INSERT INTO maps (name, width, height, background_color, gravity_enabled, gravity_strength) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO maps (name, width, height, background_color, background_preset, background_mode, background_image_name, background_image_data, gravity_enabled, gravity_strength) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             Statement.RETURN_GENERATED_KEYS
         )) {
             statement.setString(1, mapData.getName());
             statement.setInt(2, mapData.getWidth());
             statement.setInt(3, mapData.getHeight());
             statement.setInt(4, mapData.getBackgroundColor().getRGB());
-            statement.setInt(5, mapData.isGravityEnabled() ? 1 : 0);
-            statement.setInt(6, mapData.getGravityStrength());
+            statement.setString(5, mapData.getBackgroundPreset().name());
+            statement.setString(6, mapData.getBackgroundMode().name());
+            statement.setString(7, mapData.getBackgroundImageName());
+            statement.setString(8, mapData.getBackgroundImageData());
+            statement.setInt(9, mapData.isGravityEnabled() ? 1 : 0);
+            statement.setInt(10, mapData.getGravityStrength());
             statement.executeUpdate();
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -271,7 +289,7 @@ public final class MapRepository {
 
     private MapData fetchMapById(Connection connection, long mapId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-            "SELECT id, name, width, height, background_color, gravity_enabled, gravity_strength FROM maps WHERE id = ?"
+            "SELECT id, name, width, height, background_color, background_preset, background_mode, background_image_name, background_image_data, gravity_enabled, gravity_strength FROM maps WHERE id = ?"
         )) {
             statement.setLong(1, mapId);
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -285,7 +303,7 @@ public final class MapRepository {
 
     private MapData fetchMapByName(Connection connection, String name) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-            "SELECT id, name, width, height, background_color, gravity_enabled, gravity_strength FROM maps WHERE name = ?"
+            "SELECT id, name, width, height, background_color, background_preset, background_mode, background_image_name, background_image_data, gravity_enabled, gravity_strength FROM maps WHERE name = ?"
         )) {
             statement.setString(1, name);
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -304,6 +322,10 @@ public final class MapRepository {
         mapData.setWidth(resultSet.getInt("width"));
         mapData.setHeight(resultSet.getInt("height"));
         mapData.setBackgroundColor(new java.awt.Color(resultSet.getInt("background_color"), true));
+        mapData.setBackgroundPreset(MapBackgroundPreset.fromSerialized(resultSet.getString("background_preset")));
+        mapData.setBackgroundMode(MapBackgroundMode.fromSerialized(resultSet.getString("background_mode")));
+        mapData.setBackgroundImageName(resultSet.getString("background_image_name"));
+        mapData.setBackgroundImageData(resultSet.getString("background_image_data"));
         mapData.setGravityEnabled(resultSet.getInt("gravity_enabled") == 1);
         mapData.setGravityStrength(resultSet.getInt("gravity_strength"));
         return mapData;

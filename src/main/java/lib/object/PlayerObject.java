@@ -24,11 +24,19 @@ public final class PlayerObject extends ActorObject {
     private double shootCooldown = 0.3;
     private double lastDirX = 1.0;
     private double lastDirY = 0.0;
+    private ProjectileType projectileType = ProjectileType.STANDARD;
     private double walkingTimer = 0;
     private int lightRadius = 200;
     private double lightOrbTimer = 0;
     private static final double HEAL_EFFECT_DURATION = 0.75;
     private double healEffectTimer = 0.0;
+    private static final double BOMB_CHARGE_MAX_SECONDS = 1.5;
+    private static final double BOMB_CHARGE_SPEED_MULTIPLIER = 2.0;
+    private double bombChargeSeconds = 0.0;
+    private boolean bombChargeActive = false;
+    private boolean bombChargeUsesMouse = false;
+    private double bombChargeDirX = 1.0;
+    private double bombChargeDirY = 0.0;
     private double maxStamina = 100.0;
     private double stamina = 100.0;
     private double staminaRecoveryPerSecond = 24.0;
@@ -260,6 +268,29 @@ public final class PlayerObject extends ActorObject {
         this.lightOrbTimer = Math.max(this.lightOrbTimer, duration);
     }
 
+    public ProjectileType getProjectileType() {
+        return projectileType;
+    }
+
+    public double getLastDirectionX() {
+        return lastDirX;
+    }
+
+    public double getLastDirectionY() {
+        return lastDirY;
+    }
+
+    public void setProjectileType(ProjectileType projectileType) {
+        this.projectileType = projectileType == null ? ProjectileType.STANDARD : projectileType;
+        if (this.projectileType != ProjectileType.BOMB) {
+            cancelBombCharge();
+        }
+    }
+
+    public void cycleProjectileType() {
+        this.projectileType = (projectileType == null ? ProjectileType.STANDARD : projectileType).next();
+    }
+
     public void triggerHealEffect() {
         this.healEffectTimer = HEAL_EFFECT_DURATION;
     }
@@ -276,8 +307,67 @@ public final class PlayerObject extends ActorObject {
         setStamina(getMaxStamina());
         walkingTimer = 0.0;
         healEffectTimer = 0.0;
+        cancelBombCharge();
         lastDamageTimeNanos = System.nanoTime();
         lastShootTime = 0.0;
+    }
+
+    public boolean isBombChargeActive() {
+        return bombChargeActive;
+    }
+
+    public boolean isBombChargeMouseDriven() {
+        return bombChargeUsesMouse;
+    }
+
+    public double getBombChargeRatio() {
+        if (!bombChargeActive || BOMB_CHARGE_MAX_SECONDS <= 0.0) {
+            return 0.0;
+        }
+        return Math.max(0.0, Math.min(1.0, bombChargeSeconds / BOMB_CHARGE_MAX_SECONDS));
+    }
+
+    public void beginBombCharge(double dirX, double dirY, boolean usesMouse) {
+        if (getProjectileType() != ProjectileType.BOMB) {
+            return;
+        }
+        bombChargeActive = true;
+        bombChargeUsesMouse = usesMouse;
+        bombChargeSeconds = 0.0;
+        updateBombChargeDirection(dirX, dirY);
+    }
+
+    public void updateBombCharge(double dirX, double dirY, double deltaSeconds) {
+        if (!bombChargeActive) {
+            return;
+        }
+        updateBombChargeDirection(dirX, dirY);
+        if (deltaSeconds > 0.0) {
+            bombChargeSeconds = Math.min(BOMB_CHARGE_MAX_SECONDS, bombChargeSeconds + deltaSeconds);
+        }
+    }
+
+    public boolean releaseBombCharge(GameWorld world) {
+        if (!bombChargeActive) {
+            return false;
+        }
+        double chargeRatio = getBombChargeRatio();
+        double dirX = bombChargeDirX;
+        double dirY = bombChargeDirY;
+        cancelBombCharge();
+        if (world == null) {
+            return false;
+        }
+        shootBomb(world, dirX, dirY, chargeRatio);
+        return true;
+    }
+
+    public void cancelBombCharge() {
+        bombChargeActive = false;
+        bombChargeSeconds = 0.0;
+        bombChargeUsesMouse = false;
+        bombChargeDirX = 1.0;
+        bombChargeDirY = 0.0;
     }
 
     public void jump(GameWorld world) {
@@ -336,10 +426,60 @@ public final class PlayerObject extends ActorObject {
         lastShootTime = now;
         double px = getX() + getWidth() / 2.0;
         double py = getY() + getHeight() / 2.0;
-
-        ProjectileObject p = new ProjectileObject("bullet", (int) px, (int) py, dirX * 600, dirY * 600, getAttack(), this);
+        ProjectileType type = projectileType == null ? ProjectileType.STANDARD : projectileType;
+        int damage = type.computeDamage(getAttack());
+        double speed = 600.0 * type.getSpeedMultiplier();
+        ProjectileObject p = new ProjectileObject("bullet", (int) px, (int) py, dirX * speed, dirY * speed, damage, this, type);
         world.addObject(p);
         world.getSoundManager().playSound("shoot");
+    }
+
+    private void shootBomb(GameWorld world, double dirX, double dirY, double chargeRatio) {
+        if (world == null) {
+            return;
+        }
+        double now = System.currentTimeMillis() / 1000.0;
+        if (now - lastShootTime < shootCooldown) {
+            return;
+        }
+
+        lastShootTime = now;
+        double px = getX() + getWidth() / 2.0;
+        double py = getY() + getHeight() / 2.0;
+        ProjectileType type = ProjectileType.BOMB;
+        int damage = type.computeDamage(getAttack());
+        double chargeBoost = 1.0 + Math.max(0.0, Math.min(1.0, chargeRatio)) * BOMB_CHARGE_SPEED_MULTIPLIER;
+        double speed = 600.0 * type.getSpeedMultiplier() * chargeBoost;
+        ProjectileObject bomb = ProjectileObject.createBomb(
+            "bomb",
+            (int) px,
+            (int) py,
+            dirX * speed,
+            dirY * speed,
+            damage,
+            this,
+            Math.max(72, (int) Math.round(96 + 24 * chargeRatio)),
+            Math.max(1, type.computeExplosionDamage(damage)),
+            1.0
+        );
+        world.addObject(bomb);
+        world.getSoundManager().playSound("shoot");
+    }
+
+    private void updateBombChargeDirection(double dirX, double dirY) {
+        double length = Math.hypot(dirX, dirY);
+        if (length <= 0.0001) {
+            if (bombChargeActive) {
+                return;
+            }
+            bombChargeDirX = 1.0;
+            bombChargeDirY = 0.0;
+            return;
+        }
+        bombChargeDirX = dirX / length;
+        bombChargeDirY = dirY / length;
+        lastDirX = bombChargeDirX;
+        lastDirY = bombChargeDirY;
     }
 
     public void cycleColor() {

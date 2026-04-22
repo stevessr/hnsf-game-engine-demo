@@ -15,6 +15,7 @@ public enum InputAction {
     PAUSE,
     DIALOG_NEXT,
     CYCLE_COLOR,
+    CYCLE_PROJECTILE_TYPE,
     VOXEL_BUILD,
     VOXEL_DESTROY,
     JUMP,

@@ -15,6 +15,7 @@ import java.util.List;
 import lib.game.GameWorld;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
+import lib.object.ProjectileObject;
 
 /**
  * 增强型光照系统管理器，支持探索模式(常亮)和简单的阴影遮挡。
@@ -122,15 +123,11 @@ public final class LightingManager {
             
             // 更新探索层
             if (explorationMode) {
-                Graphics2D gVis = visibilityBuffer.createGraphics();
-                gVis.setComposite(AlphaComposite.Clear);
-                gVis.fillOval(
-                    player.getX() + player.getWidth() / 2 - radius,
-                    player.getY() + player.getHeight() / 2 - radius,
-                    radius * 2,
-                    radius * 2
+                clearExplorationCircle(
+                    player.getX() + player.getWidth() / 2,
+                    player.getY() + player.getHeight() / 2,
+                    radius
                 );
-                gVis.dispose();
             }
         });
         
@@ -138,6 +135,27 @@ public final class LightingManager {
         for (GameObject obj : world.getObjectsByType(GameObjectType.GOAL)) {
             if (obj.isActive()) {
                 drawLightWithShadows(g2d, obj.getX() + obj.getWidth() / 2, obj.getY() + obj.getHeight() / 2, (int)(250 * intensityMultiplier), 1.2f, casters);
+            }
+        }
+
+        // 照明弹等投射物光源
+        for (GameObject obj : world.getObjectsByType(GameObjectType.PROJECTILE)) {
+            if (obj instanceof ProjectileObject projectile && projectile.isActive() && projectile.getLightRadius() > 0) {
+                drawLightWithShadows(
+                    g2d,
+                    projectile.getX() + projectile.getWidth() / 2,
+                    projectile.getY() + projectile.getHeight() / 2,
+                    (int) (projectile.getLightRadius() * intensityMultiplier),
+                    projectile.getLightIntensity(),
+                    casters
+                );
+                if (explorationMode && projectile.revealsExplorationFog()) {
+                    clearExplorationCircle(
+                        projectile.getX() + projectile.getWidth() / 2,
+                        projectile.getY() + projectile.getHeight() / 2,
+                        projectile.getLightRadius()
+                    );
+                }
             }
         }
         
@@ -156,24 +174,64 @@ public final class LightingManager {
         graphics.drawImage(overlayBuffer, 0, 0, null);
     }
 
+    private void clearExplorationCircle(int centerX, int centerY, int radius) {
+        if (!explorationMode || visibilityBuffer == null || radius <= 0) {
+            return;
+        }
+        Graphics2D gVis = visibilityBuffer.createGraphics();
+        try {
+            gVis.setComposite(AlphaComposite.Clear);
+            gVis.fillOval(centerX - radius, centerY - radius, radius * 2, radius * 2);
+        } finally {
+            gVis.dispose();
+        }
+    }
+
     private void drawLightWithShadows(Graphics2D g, int x, int y, int radius, float intensity, List<GameObject> casters) {
         if (radius <= 0) {
             return;
         }
-        
-        Graphics2D gLight = (Graphics2D) g.create();
-        
-        Area lightArea = new Area(new Ellipse2D.Float(x - radius, y - radius, radius * 2, radius * 2));
+        if (casters == null || casters.isEmpty()) {
+            drawLight(g, x, y, radius, intensity);
+            return;
+        }
+
+        int left = x - radius;
+        int top = y - radius;
+        int right = x + radius;
+        int bottom = y + radius;
+        boolean hasRelevantCaster = false;
+
+        Area lightArea = null;
         for (GameObject caster : casters) {
             if (!caster.isActive()) {
                 continue;
             }
-            lightArea.subtract(new Area(new Rectangle2D.Float(caster.getX(), caster.getY(), caster.getWidth(), caster.getHeight())));
+            int casterLeft = caster.getX();
+            int casterTop = caster.getY();
+            int casterRight = casterLeft + Math.max(0, caster.getWidth());
+            int casterBottom = casterTop + Math.max(0, caster.getHeight());
+            if (casterRight <= left || casterBottom <= top || casterLeft >= right || casterTop >= bottom) {
+                continue;
+            }
+            hasRelevantCaster = true;
+            if (lightArea == null) {
+                lightArea = new Area(new Ellipse2D.Float(x - radius, y - radius, radius * 2, radius * 2));
+            }
+            lightArea.subtract(new Area(new Rectangle2D.Float(casterLeft, casterTop, caster.getWidth(), caster.getHeight())));
         }
-        
+        if (!hasRelevantCaster || lightArea == null) {
+            drawLight(g, x, y, radius, intensity);
+            return;
+        }
+
+        Graphics2D gLight = (Graphics2D) g.create();
         gLight.setClip(lightArea);
-        drawLight(gLight, x, y, radius, intensity);
-        gLight.dispose();
+        try {
+            drawLight(gLight, x, y, radius, intensity);
+        } finally {
+            gLight.dispose();
+        }
     }
 
     private void drawLight(Graphics2D g, int x, int y, int radius, float intensity) {

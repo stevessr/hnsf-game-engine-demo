@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import lib.game.GameWorld;
+import lib.object.dto.MapBackgroundMode;
+import lib.object.dto.MapBackgroundPreset;
 
 class GameObjectModelTest {
     @Test
@@ -500,6 +502,7 @@ class GameObjectModelTest {
     @Test
     void worldShouldRenderSceneObjectOverBackground() {
         GameWorld world = new GameWorld(80, 80, Color.BLACK);
+        world.setBackgroundMode(MapBackgroundMode.SOLID);
         SceneObject scene = new SceneObject("wall", 10, 10, 20, 20, true, false);
         scene.setColor(new Color(10, 200, 100));
         world.addObject(scene);
@@ -514,6 +517,33 @@ class GameObjectModelTest {
 
         assertEquals(Color.BLACK.getRGB(), image.getRGB(0, 0));
         assertEquals(scene.getColor().getRGB(), image.getRGB(15, 15));
+    }
+
+    @Test
+    void backgroundPresetChangeShouldUpdateCachedRender() {
+        GameWorld world = new GameWorld(80, 80, new Color(54, 92, 56));
+        world.setBackgroundPreset(MapBackgroundPreset.FOREST);
+
+        BufferedImage first = new BufferedImage(80, 80, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D firstGraphics = first.createGraphics();
+        try {
+            world.render(firstGraphics);
+        } finally {
+            firstGraphics.dispose();
+        }
+
+        world.setBackgroundPreset(MapBackgroundPreset.NIGHT);
+        world.setBackgroundColor(new Color(24, 30, 60));
+
+        BufferedImage second = new BufferedImage(80, 80, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D secondGraphics = second.createGraphics();
+        try {
+            world.render(secondGraphics);
+        } finally {
+            secondGraphics.dispose();
+        }
+
+        assertNotEquals(first.getRGB(10, 10), second.getRGB(10, 10));
     }
 
     @Test
@@ -585,6 +615,110 @@ class GameObjectModelTest {
     }
 
     @Test
+    void playerShouldShootSelectedProjectileType() {
+        GameWorld world = new GameWorld(160, 120);
+        PlayerObject player = new PlayerObject("hero", 20, 20);
+        player.setProjectileType(ProjectileType.BOMB);
+        world.addObject(player);
+
+        player.shoot(world, 120, 80);
+
+        ProjectileObject projectile = world.getObjectsByType(GameObjectType.PROJECTILE).stream()
+            .filter(ProjectileObject.class::isInstance)
+            .map(ProjectileObject.class::cast)
+            .findFirst()
+            .orElseThrow();
+
+        assertEquals(ProjectileType.BOMB, projectile.getProjectileType(), "玩家应使用当前选择的弹种开火");
+        assertTrue(projectile.isExplosive(), "爆破弹应具备爆炸效果");
+    }
+
+    @Test
+    void flareProjectileShouldEmitVisibleLight() {
+        GameWorld world = new GameWorld(100, 100, Color.BLACK);
+        world.setBackgroundMode(MapBackgroundMode.SOLID);
+        world.getLightingManager().setEnabled(true);
+        world.getLightingManager().setExplorationMode(false);
+        world.getLightingManager().setAmbientLight(0.0f);
+
+        ProjectileObject flare = new ProjectileObject("flare", 40, 40, 0, 0, 5, null, ProjectileType.FLARE);
+        world.addObject(flare);
+
+        BufferedImage image = new BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            world.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color litPixel = new Color(image.getRGB(44, 44), true);
+        assertNotEquals(Color.BLACK.getRGB(), litPixel.getRGB(), "照明弹应在黑暗环境中提供可见光照");
+    }
+
+    @Test
+    void flareProjectileShouldRevealExplorationFogAndEmitVisibleLight() {
+        GameWorld world = new GameWorld(100, 100, Color.BLACK);
+        world.setBackgroundMode(MapBackgroundMode.SOLID);
+        world.getLightingManager().setEnabled(true);
+        world.getLightingManager().setExplorationMode(true);
+        world.getLightingManager().setAmbientLight(0.0f);
+
+        ProjectileObject flare = new ProjectileObject("flare", 40, 40, 0, 0, 5, null, ProjectileType.FLARE);
+        world.addObject(flare);
+
+        BufferedImage image = new BufferedImage(100, 100, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            world.render(graphics);
+        } finally {
+            graphics.dispose();
+        }
+
+        Color litPixel = new Color(image.getRGB(44, 44), true);
+        assertNotEquals(Color.BLACK.getRGB(), litPixel.getRGB(), "照明弹应能同时照亮并探索迷雾");
+        assertTrue(litPixel.getAlpha() > 0, "照明弹探索后应让目标像素可见");
+    }
+
+    @Test
+    void laserProjectileShouldPierceAlliesAndEnableFriendlyFire() {
+        GameWorld world = new GameWorld(260, 160);
+        MonsterObject shooter = new MonsterObject("shooter", 20, 60, 10);
+        shooter.setAggressive(false);
+        shooter.setSpeed(0);
+        MonsterObject allyOne = new MonsterObject("ally-one", 80, 60, 10);
+        allyOne.setAggressive(false);
+        allyOne.setSpeed(0);
+        MonsterObject allyTwo = new MonsterObject("ally-two", 130, 60, 10);
+        allyTwo.setAggressive(false);
+        allyTwo.setSpeed(0);
+        ProjectileObject laser = new ProjectileObject("laser", 34, 64, 540, 0, 12, shooter, ProjectileType.LASER);
+
+        world.addObject(shooter);
+        world.addObject(allyOne);
+        world.addObject(allyTwo);
+        world.addObject(laser);
+
+        int shooterHealth = shooter.getHealth();
+        int allyOneHealth = allyOne.getHealth();
+        int allyTwoHealth = allyTwo.getHealth();
+
+        for (int i = 0; i < 30; i++) {
+            world.update(1.0 / 60.0);
+        }
+
+        assertEquals(shooterHealth, shooter.getHealth(), "射手不应被自身弹丸误伤");
+        assertTrue(allyOne.getHealth() < allyOneHealth, "友伤应允许同阵营目标受击");
+        assertTrue(allyTwo.getHealth() < allyTwoHealth, "穿透弹应能继续命中后方目标");
+    }
+
+    @Test
+    void projectileTypeParsingShouldRecognizeExtendedKinds() {
+        assertEquals(ProjectileType.LASER, ProjectileType.fromSerialized("激光"));
+        assertEquals(ProjectileType.SEEKER, ProjectileType.fromSerialized("seeker"));
+    }
+
+    @Test
     void bombProjectileShouldExplodeAndDamageNearbyTargets() {
         GameWorld world = new GameWorld(260, 180);
         world.setGravityEnabled(true);
@@ -609,6 +743,23 @@ class GameObjectModelTest {
         assertFalse(bomb.isActive(), "炸弹在爆炸动画结束后应失效");
         assertTrue(player.getHealth() < 40, "爆炸应对附近玩家造成伤害");
         assertFalse(bunker.isActive(), "爆炸应能摧毁附近可破坏建筑");
+    }
+
+    @Test
+    void bombExplosionShouldDamageTheThrower() {
+        GameWorld world = new GameWorld(200, 160);
+        PlayerObject player = new PlayerObject("hero", 80, 80);
+        player.setHealth(120);
+        ProjectileObject bomb = ProjectileObject.createBomb("bomb", 80, 80, 0, 0, 12, player, 72, 24, 0.1);
+
+        world.addObject(player);
+        world.addObject(bomb);
+
+        for (int i = 0; i < 180 && bomb.isActive(); i++) {
+            world.update(1.0 / 60.0);
+        }
+
+        assertTrue(player.getHealth() < 120, "扔出去的炸弹爆炸时应能伤到自己");
     }
 
     @Test

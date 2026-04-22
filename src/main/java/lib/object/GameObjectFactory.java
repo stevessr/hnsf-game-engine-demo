@@ -52,6 +52,7 @@ public final class GameObjectFactory {
             extra.put("speed", player.getSpeed());
             extra.put("complementaryColorDamageEnabled", player.isComplementaryColorDamageEnabled());
             extra.put("complementaryColorDamage", player.getComplementaryColorDamage());
+            extra.put("projectileType", player.getProjectileType().name());
         } else if (object instanceof MonsterObject monster) {
             extra.put("monsterKind", monster.getMonsterKind().name());
             extra.put("rewardExperience", monster.getRewardExperience());
@@ -90,6 +91,13 @@ public final class GameObjectFactory {
             extra.put("speakerName", dialog.getSpeakerName());
             extra.put("message", dialog.getMessage());
             extra.put("fontSize", dialog.getFontSize());
+        } else if (object instanceof ProjectileObject projectile) {
+            extra.put("projectileType", projectile.getProjectileType().name());
+            extra.put("velocityX", projectile.getVelocityX());
+            extra.put("velocityY", projectile.getVelocityY());
+            extra.put("damage", projectile.getDamage());
+            extra.put("lightRadius", projectile.getLightRadius());
+            extra.put("lightIntensity", projectile.getLightIntensity());
         }
 
         extra.put("active", object.isActive());
@@ -110,7 +118,7 @@ public final class GameObjectFactory {
             case ITEM -> object = createItem(data);
             case VOXEL -> object = createVoxel(data);
             case GOAL -> object = new GoalObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
-            case PROJECTILE -> object = new ProjectileObject(data.getName(), data.getX(), data.getY(), 0, 0, 10, null);
+            case PROJECTILE -> object = createProjectile(data);
             case WALL -> object = new WallObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
             case BOUNDARY -> object = new BoundaryObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
             case MENU -> object = createMenu(data);
@@ -187,6 +195,9 @@ public final class GameObjectFactory {
                 player.getComplementaryColorDamage()
             ));
         }
+        if (extra.has("projectileType")) {
+            player.setProjectileType(ProjectileType.fromSerialized(extra.optString("projectileType", null)));
+        }
         return player;
     }
 
@@ -244,6 +255,25 @@ public final class GameObjectFactory {
             monster.setRevivable(extra.optBoolean("revivable", monster.isRevivable()));
         }
         return monster;
+    }
+
+    private static GameObject createProjectile(ObjectData data) {
+        JSONObject extra = parseExtra(data.getExtraJson());
+        ProjectileType projectileType = ProjectileType.fromSerialized(extra.optString("projectileType", null));
+        int damage = extra.optInt("damage", 10);
+        double velocityX = extra.optDouble("velocityX", 0.0);
+        double velocityY = extra.optDouble("velocityY", 0.0);
+        ProjectileObject projectile = new ProjectileObject(
+            data.getName(),
+            data.getX(),
+            data.getY(),
+            velocityX,
+            velocityY,
+            damage,
+            null,
+            projectileType
+        );
+        return projectile;
     }
 
     private static GameObject createItem(ObjectData data) {
