@@ -491,18 +491,30 @@ public final class EditorWindow extends JFrame {
         wSpinner.addChangeListener(e -> syncSize());
         hSpinner.addChangeListener(e -> syncSize());
 
-        texturePathField.addActionListener(e -> {
-            if (updatingControls) return;
-            GameObject selected = controller.getSelectedObject();
-            if (selected instanceof BaseObject bo) {
-                bo.setTexturePath(texturePathField.getText().isBlank() ? null : texturePathField.getText());
+        texturePathField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            private void update() {
+                if (updatingControls) return;
+                GameObject selected = controller.getSelectedObject();
+                if (selected instanceof BaseObject bo) {
+                    bo.setTexturePath(texturePathField.getText().isBlank() ? null : texturePathField.getText());
+                    previewPanel.repaint();
+                }
             }
         });
-        materialField.addActionListener(e -> {
-            if (updatingControls) return;
-            GameObject selected = controller.getSelectedObject();
-            if (selected instanceof BaseObject bo) {
-                bo.setMaterial(materialField.getText().isBlank() ? null : materialField.getText());
+        materialField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            private void update() {
+                if (updatingControls) return;
+                GameObject selected = controller.getSelectedObject();
+                if (selected instanceof BaseObject bo) {
+                    bo.setMaterial(materialField.getText().isBlank() ? null : materialField.getText());
+                    previewPanel.repaint();
+                }
             }
         });
 
@@ -750,22 +762,35 @@ public final class EditorWindow extends JFrame {
     }
 
     private void addItemListeners() {
-        itemKindField.addActionListener(e -> {
-            if (updatingControls) return;
-            if (controller.getSelectedObject() instanceof ItemObject item) {
-                item.setKind(itemKindField.getText());
+        itemKindField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            private void update() {
+                if (updatingControls) return;
+                if (controller.getSelectedObject() instanceof ItemObject item) {
+                    item.setKind(itemKindField.getText());
+                    previewPanel.repaint();
+                }
             }
         });
         itemValueSpinner.addChangeListener(e -> {
             if (updatingControls) return;
             if (controller.getSelectedObject() instanceof ItemObject item) {
                 item.setValue((int) itemValueSpinner.getValue());
+                previewPanel.repaint();
             }
         });
-        itemMessageField.addActionListener(e -> {
-            if (updatingControls) return;
-            if (controller.getSelectedObject() instanceof ItemObject item) {
-                item.setMessage(itemMessageField.getText());
+        itemMessageField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            private void update() {
+                if (updatingControls) return;
+                if (controller.getSelectedObject() instanceof ItemObject item) {
+                    item.setMessage(itemMessageField.getText());
+                    previewPanel.repaint();
+                }
             }
         });
     }

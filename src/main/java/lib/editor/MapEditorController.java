@@ -93,13 +93,44 @@ public final class MapEditorController {
             public void mouseDragged(MouseEvent event) {
                 handleMouseDragged(event);
             }
+
+            @Override
+            public void mouseMoved(MouseEvent event) {
+                handleMouseMoved(event);
+            }
         });
+
         panel.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent event) {
                 handleKeyPressed(event);
             }
         });
+    }
+
+    private void handleMouseMoved(MouseEvent event) {
+        Point point = event.getPoint();
+        if (editMode == EditMode.SELECT) {
+            int handle = getResizeHandleAt(point);
+            if (handle != -1) {
+                switch (handle) {
+                    case 0, 3 -> panel.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.NW_RESIZE_CURSOR));
+                    case 1, 2 -> panel.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.NE_RESIZE_CURSOR));
+                }
+                return;
+            }
+            if (findObjectAt(point) != null) {
+                panel.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.MOVE_CURSOR));
+                return;
+            }
+        } else if (editMode == EditMode.BUILD) {
+            panel.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.CROSSHAIR_CURSOR));
+            return;
+        } else if (editMode == EditMode.ERASE) {
+            panel.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+            return;
+        }
+        panel.setCursor(java.awt.Cursor.getDefaultCursor());
     }
 
     public void setSelectedType(GameObjectType type) {

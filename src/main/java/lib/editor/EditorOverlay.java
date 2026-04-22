@@ -49,9 +49,31 @@ public final class EditorOverlay {
 
         if (selectedObject != null) {
             renderSelection(graphics);
+            renderSelectionInfo(graphics);
         }
 
         renderLegend(graphics, width, height);
+    }
+
+    private void renderSelectionInfo(Graphics2D g) {
+        g.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 11));
+        String info = selectedObject.getType() + ": " + selectedObject.getName();
+        
+        if (selectedObject instanceof lib.object.ItemObject item) {
+            info += " [Kind: " + item.getKind() + ", Val: " + item.getValue() + "]";
+        } else if (selectedObject instanceof lib.object.ActorObject actor) {
+            info += " [HP: " + actor.getHealth() + " ATK: " + actor.getAttack() + "]";
+        }
+
+        int textX = selectedObject.getX();
+        int textY = selectedObject.getY() - 5;
+        
+        int textWidth = g.getFontMetrics().stringWidth(info);
+        g.setColor(new Color(0, 0, 0, 180));
+        g.fillRect(textX - 2, textY - 14, textWidth + 4, 16);
+        
+        g.setColor(Color.YELLOW);
+        g.drawString(info, textX, textY);
     }
 
     private void renderSelection(Graphics2D g) {
@@ -91,9 +113,9 @@ public final class EditorOverlay {
         line += 15;
         g.drawString("Ctrl+D  : Duplicate", x + 10, line);
         line += 15;
-        g.drawString("Del     : Delete", x + 10, line);
+        g.drawString("Del/R-Click: Delete", x + 10, line);
         line += 15;
-        g.drawString("Arrows  : Nudge / Drag Corners", x + 10, line);
+        g.drawString("MOUSE   : Drag=Move, Handles=Size", x + 10, line);
         line += 15;
         g.drawString("G/S/B/E : Toggle/Mode", x + 10, line);
     }
