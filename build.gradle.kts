@@ -6,6 +6,7 @@ plugins {
     id("checkstyle")
     id("com.github.spotbugs") version "6.4.4"
     id("com.gradleup.shadow") version "8.3.10"
+    id("org.graalvm.buildtools.native") version "0.10.2"
 }
 
 group = "org.example"
@@ -61,6 +62,24 @@ tasks.withType<com.github.spotbugs.snom.SpotBugsTask>().configureEach {
 
 application {
     mainClass = "org.example.App"
+}
+
+graalvmNative {
+    binaries.all {
+        verbose.set(true)
+        resources.autodetect()
+    }
+
+    binaries.named("main") {
+        imageName.set("primary_software")
+        mainClass.set("org.example.App")
+        buildArgs.add("--no-fallback")
+        buildArgs.add("-H:+ReportExceptionStackTraces")
+    }
+
+    metadataRepository {
+        enabled.set(true)
+    }
 }
 
 tasks.jar {

@@ -1,0 +1,101 @@
+{
+  "resources" : {
+    "includes" : [ {
+      "pattern" : "\\Qlogback.xml\\E"
+    }, {
+      "pattern" : "\\Qaudio/ATTRIBUTION.md\\E"
+    }, {
+      "pattern" : "\\Qaudio/bomb_drop.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/crash.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/crash_alt.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/damage.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/explosion.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/heal.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/hurt.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/jump.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/menu_back.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/menu_back_alt.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/menu_click.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/menu_click_alt.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/shoot.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/shoot_alt.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/victory.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/victory_alt.wav\\E"
+    }, {
+      "pattern" : "\\Qaudio/wind.wav\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/levels/air-raid.jpg\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/levels/boss-arena.jpg\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/levels/cavern.jpg\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/levels/demo-map.jpg\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/levels/forest.jpg\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/levels/procedural-cave.jpg\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/levels/procedural-forest.jpg\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/levels/ruins.jpg\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/levels/tutorial.jpg\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/ui/main-menu.jpg\\E"
+    }, {
+      "pattern" : "\\Qbackgrounds/ui/pause-menu.jpg\\E"
+    }, {
+      "pattern" : "\\Qsprites/characters/player-hero.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/items/coin.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/items/heart.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/items/lightorb.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/items/shield.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/items/speed.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/monsters/bat.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/monsters/dragon.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/monsters/gargoyle.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/monsters/ghost.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/monsters/plane.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/monsters/slime.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/monsters/spider.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/props/wood-crate.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/tiles/brick.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/tiles/stone.png\\E"
+    }, {
+      "pattern" : "\\Qsprites/tiles/wood-planks.png\\E"
+    } ],
+    "excludes" : [ ]
+  },
+  "bundles" : [ ]
+}

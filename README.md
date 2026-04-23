@@ -51,7 +51,7 @@
 
 ## 开发环境要求
 
--   JDK 17+
+-   JDK 17+ (25 以下需要自行修改 gradlew 配置文件 -> build.gradle.kts languageVersion = JavaLanguageVersion.of(25))
 -   Gradle 8.0+
 
 ## 快速开始
