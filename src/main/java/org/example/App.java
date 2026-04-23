@@ -1,7 +1,6 @@
 package org.example;
 
 import java.awt.Color;
-import java.awt.GraphicsEnvironment;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.lang.reflect.InvocationTargetException;
@@ -54,7 +53,6 @@ public class App {
     private static final String OPTIONS_MENU_NAME = "options-menu";
 
     public static void main(String[] args) {
-        initializeDesktopRuntime();
         if (args != null && args.length > 0 && "editor".equalsIgnoreCase(args[0])) {
             SwingUtilities.invokeLater(App::startEditor);
             return;
@@ -71,18 +69,6 @@ public class App {
      */
     public static int add(int a, int b) {
         return a + b;
-    }
-
-    /**
-     * 预热桌面运行时，确保 native image 中保留 AWT/Swing 运行所需类。
-     */
-    private static void initializeDesktopRuntime() {
-        System.setProperty("java.awt.headless", "false");
-        try {
-            GraphicsEnvironment.getLocalGraphicsEnvironment();
-        } catch (Throwable ex) {
-            log.debug("AWT desktop bootstrap failed early, continuing: {}", ex.getMessage());
-        }
     }
 
     private static void startGame() {

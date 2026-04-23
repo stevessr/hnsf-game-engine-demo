@@ -1,13 +1,35 @@
 {
   "jni": [
     {
-      "type": "java.awt.GraphicsEnvironment"
+      "type": "java.awt.GraphicsEnvironment",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "methods": [
+        {
+          "name": "isHeadless",
+          "parameterTypes": []
+        }
+      ]
     },
     {
-      "type": "java.awt.Toolkit"
+      "type": "java.awt.Toolkit",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
     },
     {
-      "type": "sun.awt.X11GraphicsEnvironment"
+      "type": "sun.awt.X11GraphicsEnvironment",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "sun.awt.X11.XToolkit",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
+    },
+    {
+      "type": "sun.awt.UNIXToolkit",
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
     }
   ]
 }
