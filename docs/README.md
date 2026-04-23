@@ -8,6 +8,7 @@
 2. [系统架构说明](architecture/系统架构.md) —— 了解程序启动、运行时流程和数据流。
 3. [模块总览](modules/README.md) —— 先看各模块概览，再进入详细分析。
 4. [参考索引](reference/README.md) —— 按包、枚举和测试快速查找源码文件。
+5. [类级文档](classes/README.md) —— 按单个核心类继续下钻。
 
 ## 文档目录
 
@@ -30,13 +31,36 @@ docs/
 │       ├── 渲染系统.md
 │       ├── 编辑器.md
 │       └── 持久化.md
-└── reference/
+├── reference/
+│   ├── README.md
+│   ├── 类索引.md
+│   └── detail/
+│       ├── README.md
+│       ├── 枚举与DTO.md
+│       └── 测试索引.md
+└── classes/
     ├── README.md
-    ├── 类索引.md
-    └── detail/
-        ├── README.md
-        ├── 枚举与DTO.md
-        └── 测试索引.md
+    ├── runtime/
+    │   ├── GameWorld.md
+    │   ├── SwingGamePanel.md
+    │   ├── DefaultGameStateMachine.md
+    │   ├── Camera.md
+    │   └── LightingManager.md
+    ├── input/
+    │   └── GameInputController.md
+    ├── object/
+    │   ├── PlayerObject.md
+    │   ├── MonsterObject.md
+    │   ├── ProjectileObject.md
+    │   ├── SceneObject.md
+    │   ├── MenuObject.md
+    │   └── DialogObject.md
+    ├── persistence/
+    │   ├── MapRepository.md
+    │   ├── MapDataMapper.md
+    │   └── SettingsRepository.md
+    └── editor/
+        └── MapEditorController.md
 ```
 
 ## 说明
@@ -58,3 +82,4 @@ docs/
 - [`modules/detail/持久化.md`](modules/detail/持久化.md)
 - [`reference/detail/枚举与DTO.md`](reference/detail/枚举与DTO.md)
 - [`reference/detail/测试索引.md`](reference/detail/测试索引.md)
+- [`classes/README.md`](classes/README.md)
