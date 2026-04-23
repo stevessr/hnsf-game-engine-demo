@@ -84,6 +84,8 @@ public final class MinimapOverlay {
             case MONSTER -> Color.RED;
             case GOAL -> Color.YELLOW;
             case ITEM -> Color.GREEN;
+            case TRIGGER -> new Color(220, 90, 255);
+            case SPAWNER -> new Color(180, 110, 255);
             case WALL, BOUNDARY -> Color.DARK_GRAY;
             default -> new Color(100, 100, 100, 50);
         };

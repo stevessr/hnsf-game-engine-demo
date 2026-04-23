@@ -99,6 +99,66 @@ public class GameObjectFactoryTest {
     }
 
     @Test
+    public void testTriggerSerialization() {
+        TriggerObject trigger = new TriggerObject("GateTrigger", 40, 60, 96, 64);
+        trigger.setTargetName("gate-door");
+        trigger.setAction(TriggerAction.ACTIVATE);
+        trigger.setTriggerOnce(true);
+
+        ObjectData data = GameObjectFactory.toObjectData(trigger);
+        assertEquals(GameObjectType.TRIGGER, data.getType());
+        assertTrue(data.getExtraJson().contains("\"targetName\":\"gate-door\""));
+        assertTrue(data.getExtraJson().contains("\"action\":\"ACTIVATE\""));
+
+        TriggerObject restored = (TriggerObject) GameObjectFactory.fromObjectData(data);
+        assertEquals("gate-door", restored.getTargetName());
+        assertEquals(TriggerAction.ACTIVATE, restored.getAction());
+        assertTrue(restored.isTriggerOnce());
+    }
+
+    @Test
+    public void testWorldTriggerActionSerialization() {
+        TriggerObject trigger = new TriggerObject("RespawnTrigger", 40, 60, 96, 64);
+        trigger.setAction(TriggerAction.RESPAWN_PLAYER);
+
+        ObjectData data = GameObjectFactory.toObjectData(trigger);
+        assertTrue(data.getExtraJson().contains("\"action\":\"RESPAWN_PLAYER\""));
+
+        TriggerObject restored = (TriggerObject) GameObjectFactory.fromObjectData(data);
+        assertEquals(TriggerAction.RESPAWN_PLAYER, restored.getAction());
+    }
+
+    @Test
+    public void testSpawnerSerialization() {
+        SpawnerObject spawner = new SpawnerObject("SlimeSpawner", 80, 90, 64, 64);
+        spawner.setMonsterKind(MonsterKind.SLIME);
+        spawner.setSpawnIntervalSeconds(2.5);
+        spawner.setMaxAlive(4);
+        spawner.setSpawnWaveSize(3);
+        spawner.setSpawnRadius(48);
+        spawner.setSpawnOffsetX(12);
+        spawner.setSpawnOffsetY(-6);
+        String spawnGroupId = spawner.getSpawnGroupId();
+
+        ObjectData data = GameObjectFactory.toObjectData(spawner);
+        assertEquals(GameObjectType.SPAWNER, data.getType());
+        assertTrue(data.getExtraJson().contains("\"monsterKind\":\"SLIME\""));
+        assertTrue(data.getExtraJson().contains("\"spawnWaveSize\":3"));
+        assertTrue(data.getExtraJson().contains("\"spawnRadius\":48"));
+        assertTrue(data.getExtraJson().contains("\"spawnGroupId\""));
+
+        SpawnerObject restored = (SpawnerObject) GameObjectFactory.fromObjectData(data);
+        assertEquals(MonsterKind.SLIME, restored.getMonsterKind());
+        assertEquals(2.5, restored.getSpawnIntervalSeconds());
+        assertEquals(4, restored.getMaxAlive());
+        assertEquals(3, restored.getSpawnWaveSize());
+        assertEquals(48, restored.getSpawnRadius());
+        assertEquals(12, restored.getSpawnOffsetX());
+        assertEquals(-6, restored.getSpawnOffsetY());
+        assertEquals(spawnGroupId, restored.getSpawnGroupId());
+    }
+
+    @Test
     public void testLightSourceItemSerialization() {
         ItemObject item = new ItemObject("Orb", 50, 50, 32, 32, "lightorb", 50, "Vision!");
 

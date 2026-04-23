@@ -11,6 +11,8 @@ import lib.game.GameWorld;
 import lib.game.WinConditionType;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
+import lib.object.SpawnerObject;
+import lib.object.TriggerObject;
 
 /**
  * 地图自动扫描器，用于在编辑器中快速发现关卡配置问题。
@@ -71,6 +73,14 @@ public final class LevelAutoScanner {
         }
         if (winCondition == WinConditionType.CLEAR_ALL_ITEMS && itemCount == 0) {
             issues.add(new ScanIssue(Severity.WARNING, "胜利条件为 CLEAR_ALL_ITEMS，但地图中没有 ITEM。"));
+        }
+
+        for (GameObject object : world.getObjects()) {
+            if (object instanceof TriggerObject trigger) {
+                validateTrigger(world, trigger, issues);
+            } else if (object instanceof SpawnerObject spawner) {
+                validateSpawner(spawner, issues);
+            }
         }
 
         Map<String, Integer> nameCounts = new HashMap<>();
@@ -147,5 +157,36 @@ public final class LevelAutoScanner {
             summary.append(' ').append(entry.getKey().name()).append('=').append(entry.getValue());
         }
         issues.add(new ScanIssue(Severity.INFO, summary.toString()));
+    }
+
+    private static void validateTrigger(GameWorld world, TriggerObject trigger, List<ScanIssue> issues) {
+        if (trigger == null) {
+            return;
+        }
+        if (trigger.getAction() != null && trigger.getAction().requiresTargetName()) {
+            if (trigger.getTargetName() == null || trigger.getTargetName().isBlank()) {
+                issues.add(new ScanIssue(Severity.WARNING, "触发器 " + trigger.getName() + " 缺少目标名称。"));
+            } else if (world.getObjects().stream().noneMatch(object -> trigger.getTargetName().equals(object.getName()))) {
+                issues.add(new ScanIssue(Severity.WARNING, "触发器 " + trigger.getName() + " 指向的目标不存在: " + trigger.getTargetName()));
+            }
+        }
+    }
+
+    private static void validateSpawner(SpawnerObject spawner, List<ScanIssue> issues) {
+        if (spawner == null) {
+            return;
+        }
+        if (spawner.getSpawnIntervalSeconds() <= 0.0) {
+            issues.add(new ScanIssue(Severity.ERROR, "刷怪笼 " + spawner.getName() + " 的刷新间隔必须大于 0。"));
+        }
+        if (spawner.getMaxAlive() <= 0) {
+            issues.add(new ScanIssue(Severity.ERROR, "刷怪笼 " + spawner.getName() + " 的同时存在上限必须大于 0。"));
+        }
+        if (spawner.getSpawnWaveSize() <= 0) {
+            issues.add(new ScanIssue(Severity.ERROR, "刷怪笼 " + spawner.getName() + " 的每波数量必须大于 0。"));
+        }
+        if (spawner.getSpawnRadius() < 0) {
+            issues.add(new ScanIssue(Severity.ERROR, "刷怪笼 " + spawner.getName() + " 的生成半径不能小于 0。"));
+        }
     }
 }

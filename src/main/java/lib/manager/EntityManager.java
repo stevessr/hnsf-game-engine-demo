@@ -186,6 +186,8 @@ public final class EntityManager {
         renderList(graphics, typeCache.get(GameObjectType.BOUNDARY));
         renderList(graphics, typeCache.get(GameObjectType.VOXEL));
         renderList(graphics, typeCache.get(GameObjectType.GOAL));
+        renderList(graphics, typeCache.get(GameObjectType.TRIGGER));
+        renderList(graphics, typeCache.get(GameObjectType.SPAWNER));
 
         // 层级 2: 动态实体与物品层
         renderList(graphics, typeCache.get(GameObjectType.PLAYER));

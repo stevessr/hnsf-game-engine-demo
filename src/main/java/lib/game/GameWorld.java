@@ -113,6 +113,19 @@ public final class GameWorld {
         this.respawnPointSet = true;
     }
 
+    public void clearRespawnPoint() {
+        this.respawnX = 0;
+        this.respawnY = 0;
+        this.respawnPointSet = false;
+    }
+
+    public void refreshRespawnPointFromPlayers() {
+        findPlayer().ifPresentOrElse(
+            player -> setRespawnPoint(player.getX(), player.getY()),
+            this::clearRespawnPoint
+        );
+    }
+
     public boolean respawnPlayer() {
         PlayerObject player = entityManager.getObjects().stream()
             .filter(object -> object.getType() == GameObjectType.PLAYER)

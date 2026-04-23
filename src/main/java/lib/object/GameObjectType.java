@@ -9,6 +9,8 @@ public enum GameObjectType {
     MENU,
     DIALOG,
     ITEM,
+    TRIGGER,
+    SPAWNER,
     VOXEL,
     GOAL,
     PROJECTILE

@@ -36,6 +36,7 @@ import lib.object.BaseObject;
 import lib.object.DialogObject;
 import lib.object.GameObject;
 import lib.object.GameObjectType;
+import lib.object.GameObjectFactory;
 import lib.object.ItemObject;
 import lib.object.MenuObject;
 import lib.object.MonsterObject;
@@ -43,6 +44,9 @@ import lib.object.MonsterKind;
 import lib.object.PlayerObject;
 import lib.object.ProjectileType;
 import lib.object.SceneObject;
+import lib.object.SpawnerObject;
+import lib.object.TriggerAction;
+import lib.object.TriggerObject;
 import lib.object.dto.MapBackgroundMode;
 import lib.object.dto.MapBackgroundPreset;
 import lib.persistence.MapDataMapper;
@@ -55,6 +59,8 @@ public final class EditorWindow extends JFrame {
     private final MapEditorController controller;
     private final MapRepository repository;
     private final JComboBox<GameObjectType> typeSelector;
+    private final JTextField nameField;
+    private final JCheckBox activeToggle;
     private final JComboBox<String> levelSelector;
     private final JComboBox<String> modeSelector;
     private final JTextField mapNameField;
@@ -85,6 +91,16 @@ public final class EditorWindow extends JFrame {
     private final JTextField itemKindField;
     private final JSpinner itemValueSpinner;
     private final JTextField itemMessageField;
+    private final JTextField triggerTargetField;
+    private final JComboBox<TriggerAction> triggerActionSelector;
+    private final JCheckBox triggerOnceToggle;
+    private final JComboBox<MonsterKind> spawnerKindSelector;
+    private final JSpinner spawnIntervalSpinner;
+    private final JSpinner maxAliveSpinner;
+    private final JSpinner spawnWaveSizeSpinner;
+    private final JSpinner spawnRadiusSpinner;
+    private final JSpinner spawnOffsetXSpinner;
+    private final JSpinner spawnOffsetYSpinner;
     private final JTextField texturePathField;
     private final JTextField materialField;
     private final JSpinner healthSpinner;
@@ -108,6 +124,7 @@ public final class EditorWindow extends JFrame {
     private final JToggleButton snapToggle;
     private final JSpinner gridSizeSpinner;
     private final JLabel selectionInfoLabel;
+    private final JLabel modeHintLabel;
     private boolean updatingControls;
 
     public EditorWindow(GameWorld world, MapRepository repository) {
@@ -118,6 +135,9 @@ public final class EditorWindow extends JFrame {
         this.previewPanel = new EditorGamePanel(world, overlay);
         this.controller = new MapEditorController(world, previewPanel, overlay);
         this.typeSelector = new JComboBox<>(GameObjectType.values());
+        this.nameField = new JTextField();
+        this.nameField.setColumns(14);
+        this.activeToggle = new JCheckBox("启用", true);
         this.levelSelector = new JComboBox<>();
         this.modeSelector = new JComboBox<>(new String[] {"选择", "建造", "破坏"});
         this.mapNameField = new JTextField("demo-map");
@@ -150,8 +170,21 @@ public final class EditorWindow extends JFrame {
         this.damageToggle = new JCheckBox("互补色伤害", true);
         this.projectileTypeSelector = new JComboBox<>(ProjectileType.values());
         this.itemKindField = new JTextField("coin");
+        this.itemKindField.setColumns(10);
         this.itemValueSpinner = new JSpinner(new SpinnerNumberModel(10, 0, 9999, 1));
         this.itemMessageField = new JTextField("");
+        this.itemMessageField.setColumns(12);
+        this.triggerTargetField = new JTextField("");
+        this.triggerTargetField.setColumns(12);
+        this.triggerActionSelector = new JComboBox<>(TriggerAction.values());
+        this.triggerOnceToggle = new JCheckBox("仅触发一次", false);
+        this.spawnerKindSelector = new JComboBox<>(MonsterKind.values());
+        this.spawnIntervalSpinner = new JSpinner(new SpinnerNumberModel(4.0, 0.1, 60.0, 0.1));
+        this.maxAliveSpinner = new JSpinner(new SpinnerNumberModel(2, 1, 100, 1));
+        this.spawnWaveSizeSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 20, 1));
+        this.spawnRadiusSpinner = new JSpinner(new SpinnerNumberModel(24, 0, 2000, 1));
+        this.spawnOffsetXSpinner = new JSpinner(new SpinnerNumberModel(0, -4000, 4000, 1));
+        this.spawnOffsetYSpinner = new JSpinner(new SpinnerNumberModel(0, -4000, 4000, 1));
         this.texturePathField = new JTextField("");
         this.materialField = new JTextField("");
         this.healthSpinner = new JSpinner(new SpinnerNumberModel(100, 0, 9999, 1));
@@ -175,18 +208,22 @@ public final class EditorWindow extends JFrame {
         this.snapToggle = new JToggleButton("网格吸附", true);
         this.gridSizeSpinner = new JSpinner(new SpinnerNumberModel(20, 4, 200, 1));
         this.selectionInfoLabel = new JLabel("未选中对象");
+        this.modeHintLabel = new JLabel();
+        this.modeHintLabel.setText(formatModeHint(MapEditorController.EditMode.SELECT));
         initLayout();
         initActions();
         controller.setSelectionListener(this::updateInspectorFromSelection);
         controller.setModeChangeListener(mode -> {
             updatingControls = true;
             modeSelector.setSelectedItem(formatEditMode(mode));
+            modeHintLabel.setText(formatModeHint(mode));
             updatingControls = false;
         });
         controller.setSaveListener(this::saveMap);
         refreshLevelSelector();
         updateWorldControlsFromWorld();
         updateInspectorFromSelection(null);
+        controller.setEditMode(MapEditorController.EditMode.SELECT);
         controller.bind();
     }
 
@@ -195,16 +232,11 @@ public final class EditorWindow extends JFrame {
         setLayout(new BorderLayout(8, 8));
         setMinimumSize(new Dimension(1280, 800));
 
-        JPanel palettePanel = new JPanel(new GridLayout(0, 1, 6, 6));
-        palettePanel.setBorder(BorderFactory.createTitledBorder("对象库"));
-        for (GameObjectType type : GameObjectType.values()) {
-            JButton button = new JButton(type.name());
-            button.addActionListener(event -> {
-                controller.setSelectedType(type);
-                typeSelector.setSelectedItem(type);
-            });
-            palettePanel.add(button);
-        }
+        JPanel sidebarPanel = new JPanel(new GridLayout(1, 2, 8, 8));
+        sidebarPanel.setPreferredSize(new Dimension(360, 0));
+        sidebarPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        sidebarPanel.add(buildSelectionEditPanel());
+        sidebarPanel.add(buildAddPalettePanel());
 
         JPanel previewWrapper = new JPanel(new BorderLayout());
         previewWrapper.setBorder(BorderFactory.createTitledBorder("预览"));
@@ -215,11 +247,44 @@ public final class EditorWindow extends JFrame {
         inspectorTabs.addTab("对象", buildPropertyPanel());
         inspectorTabs.addTab("工具", buildToolPanel());
 
-        add(palettePanel, BorderLayout.WEST);
+        add(sidebarPanel, BorderLayout.WEST);
         add(previewWrapper, BorderLayout.CENTER);
         add(inspectorTabs, BorderLayout.EAST);
         pack();
         setLocationRelativeTo(null);
+    }
+
+    private JPanel buildSelectionEditPanel() {
+        JPanel panel = new JPanel(new GridLayout(0, 1, 6, 6));
+        panel.setBorder(BorderFactory.createTitledBorder("选择 / 编辑"));
+        panel.add(new JLabel("编辑模式"));
+        panel.add(modeSelector);
+        panel.add(modeHintLabel);
+        return panel;
+    }
+
+    private JPanel buildAddPalettePanel() {
+        JPanel panel = new JPanel(new BorderLayout(0, 6));
+        panel.setBorder(BorderFactory.createTitledBorder("单次添加"));
+        JPanel buttons = new JPanel(new GridLayout(0, 1, 6, 6));
+        for (GameObjectType type : GameObjectType.values()) {
+            buttons.add(createSingleAddButton(type));
+        }
+        JScrollPane scrollPane = new JScrollPane(buttons);
+        scrollPane.setBorder(null);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JButton createSingleAddButton(GameObjectType type) {
+        JButton button = new JButton(type.name());
+        button.setToolTipText("添加一个 " + type.name());
+        button.addActionListener(event -> {
+            controller.setEditMode(MapEditorController.EditMode.SELECT);
+            controller.addObjectOnce(type);
+            previewPanel.requestFocusInWindow();
+        });
+        return button;
     }
 
     private JPanel buildMapPanel() {
@@ -274,8 +339,12 @@ public final class EditorWindow extends JFrame {
         form.setBorder(BorderFactory.createTitledBorder("对象属性"));
         form.add(new JLabel("选中"));
         form.add(selectionInfoLabel);
+        form.add(new JLabel("名称"));
+        form.add(nameField);
         form.add(new JLabel("类型"));
         form.add(typeSelector);
+        form.add(new JLabel("启用"));
+        form.add(activeToggle);
         form.add(new JLabel("X"));
         form.add(xSpinner);
         form.add(new JLabel("Y"));
@@ -356,6 +425,32 @@ public final class EditorWindow extends JFrame {
         form.add(new JLabel("消息"));
         form.add(itemMessageField);
 
+        form.add(new JLabel("--- 触发器 ---"));
+        form.add(new JLabel(""));
+        form.add(new JLabel("目标名称"));
+        form.add(triggerTargetField);
+        form.add(new JLabel("触发动作"));
+        form.add(triggerActionSelector);
+        form.add(new JLabel("仅触发一次"));
+        form.add(triggerOnceToggle);
+
+        form.add(new JLabel("--- 刷怪笼 ---"));
+        form.add(new JLabel(""));
+        form.add(new JLabel("刷怪种类"));
+        form.add(spawnerKindSelector);
+        form.add(new JLabel("刷新间隔（秒）"));
+        form.add(spawnIntervalSpinner);
+        form.add(new JLabel("同时存在上限"));
+        form.add(maxAliveSpinner);
+        form.add(new JLabel("每波数量"));
+        form.add(spawnWaveSizeSpinner);
+        form.add(new JLabel("生成半径"));
+        form.add(spawnRadiusSpinner);
+        form.add(new JLabel("X 偏移"));
+        form.add(spawnOffsetXSpinner);
+        form.add(new JLabel("Y 偏移"));
+        form.add(spawnOffsetYSpinner);
+
         JScrollPane scrollPane = new JScrollPane(form);
         scrollPane.setBorder(null);
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -365,8 +460,6 @@ public final class EditorWindow extends JFrame {
     private JPanel buildToolPanel() {
         JPanel panel = new JPanel(new GridLayout(0, 2, 6, 6));
         panel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        panel.add(new JLabel("模式"));
-        panel.add(modeSelector);
         panel.add(new JLabel("网格大小"));
         panel.add(gridSizeSpinner);
         panel.add(new JLabel("吸附"));
@@ -421,9 +514,48 @@ public final class EditorWindow extends JFrame {
         typeSelector.addActionListener(event -> {
             if (updatingControls) return;
             GameObjectType selected = (GameObjectType) typeSelector.getSelectedItem();
-            if (selected != null) {
-                controller.setSelectedType(selected);
+            GameObject current = controller.getSelectedObject();
+            if (selected == null) {
+                return;
             }
+            if (current == null) {
+                controller.setSelectedType(selected);
+                return;
+            }
+            if (selected != current.getType()) {
+                convertSelectedObjectType(selected);
+            }
+        });
+
+        nameField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+
+            private void update() {
+                if (updatingControls) {
+                    return;
+                }
+                GameObject selected = controller.getSelectedObject();
+                if (selected == null) {
+                    return;
+                }
+                selected.setName(nameField.getText());
+                selectionInfoLabel.setText(selected.getName() + " / " + selected.getType());
+                previewPanel.repaint();
+            }
+        });
+
+        activeToggle.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            GameObject selected = controller.getSelectedObject();
+            if (selected == null) {
+                return;
+            }
+            selected.setActive(activeToggle.isSelected());
+            previewPanel.repaint();
         });
 
         modeSelector.addActionListener(event -> {
@@ -655,6 +787,9 @@ public final class EditorWindow extends JFrame {
         int ny = (int) ySpinner.getValue();
         if (selected.getX() == nx && selected.getY() == ny) return;
         selected.setPosition(nx, ny);
+        if (selected instanceof PlayerObject) {
+            world.refreshRespawnPointFromPlayers();
+        }
         previewPanel.repaint();
     }
 
@@ -666,6 +801,9 @@ public final class EditorWindow extends JFrame {
         int nh = (int) hSpinner.getValue();
         if (selected.getWidth() == nw && selected.getHeight() == nh) return;
         selected.setSize(nw, nh);
+        if (selected instanceof PlayerObject) {
+            world.refreshRespawnPointFromPlayers();
+        }
         previewPanel.repaint();
     }
 
@@ -817,6 +955,106 @@ public final class EditorWindow extends JFrame {
                 }
             }
         });
+
+        triggerTargetField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { update(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { update(); }
+
+            private void update() {
+                if (updatingControls) {
+                    return;
+                }
+                if (controller.getSelectedObject() instanceof TriggerObject trigger) {
+                    trigger.setTargetName(triggerTargetField.getText());
+                    previewPanel.repaint();
+                }
+            }
+        });
+        triggerActionSelector.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            if (controller.getSelectedObject() instanceof TriggerObject trigger) {
+                TriggerAction action = (TriggerAction) triggerActionSelector.getSelectedItem();
+                trigger.setAction(action);
+                triggerTargetField.setEnabled(action != null && action.requiresTargetName());
+                previewPanel.repaint();
+            }
+        });
+        triggerOnceToggle.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            if (controller.getSelectedObject() instanceof TriggerObject trigger) {
+                trigger.setTriggerOnce(triggerOnceToggle.isSelected());
+                previewPanel.repaint();
+            }
+        });
+
+        spawnerKindSelector.addActionListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            if (controller.getSelectedObject() instanceof SpawnerObject spawner) {
+                spawner.setMonsterKind((MonsterKind) spawnerKindSelector.getSelectedItem());
+                previewPanel.repaint();
+            }
+        });
+        spawnIntervalSpinner.addChangeListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            if (controller.getSelectedObject() instanceof SpawnerObject spawner) {
+                spawner.setSpawnIntervalSeconds(((Number) spawnIntervalSpinner.getValue()).doubleValue());
+                previewPanel.repaint();
+            }
+        });
+        maxAliveSpinner.addChangeListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            if (controller.getSelectedObject() instanceof SpawnerObject spawner) {
+                spawner.setMaxAlive((int) maxAliveSpinner.getValue());
+                previewPanel.repaint();
+            }
+        });
+        spawnWaveSizeSpinner.addChangeListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            if (controller.getSelectedObject() instanceof SpawnerObject spawner) {
+                spawner.setSpawnWaveSize((int) spawnWaveSizeSpinner.getValue());
+                previewPanel.repaint();
+            }
+        });
+        spawnRadiusSpinner.addChangeListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            if (controller.getSelectedObject() instanceof SpawnerObject spawner) {
+                spawner.setSpawnRadius((int) spawnRadiusSpinner.getValue());
+                previewPanel.repaint();
+            }
+        });
+        spawnOffsetXSpinner.addChangeListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            if (controller.getSelectedObject() instanceof SpawnerObject spawner) {
+                spawner.setSpawnOffsetX((int) spawnOffsetXSpinner.getValue());
+                previewPanel.repaint();
+            }
+        });
+        spawnOffsetYSpinner.addChangeListener(event -> {
+            if (updatingControls) {
+                return;
+            }
+            if (controller.getSelectedObject() instanceof SpawnerObject spawner) {
+                spawner.setSpawnOffsetY((int) spawnOffsetYSpinner.getValue());
+                previewPanel.repaint();
+            }
+        });
     }
 
     private void addPlayerListeners() {
@@ -846,12 +1084,27 @@ public final class EditorWindow extends JFrame {
             if (selected == null) {
                 selectionInfoLabel.setText("未选中对象");
                 disableSpecialPanels();
+                nameField.setText("");
+                activeToggle.setSelected(false);
                 fontSizeSpinner.setValue(controller.getDefaultFontSize());
                 texturePathField.setText("");
                 materialField.setText("");
+                triggerTargetField.setText("");
+                triggerActionSelector.setSelectedItem(TriggerAction.TOGGLE);
+                triggerOnceToggle.setSelected(false);
+                spawnIntervalSpinner.setValue(4.0);
+                maxAliveSpinner.setValue(2);
+                spawnWaveSizeSpinner.setValue(1);
+                spawnRadiusSpinner.setValue(24);
+                spawnOffsetXSpinner.setValue(0);
+                spawnOffsetYSpinner.setValue(0);
                 return;
             }
             selectionInfoLabel.setText(selected.getName() + " / " + selected.getType());
+            nameField.setText(selected.getName());
+            nameField.setEnabled(true);
+            activeToggle.setSelected(selected.isActive());
+            activeToggle.setEnabled(true);
             typeSelector.setSelectedItem(selected.getType());
             xSpinner.setValue(selected.getX());
             ySpinner.setValue(selected.getY());
@@ -998,12 +1251,63 @@ public final class EditorWindow extends JFrame {
                 itemValueSpinner.setEnabled(false);
                 itemMessageField.setEnabled(false);
             }
+
+            if (selected instanceof TriggerObject trigger) {
+                triggerTargetField.setEnabled(true);
+                triggerActionSelector.setEnabled(true);
+                triggerOnceToggle.setEnabled(true);
+                triggerTargetField.setText(trigger.getTargetName());
+                triggerActionSelector.setSelectedItem(trigger.getAction());
+                triggerOnceToggle.setSelected(trigger.isTriggerOnce());
+                triggerTargetField.setEnabled(trigger.getAction() != null && trigger.getAction().requiresTargetName());
+            } else {
+                triggerTargetField.setEnabled(false);
+                triggerActionSelector.setEnabled(false);
+                triggerOnceToggle.setEnabled(false);
+                triggerTargetField.setText("");
+                triggerActionSelector.setSelectedItem(TriggerAction.TOGGLE);
+                triggerOnceToggle.setSelected(false);
+            }
+
+            if (selected instanceof SpawnerObject spawner) {
+                spawnerKindSelector.setEnabled(true);
+                spawnIntervalSpinner.setEnabled(true);
+                maxAliveSpinner.setEnabled(true);
+                spawnWaveSizeSpinner.setEnabled(true);
+                spawnRadiusSpinner.setEnabled(true);
+                spawnOffsetXSpinner.setEnabled(true);
+                spawnOffsetYSpinner.setEnabled(true);
+                spawnerKindSelector.setSelectedItem(spawner.getMonsterKind());
+                spawnIntervalSpinner.setValue(spawner.getSpawnIntervalSeconds());
+                maxAliveSpinner.setValue(spawner.getMaxAlive());
+                spawnWaveSizeSpinner.setValue(spawner.getSpawnWaveSize());
+                spawnRadiusSpinner.setValue(spawner.getSpawnRadius());
+                spawnOffsetXSpinner.setValue(spawner.getSpawnOffsetX());
+                spawnOffsetYSpinner.setValue(spawner.getSpawnOffsetY());
+            } else {
+                spawnerKindSelector.setEnabled(false);
+                spawnIntervalSpinner.setEnabled(false);
+                maxAliveSpinner.setEnabled(false);
+                spawnWaveSizeSpinner.setEnabled(false);
+                spawnRadiusSpinner.setEnabled(false);
+                spawnOffsetXSpinner.setEnabled(false);
+                spawnOffsetYSpinner.setEnabled(false);
+                spawnerKindSelector.setSelectedItem(MonsterKind.DEFAULT);
+                spawnIntervalSpinner.setValue(4.0);
+                maxAliveSpinner.setValue(2);
+                spawnWaveSizeSpinner.setValue(1);
+                spawnRadiusSpinner.setValue(24);
+                spawnOffsetXSpinner.setValue(0);
+                spawnOffsetYSpinner.setValue(0);
+            }
         } finally {
             updatingControls = false;
         }
     }
 
     private void disableSpecialPanels() {
+        nameField.setEnabled(false);
+        activeToggle.setEnabled(false);
         healthSpinner.setEnabled(false);
         attackSpinner.setEnabled(false);
         speedSpinner.setEnabled(false);
@@ -1034,6 +1338,16 @@ public final class EditorWindow extends JFrame {
         itemKindField.setEnabled(false);
         itemValueSpinner.setEnabled(false);
         itemMessageField.setEnabled(false);
+        triggerTargetField.setEnabled(false);
+        triggerActionSelector.setEnabled(false);
+        triggerOnceToggle.setEnabled(false);
+        spawnerKindSelector.setEnabled(false);
+        spawnIntervalSpinner.setEnabled(false);
+        maxAliveSpinner.setEnabled(false);
+        spawnWaveSizeSpinner.setEnabled(false);
+        spawnRadiusSpinner.setEnabled(false);
+        spawnOffsetXSpinner.setEnabled(false);
+        spawnOffsetYSpinner.setEnabled(false);
         fontSizeSpinner.setEnabled(false);
         menuColumnsSpinner.setEnabled(false);
         maxVisibleRowsSpinner.setEnabled(false);
@@ -1055,6 +1369,7 @@ public final class EditorWindow extends JFrame {
             snapToggle.setSelected(controller.isGridSnap());
             gridSizeSpinner.setValue(controller.getGridSize());
             modeSelector.setSelectedItem(formatEditMode(controller.getEditMode()));
+            modeHintLabel.setText(formatModeHint(controller.getEditMode()));
             updateBackgroundImageControls();
         } finally {
             updatingControls = false;
@@ -1122,6 +1437,16 @@ public final class EditorWindow extends JFrame {
         return "选择";
     }
 
+    private String formatModeHint(MapEditorController.EditMode mode) {
+        if (mode == MapEditorController.EditMode.BUILD) {
+            return "<html><b>建造</b>：连续放置当前类型对象<br>适合铺地形或批量摆放</html>";
+        }
+        if (mode == MapEditorController.EditMode.ERASE) {
+            return "<html><b>破坏</b>：点击或拖拽删除对象<br>适合快速清理场景</html>";
+        }
+        return "<html><b>选择</b>：点击选中对象并编辑属性<br>拖拽移动，空白处取消选中</html>";
+    }
+
     private void applyPropertyChanges() {
         GameObject selected = controller.getSelectedObject();
         if (selected == null) {
@@ -1142,6 +1467,11 @@ public final class EditorWindow extends JFrame {
         ySpinner.setValue(normalizedRect.y());
         wSpinner.setValue(normalizedRect.width());
         hSpinner.setValue(normalizedRect.height());
+        selected.setName(nameField.getText());
+        selected.setActive(activeToggle.isSelected());
+        nameField.setText(selected.getName());
+        activeToggle.setSelected(selected.isActive());
+        selectionInfoLabel.setText(selected.getName() + " / " + selected.getType());
         Color color = colorButton.getBackground();
         if (color != null) {
             selected.setColor(color);
@@ -1202,6 +1532,63 @@ public final class EditorWindow extends JFrame {
             item.setMessage(itemMessageField.getText());
         }
 
+        if (selected instanceof TriggerObject trigger) {
+            trigger.setTargetName(triggerTargetField.getText());
+            trigger.setAction((TriggerAction) triggerActionSelector.getSelectedItem());
+            trigger.setTriggerOnce(triggerOnceToggle.isSelected());
+            triggerTargetField.setEnabled(trigger.getAction() != null && trigger.getAction().requiresTargetName());
+        }
+
+        if (selected instanceof SpawnerObject spawner) {
+            spawner.setMonsterKind((MonsterKind) spawnerKindSelector.getSelectedItem());
+            spawner.setSpawnIntervalSeconds(((Number) spawnIntervalSpinner.getValue()).doubleValue());
+            spawner.setMaxAlive((int) maxAliveSpinner.getValue());
+            spawner.setSpawnWaveSize((int) spawnWaveSizeSpinner.getValue());
+            spawner.setSpawnRadius((int) spawnRadiusSpinner.getValue());
+            spawner.setSpawnOffsetX((int) spawnOffsetXSpinner.getValue());
+            spawner.setSpawnOffsetY((int) spawnOffsetYSpinner.getValue());
+        }
+
+        if (selected instanceof PlayerObject) {
+            world.refreshRespawnPointFromPlayers();
+        }
+
+        previewPanel.repaint();
+    }
+
+    private void convertSelectedObjectType(GameObjectType targetType) {
+        GameObject selected = controller.getSelectedObject();
+        if (selected == null || targetType == null || selected.getType() == targetType) {
+            return;
+        }
+        var data = GameObjectFactory.toObjectData(selected);
+        if (data == null) {
+            return;
+        }
+        data.setType(targetType);
+        GameObject replacement = GameObjectFactory.fromObjectData(data);
+        if (replacement == null) {
+            return;
+        }
+        controller.executePropertyChange(
+            () -> replaceSelectedObject(selected, replacement),
+            () -> replaceSelectedObject(replacement, selected)
+        );
+    }
+
+    private void replaceSelectedObject(GameObject oldObject, GameObject newObject) {
+        if (oldObject == null || newObject == null) {
+            return;
+        }
+        boolean wasSelected = controller.getSelectedObject() == oldObject;
+        world.removeObject(oldObject);
+        world.addObject(newObject);
+        if (wasSelected) {
+            controller.setSelectedObject(newObject);
+        }
+        if (oldObject instanceof PlayerObject || newObject instanceof PlayerObject) {
+            world.refreshRespawnPointFromPlayers();
+        }
         previewPanel.repaint();
     }
 

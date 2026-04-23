@@ -63,6 +63,18 @@ public final class EditorOverlay {
             info += " [Kind: " + item.getKind() + ", Val: " + item.getValue() + "]";
         } else if (selectedObject instanceof lib.object.ActorObject actor) {
             info += " [HP: " + actor.getHealth() + " ATK: " + actor.getAttack() + "]";
+        } else if (selectedObject instanceof lib.object.TriggerObject trigger) {
+            info += " [Trigger: " + trigger.getAction() + ", Target: "
+                + (trigger.getAction() != null && trigger.getAction().requiresTargetName()
+                    && trigger.getTargetName() != null
+                    && !trigger.getTargetName().isBlank()
+                    ? trigger.getTargetName()
+                    : "self/world")
+                + "]";
+        } else if (selectedObject instanceof lib.object.SpawnerObject spawner) {
+            info += " [Spawner: " + spawner.getMonsterKind() + ", " + spawner.getSpawnIntervalSeconds()
+                + "s x" + spawner.getSpawnWaveSize() + ", max " + spawner.getMaxAlive()
+                + ", r" + spawner.getSpawnRadius() + "]";
         }
 
         int textX = selectedObject.getX();
@@ -92,13 +104,13 @@ public final class EditorOverlay {
     private void renderLegend(Graphics2D g, int width, int height) {
         g.setFont(new java.awt.Font("Monospaced", java.awt.Font.BOLD, 12));
         int x = 10;
-        int y = height - 140;
+        int y = height - 160;
 
         // Background for legend
         g.setColor(new Color(0, 0, 0, 150));
-        g.fillRoundRect(x, y, 220, 130, 10, 10);
+        g.fillRoundRect(x, y, 220, 150, 10, 10);
         g.setColor(new Color(255, 255, 255, 100));
-        g.drawRoundRect(x, y, 220, 130, 10, 10);
+        g.drawRoundRect(x, y, 220, 150, 10, 10);
 
         g.setColor(Color.YELLOW);
         g.drawString("EDITOR HINTS", x + 10, y + 20);
@@ -106,17 +118,19 @@ public final class EditorOverlay {
         g.setColor(Color.WHITE);
         int line = y + 40;
         g.drawString("MODE: " + modeInfo, x + 10, line);
-        line += 15;
+        line += 13;
         g.drawString("Ctrl+Z/Y: Undo/Redo", x + 10, line);
-        line += 15;
+        line += 13;
         g.drawString("Ctrl+S  : Save Map", x + 10, line);
-        line += 15;
+        line += 13;
         g.drawString("Ctrl+D  : Duplicate", x + 10, line);
-        line += 15;
+        line += 13;
         g.drawString("Del/R-Click: Delete", x + 10, line);
-        line += 15;
-        g.drawString("MOUSE   : Drag=Move, Handles=Size", x + 10, line);
-        line += 15;
-        g.drawString("G/S/B/E : Toggle/Mode", x + 10, line);
+        line += 13;
+        g.drawString("MOUSE   : Drag=Move, Handles=Size, Blank=Deselect", x + 10, line);
+        line += 13;
+        g.drawString("G/S/B/E : Select/Build/Erase", x + 10, line);
+        line += 13;
+        g.drawString("LIBRARY : Click buttons to add one", x + 10, line);
     }
 }

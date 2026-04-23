@@ -19,6 +19,7 @@ import lib.object.GameObjectFactory;
 import lib.object.GameObjectType;
 import lib.object.MenuObject;
 import lib.object.PlayerObject;
+import lib.object.SpawnerObject;
 import lib.object.VoxelObject;
 import lib.object.dto.ObjectData;
 
@@ -41,6 +42,7 @@ public final class MapEditorController {
     private EditMode editMode = EditMode.SELECT;
     private Point dragOffset;
     private Point lastPaintPoint;
+    private Point lastPointerPoint;
     private Point dragStartPos;
     private java.awt.Dimension dragStartSize;
     private int resizeHandle = -1; // -1: none, 0: top-left, 1: top-right, 2: bottom-left, 3: bottom-right
@@ -110,6 +112,7 @@ public final class MapEditorController {
 
     private void handleMouseMoved(MouseEvent event) {
         Point point = event.getPoint();
+        lastPointerPoint = new Point(point);
         if (editMode == EditMode.SELECT) {
             int handle = getResizeHandleAt(point);
             if (handle != -1) {
@@ -167,8 +170,38 @@ public final class MapEditorController {
 
     public void setSelectedObject(GameObject selectedObject) {
         this.selectedObject = selectedObject;
+        dragOffset = null;
+        lastPaintPoint = null;
+        dragStartPos = null;
+        dragStartSize = null;
+        resizeHandle = -1;
         overlay.setSelectedObject(selectedObject);
         notifySelectionChanged();
+    }
+
+    public GameObject addObjectOnce(GameObjectType type) {
+        if (type == null) {
+            return null;
+        }
+        setSelectedType(type);
+        Point insertionPoint = resolveInsertionPoint();
+        GameObject created = createObject(type, insertionPoint.x, insertionPoint.y);
+        if (created == null) {
+            return null;
+        }
+        world.addObject(created);
+        if (created instanceof PlayerObject) {
+            world.refreshRespawnPointFromPlayers();
+        }
+        dragOffset = null;
+        lastPaintPoint = null;
+        dragStartPos = null;
+        dragStartSize = null;
+        resizeHandle = -1;
+        setSelectedObject(created);
+        pushCommand(new AddCommand(created));
+        panel.repaint();
+        return created;
     }
 
     public EditMode getEditMode() {
@@ -181,6 +214,8 @@ public final class MapEditorController {
             dragOffset = null;
             lastPaintPoint = null;
             dragStartPos = null;
+            dragStartSize = null;
+            resizeHandle = -1;
             overlay.setModeInfo(editMode.name());
             modeChangeListener.accept(editMode);
             panel.repaint();
@@ -215,6 +250,9 @@ public final class MapEditorController {
         }
         GameObject removed = selectedObject;
         world.removeObject(removed);
+        if (removed instanceof PlayerObject) {
+            world.refreshRespawnPointFromPlayers();
+        }
         selectedObject = null;
         overlay.setSelectedObject(null);
         notifySelectionChanged();
@@ -256,10 +294,15 @@ public final class MapEditorController {
         if (duplicated == null) {
             return;
         }
+        if (duplicated instanceof SpawnerObject spawner) {
+            spawner.regenerateSpawnGroupId();
+            spawner.setSpawnCounter(0);
+        }
         world.addObject(duplicated);
-        selectedObject = duplicated;
-        overlay.setSelectedObject(duplicated);
-        notifySelectionChanged();
+        if (duplicated instanceof PlayerObject) {
+            world.refreshRespawnPointFromPlayers();
+        }
+        setSelectedObject(duplicated);
         pushCommand(new AddCommand(duplicated));
         panel.repaint();
     }
@@ -306,6 +349,7 @@ public final class MapEditorController {
     private void handleMousePressed(MouseEvent event) {
         panel.requestFocusInWindow();
         Point point = event.getPoint();
+        lastPointerPoint = new Point(point);
         if (editMode == EditMode.ERASE) {
             eraseObjectAt(point);
             lastPaintPoint = null;
@@ -329,23 +373,18 @@ public final class MapEditorController {
 
         GameObject hit = findObjectAt(point);
         if (hit != null) {
-            selectedObject = hit;
-            overlay.setSelectedObject(hit);
-            notifySelectionChanged();
+            setSelectedObject(hit);
             dragOffset = new Point(point.x - hit.getX(), point.y - hit.getY());
             dragStartPos = new Point(hit.getX(), hit.getY());
             dragStartSize = new java.awt.Dimension(hit.getWidth(), hit.getHeight());
             panel.repaint();
             return;
         }
-        GameObject created = createObjectAt(point.x, point.y);
-        if (created != null) {
-            world.addObject(created);
-            selectedObject = created;
-            overlay.setSelectedObject(created);
-            notifySelectionChanged();
-            pushCommand(new AddCommand(created));
-        }
+        dragOffset = null;
+        dragStartPos = null;
+        dragStartSize = null;
+        resizeHandle = -1;
+        setSelectedObject(null);
         panel.repaint();
     }
 
@@ -371,6 +410,9 @@ public final class MapEditorController {
                     selectedObject.getY()
                 ));
             }
+            if (selectedObject instanceof PlayerObject) {
+                world.refreshRespawnPointFromPlayers();
+            }
         }
         dragOffset = null;
         lastPaintPoint = null;
@@ -381,6 +423,7 @@ public final class MapEditorController {
 
     private void handleMouseDragged(MouseEvent event) {
         Point point = event.getPoint();
+        lastPointerPoint = new Point(point);
         if (editMode == EditMode.BUILD) {
             paintObjectAt(point);
             return;
@@ -502,6 +545,9 @@ public final class MapEditorController {
             return;
         }
         world.removeObject(hit);
+        if (hit instanceof PlayerObject) {
+            world.refreshRespawnPointFromPlayers();
+        }
         if (hit == selectedObject) {
             selectedObject = null;
             overlay.setSelectedObject(null);
@@ -559,13 +605,20 @@ public final class MapEditorController {
     }
 
     private GameObject createObjectAt(int x, int y) {
+        return createObject(selectedType, x, y);
+    }
+
+    private GameObject createObject(GameObjectType type, int x, int y) {
+        if (type == null) {
+            return null;
+        }
         ObjectData data = new ObjectData();
-        data.setType(selectedType);
-        data.setName(selectedType.name().toLowerCase() + "-" + System.currentTimeMillis());
+        data.setType(type);
+        data.setName(type.name().toLowerCase() + "-" + System.currentTimeMillis());
         data.setX(gridSnap ? snap(x, gridSize) : x);
         data.setY(gridSnap ? snap(y, gridSize) : y);
         Color color = brushColor;
-        switch (selectedType) {
+        switch (type) {
             case PLAYER -> {
                 data.setWidth(48);
                 data.setHeight(48);
@@ -596,13 +649,23 @@ public final class MapEditorController {
                 data.setHeight(64);
                 data.setColor(color != null ? color : new Color(20, 24, 32, 220));
             }
+            case TRIGGER -> {
+                data.setWidth(96);
+                data.setHeight(72);
+                data.setColor(color != null ? color : new Color(160, 90, 240, 120));
+            }
+            case SPAWNER -> {
+                data.setWidth(64);
+                data.setHeight(64);
+                data.setColor(color != null ? color : new Color(150, 95, 240, 140));
+            }
             default -> {
                 data.setWidth(60);
                 data.setHeight(40);
                 data.setColor(color != null ? color : new Color(180, 180, 200));
             }
         }
-        if (selectedType == GameObjectType.SCENE || selectedType == GameObjectType.WALL || selectedType == GameObjectType.BOUNDARY) {
+        if (type == GameObjectType.SCENE || type == GameObjectType.WALL || type == GameObjectType.BOUNDARY) {
             data.setSolid(true);
             data.setBackground(false);
         }
@@ -629,6 +692,23 @@ public final class MapEditorController {
             voxel.setColor(data.getColor());
         }
         return object;
+    }
+
+    private Point resolveInsertionPoint() {
+        if (lastPointerPoint != null) {
+            return new Point(lastPointerPoint);
+        }
+        Rectangle visible = panel.getVisibleRect();
+        if (visible != null && visible.width > 0 && visible.height > 0) {
+            return new Point(visible.x + visible.width / 2, visible.y + visible.height / 2);
+        }
+        if (selectedObject != null) {
+            return new Point(
+                selectedObject.getX() + selectedObject.getWidth() / 2,
+                selectedObject.getY() + selectedObject.getHeight() / 2
+            );
+        }
+        return new Point(world.getWidth() / 2, world.getHeight() / 2);
     }
 
     private int snap(int value, int grid) {
@@ -672,6 +752,9 @@ public final class MapEditorController {
             return;
         }
         selectedObject.setPosition(targetX, targetY);
+        if (selectedObject instanceof PlayerObject) {
+            world.refreshRespawnPointFromPlayers();
+        }
         pushCommand(new MoveCommand(selectedObject, fromX, fromY, targetX, targetY));
         panel.repaint();
     }
@@ -696,6 +779,9 @@ public final class MapEditorController {
         @Override
         public void undo() {
             world.removeObject(object);
+            if (object instanceof PlayerObject) {
+                world.refreshRespawnPointFromPlayers();
+            }
             if (selectedObject == object) {
                 selectedObject = null;
                 overlay.setSelectedObject(null);
@@ -705,6 +791,9 @@ public final class MapEditorController {
         @Override
         public void redo() {
             world.addObject(object);
+            if (object instanceof PlayerObject) {
+                world.refreshRespawnPointFromPlayers();
+            }
             selectedObject = object;
             overlay.setSelectedObject(object);
         }
@@ -720,6 +809,9 @@ public final class MapEditorController {
         @Override
         public void undo() {
             world.addObject(object);
+            if (object instanceof PlayerObject) {
+                world.refreshRespawnPointFromPlayers();
+            }
             selectedObject = object;
             overlay.setSelectedObject(object);
         }
@@ -727,6 +819,9 @@ public final class MapEditorController {
         @Override
         public void redo() {
             world.removeObject(object);
+            if (object instanceof PlayerObject) {
+                world.refreshRespawnPointFromPlayers();
+            }
             if (selectedObject == object) {
                 selectedObject = null;
                 overlay.setSelectedObject(null);

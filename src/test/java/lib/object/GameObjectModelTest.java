@@ -921,6 +921,95 @@ class GameObjectModelTest {
     }
 
     @Test
+    void triggerShouldToggleTargetOnlyWhenPlayerEnters() {
+        GameWorld world = new GameWorld(220, 160);
+        PlayerObject player = new PlayerObject("hero", 24, 60);
+        SceneObject door = new SceneObject("door", 90, 52, 36, 48, true, false);
+        TriggerObject trigger = new TriggerObject("door-trigger", 20, 52, 48, 48);
+        trigger.setTargetName("door");
+        trigger.setAction(TriggerAction.DEACTIVATE);
+
+        world.addObject(player);
+        world.addObject(door);
+        world.addObject(trigger);
+
+        world.update(1.0 / 60.0);
+        assertFalse(door.isActive(), "触发器进入后应关闭目标对象");
+
+        world.update(1.0 / 60.0);
+        assertFalse(door.isActive(), "停留在触发器内时不应重复翻转目标");
+    }
+
+    @Test
+    void triggerShouldSupportWorldActionsWithoutTargetNames() {
+        GameWorld world = new GameWorld(220, 160);
+        PlayerObject player = new PlayerObject("hero", 24, 60);
+        TriggerObject trigger = new TriggerObject("goal-trigger", 20, 52, 48, 48);
+        trigger.setAction(TriggerAction.HIDE_GOALS);
+
+        world.addObject(player);
+        world.addObject(trigger);
+
+        assertTrue(world.isShowGoals(), "默认应显示关卡目标");
+        world.update(1.0 / 60.0);
+        assertFalse(world.isShowGoals(), "触发器可直接修改世界目标显示状态");
+    }
+
+    @Test
+    void spawnerShouldCreateBoundedMonsterWaves() {
+        GameWorld world = new GameWorld(220, 160);
+        SpawnerObject spawner = new SpawnerObject("slime-spawner", 80, 60, 64, 64);
+        spawner.setMonsterKind(MonsterKind.SLIME);
+        spawner.setSpawnIntervalSeconds(0.1);
+        spawner.setMaxAlive(2);
+
+        world.addObject(spawner);
+
+        for (int i = 0; i < 20; i++) {
+            world.update(0.1);
+        }
+
+        assertEquals(2, world.getObjectsByType(GameObjectType.MONSTER).size(), "刷怪笼应按上限生成怪物");
+        assertTrue(
+            world.getObjectsByType(GameObjectType.MONSTER).stream()
+                .allMatch(MonsterObject.class::isInstance),
+            "刷怪笼生成的对象应为怪物"
+        );
+        assertTrue(
+            world.getObjectsByType(GameObjectType.MONSTER).stream()
+                .map(MonsterObject.class::cast)
+                .allMatch(monster -> monster.getMonsterKind() == MonsterKind.SLIME),
+            "刷怪笼应按指定怪物种类生成"
+        );
+    }
+
+    @Test
+    void spawnerShouldSupportWaveSizeAndOffsetConfiguration() {
+        GameWorld world = new GameWorld(260, 180);
+        SpawnerObject spawner = new SpawnerObject("wave-spawner", 80, 60, 64, 64);
+        spawner.setMonsterKind(MonsterKind.BAT);
+        spawner.setSpawnIntervalSeconds(0.1);
+        spawner.setMaxAlive(4);
+        spawner.setSpawnWaveSize(3);
+        spawner.setSpawnRadius(0);
+        spawner.setSpawnOffsetX(16);
+        spawner.setSpawnOffsetY(-8);
+
+        world.addObject(spawner);
+        world.update(0.1);
+
+        List<GameObject> monsters = world.getObjectsByType(GameObjectType.MONSTER);
+        assertEquals(3, monsters.size(), "刷怪笼每波应按配置数量生成");
+
+        MonsterObject first = (MonsterObject) monsters.get(0);
+        assertEquals(80 + 32 - first.getWidth() / 2 + 16, first.getX(), "刷怪偏移 X 应生效");
+        assertEquals(60 + 32 - first.getHeight() / 2 - 8, first.getY(), "刷怪偏移 Y 应生效");
+
+        world.update(0.1);
+        assertEquals(4, world.getObjectsByType(GameObjectType.MONSTER).size(), "同时存在上限仍应生效");
+    }
+
+    @Test
     void menuAndDialogShouldKeepSimpleUiState() {
         MenuObject menu = new MenuObject("menu", 5, 5, 140, 90, "Main", List.of("Start", "Exit"));
         DialogObject dialog = new DialogObject("dialog", 10, 50, 160, 40, "Guide", "Welcome");

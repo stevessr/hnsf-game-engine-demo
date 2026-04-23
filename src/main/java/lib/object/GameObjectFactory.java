@@ -75,6 +75,20 @@ public final class GameObjectFactory {
             extra.put("kind", item.getKind());
             extra.put("value", item.getValue());
             extra.put("message", item.getMessage());
+        } else if (object instanceof TriggerObject trigger) {
+            extra.put("targetName", trigger.getTargetName());
+            extra.put("action", trigger.getAction().name());
+            extra.put("once", trigger.isTriggerOnce());
+        } else if (object instanceof SpawnerObject spawner) {
+            extra.put("monsterKind", spawner.getMonsterKind().name());
+            extra.put("spawnIntervalSeconds", spawner.getSpawnIntervalSeconds());
+            extra.put("maxAlive", spawner.getMaxAlive());
+            extra.put("spawnWaveSize", spawner.getSpawnWaveSize());
+            extra.put("spawnRadius", spawner.getSpawnRadius());
+            extra.put("spawnOffsetX", spawner.getSpawnOffsetX());
+            extra.put("spawnOffsetY", spawner.getSpawnOffsetY());
+            extra.put("spawnGroupId", spawner.getSpawnGroupId());
+            extra.put("spawnCounter", spawner.getSpawnCounter());
         } else if (object instanceof MenuObject menu) {
             extra.put("title", menu.getTitle());
             if (menu.getSubtitle() != null) {
@@ -116,6 +130,8 @@ public final class GameObjectFactory {
             case PLAYER -> object = createPlayer(data);
             case MONSTER -> object = createMonster(data);
             case ITEM -> object = createItem(data);
+            case TRIGGER -> object = createTrigger(data);
+            case SPAWNER -> object = createSpawner(data);
             case VOXEL -> object = createVoxel(data);
             case GOAL -> object = new GoalObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
             case PROJECTILE -> object = createProjectile(data);
@@ -291,6 +307,30 @@ public final class GameObjectFactory {
             value,
             message
         );
+    }
+
+    private static GameObject createTrigger(ObjectData data) {
+        JSONObject extra = parseExtra(data.getExtraJson());
+        TriggerObject trigger = new TriggerObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
+        trigger.setTargetName(extra.optString("targetName", ""));
+        trigger.setAction(TriggerAction.fromSerialized(extra.optString("action", null)));
+        trigger.setTriggerOnce(extra.optBoolean("once", false));
+        return trigger;
+    }
+
+    private static GameObject createSpawner(ObjectData data) {
+        JSONObject extra = parseExtra(data.getExtraJson());
+        SpawnerObject spawner = new SpawnerObject(data.getName(), data.getX(), data.getY(), data.getWidth(), data.getHeight());
+        spawner.setMonsterKind(MonsterKind.fromSerialized(extra.optString("monsterKind", null)));
+        spawner.setSpawnIntervalSeconds(extra.optDouble("spawnIntervalSeconds", spawner.getSpawnIntervalSeconds()));
+        spawner.setMaxAlive(extra.optInt("maxAlive", spawner.getMaxAlive()));
+        spawner.setSpawnWaveSize(extra.optInt("spawnWaveSize", spawner.getSpawnWaveSize()));
+        spawner.setSpawnRadius(extra.optInt("spawnRadius", spawner.getSpawnRadius()));
+        spawner.setSpawnOffsetX(extra.optInt("spawnOffsetX", spawner.getSpawnOffsetX()));
+        spawner.setSpawnOffsetY(extra.optInt("spawnOffsetY", spawner.getSpawnOffsetY()));
+        spawner.setSpawnGroupId(extra.optString("spawnGroupId", spawner.getSpawnGroupId()));
+        spawner.setSpawnCounter(extra.optInt("spawnCounter", spawner.getSpawnCounter()));
+        return spawner;
     }
 
     private static GameObject createVoxel(ObjectData data) {

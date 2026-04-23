@@ -199,7 +199,7 @@ public final class MapDataMapper {
                 world.addObject(object);
             }
         }
-        world.findPlayer().ifPresent(player -> world.setRespawnPoint(player.getX(), player.getY()));
+        world.refreshRespawnPointFromPlayers();
         return world;
     }
 
@@ -229,6 +229,7 @@ public final class MapDataMapper {
         world.setTargetKills(mapData.getTargetKills());
         world.setTargetItems(mapData.getTargetItems());
         world.setFailureReason(null);
+        world.clearRespawnPoint();
         world.getEntityManager().clear();
         world.getLightingManager().clearLights();
         world.getLightingManager().resetExploration();
@@ -238,7 +239,7 @@ public final class MapDataMapper {
                 world.addObject(object);
             }
         }
-        world.findPlayer().ifPresent(player -> world.setRespawnPoint(player.getX(), player.getY()));
+        world.refreshRespawnPointFromPlayers();
 
         if (preservedThrottlePower >= 0 || preservedDeceleration >= 0) {
             world.findPlayer().ifPresent(player -> {
