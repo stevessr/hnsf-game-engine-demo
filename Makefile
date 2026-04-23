@@ -47,7 +47,7 @@ native-package: native-compile
 package: native-package
 
 run-native: native-compile
-	$(NATIVE_BIN)
+	cd $(NATIVE_DIR) && LD_LIBRARY_PATH=. ./$(PROJECT_NAME)
 
 build: test shadow native-package
 

@@ -1,0 +1,13 @@
+{
+  "jni": [
+    {
+      "type": "java.awt.GraphicsEnvironment"
+    },
+    {
+      "type": "java.awt.Toolkit"
+    },
+    {
+      "type": "sun.awt.X11GraphicsEnvironment"
+    }
+  ]
+}
