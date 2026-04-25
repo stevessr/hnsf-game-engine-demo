@@ -1,0 +1,416 @@
+目录
+1、实作项目简介    3
+1.1 项目背景：《暮光之旅》    3
+1.2 项目功能与技术栈    3
+2、前期准备    4
+2.1 需求分析    4
+2.2 开发环境与项目结构    5
+2.3 游戏剧情与关卡规划    5
+3、项目设计    6
+3.1 总体架构设计（系统结构图 / 分析类图）    6
+3.2 游戏运行时主循环设计    7
+3.3 核心类设计（类图）    8
+3.3.1 org.example 与 lib.game 包    8
+3.3.2 lib.render 与 lib.input 包    9
+3.3.3 lib.state 状态机包    10
+3.3.4 lib.object 游戏对象包    11
+3.3.5 lib.physics 与 lib.manager 包    13
+3.3.6 lib.persistence 与 lib.object.dto 包    14
+3.3.7 lib.editor 地图编辑器包    15
+4、系统实现    16
+4.1 游戏界面与 Swing 渲染实现    16
+4.2 玩家控制、输入映射与菜单交互实现    17
+4.3 状态机、关卡胜利与失败流程实现    18
+4.4 玩家、怪物、投射物与道具系统实现    19
+4.5 物理碰撞、摄像机与动态光照实现    20
+4.6 地图编辑器与关卡扫描实现    21
+4.7 SQLite 持久化与 JSON 导入导出实现    22
+5、游戏画面展示    23
+图1.游戏主菜单与关卡选择界面    23
+图2.教程关卡移动与跳跃画面    23
+图3.玩家与魔物战斗画面    24
+图4.光球视野增强与动态光照画面    24
+图5.程序化森林 / 洞穴关卡画面    25
+6、项目特色与总结    25
+
+
+正文
+
+1、实作项目简介
+
+1.1 项目背景：《暮光之旅》
+
+《暮光之旅》是一款基于 Java Swing 实现的 2D 动作冒险游戏原型。项目以“魔物入侵世界，勇者寻找并破坏黑暗之源”为剧情主线，玩家操控暮光勇者在村庄、森林、洞穴、遗迹等关卡中探索、战斗、拾取道具并抵达目标点。项目并不是单一的游戏界面演示，而是围绕“游戏引擎雏形”进行设计，包含实体对象系统、物理碰撞、状态机、动态光照、关卡管理、地图编辑器和数据持久化等模块。
+
+1.2 项目功能与技术栈
+
+项目主要功能包括玩家移动、跳跃、冲刺、射击、弹种切换、颜色切换、怪物追击、远程攻击、道具拾取、胜利失败判定、菜单交互、地图编辑和程序化关卡生成。技术上使用 Java 作为开发语言，Swing/AWT 负责窗口和绘制，Gradle 负责项目构建，SQLite 用于保存地图数据，JSON 用于地图导入导出和对象扩展属性存储，JUnit 用于单元测试。通过这些技术组合，项目实现了一个具有完整运行流程和可扩展能力的桌面游戏系统。
+
+2、前期准备
+
+2.1 需求分析
+
+本项目的核心需求是完成一个可运行、可交互、可扩展的 2D 游戏。游戏端要求玩家能够通过键盘和鼠标完成移动、跳跃、射击、菜单选择等操作，并在不同关卡中完成到达终点、击败魔物、收集物品等目标。系统端要求游戏对象能够统一管理，碰撞、光照、音效和状态切换能够在主循环中稳定运行。编辑器端要求能够可视化创建和修改地图对象，并支持保存、加载、导入、导出。
+
+2.2 开发环境与项目结构
+
+项目采用 Gradle 管理构建，主入口为 `org.example.App`。源码主要位于 `src/main/java`，按功能划分为 `lib.game`、`lib.render`、`lib.input`、`lib.state`、`lib.object`、`lib.physics`、`lib.manager`、`lib.persistence` 和 `lib.editor` 等包。这样的目录结构使游戏运行、对象模型、编辑器和数据层边界较为清晰，便于后续维护。
+
+2.3 游戏剧情与关卡规划
+
+剧情方面，本项目参照背景设定中的剧情简介：《暮光之旅》讲述了卢明大陆被“暮沉之灾”侵袭后的远征故事。暮星核心失衡，黑雾吞没村庄、森林、遗迹与洞穴，无数生命被扭曲为魔物。幸存的少年在废墟中获得暮星碎片认可，成为暮光勇者，踏上寻找黑暗之源的道路。
+
+关卡规划围绕这条剧情主线展开。旅途中，勇者穿越暮色旷野、余晖森林、残照王都与无光洞穴，击败魔物，收集光球，修复被污染的地脉。最终，他抵达暮渊王座，打碎黑晶节点，破坏黑暗之源，让世界从永恒长夜的边缘重新迎来余晖与希望。项目中的教程关、演示地图、森林、遗迹、洞穴、Boss 竞技场、程序化森林、程序化洞穴和空袭演示等内容，均可作为该剧情推进过程中的关卡节点，并通过到达终点、击败魔物、收集物品等胜利条件体现玩家目标。
+
+3、项目设计
+
+3.1 总体架构设计（系统结构图 / 分析类图）
+
+项目采用分层式结构：最外层是 `App` 应用入口，负责启动游戏模式或编辑器模式；表现层由 `SwingGamePanel`、`Camera`、光照和叠加层组成；核心层由 `GameWorld` 统一调度实体、物理、音效、状态机和关卡目标；对象层通过 `GameObject` 接口和多个具体对象类描述玩家、怪物、墙体、道具、菜单和对话；数据层通过 `MapDataMapper` 与 `MapRepository` 完成运行时对象和 SQLite/JSON 数据之间的转换；编辑器层则通过 `EditorWindow` 与 `MapEditorController` 操作同一个 `GameWorld` 模型。
+
+启动分流的关键代码如下，体现了游戏模式与编辑器模式共用同一套地图数据和对象模型：
+
+```java
+public static void main(String[] args) {
+    if (args != null && args.length > 0 && "editor".equalsIgnoreCase(args[0])) {
+        SwingUtilities.invokeLater(App::startEditor);
+        return;
+    }
+    SwingUtilities.invokeLater(App::startGame);
+}
+```
+
+3.2 游戏运行时主循环设计
+
+游戏运行时主循环由 `SwingGamePanel` 中的 Swing `Timer` 驱动。`Timer` 按目标帧率周期性调用 `onFrame()`，因此主循环不需要手动创建线程，而是与 Swing 事件派发线程协同工作。构造函数中创建计时器的关键代码如下：
+
+```java
+this.camera = new Camera(960, 540);
+world.setCamera(camera);
+
+this.timer = new Timer(1000 / targetFPS, event -> onFrame());
+this.lastUpdateNanos = 0L;
+```
+
+每一帧的逻辑更新集中在 `onFrame()` 中。该方法先计算本帧与上一帧之间的时间差 `deltaSeconds`，并限制最大值，避免窗口暂停或卡顿后物理更新跨度过大。随后系统依次处理输入与状态机、自动测试 AI、世界对象更新、摄像机跟随、瞬时输入清理，最后通过 `repaint()` 请求 Swing 重绘界面。对应源码如下：
+
+```java
+private void onFrame() {
+    long now = System.nanoTime();
+    double deltaSeconds = lastUpdateNanos == 0L
+        ? 1.0 / 60.0
+        : (now - lastUpdateNanos) / 1_000_000_000.0;
+    lastUpdateNanos = now;
+    
+    // Cap deltaSeconds to avoid physics explosions when resuming from a long pause
+    if (deltaSeconds > 0.1) {
+        deltaSeconds = 0.1;
+    }
+    
+    inputController.processInputs(new GameStateContext(world, inputController, this, runtimeActions, deltaSeconds));
+    if (aiTestManager.isEnabled()) {
+        aiTestManager.update(world, deltaSeconds);
+    }
+    world.update(deltaSeconds);
+    world.findPlayer().ifPresent(player -> camera.update(world, player));
+    inputController.finishFrame();
+    repaint();
+}
+```
+
+`repaint()` 并不直接绘制，而是由 Swing 在合适时机调用 `paintComponent()`。在绘制阶段，面板先根据当前窗口大小计算逻辑视口缩放比例，再调用 `world.render(graphics2d)` 绘制游戏世界，最后绘制控制提示、调试信息、小地图和目标提示等叠加层。这样设计后，逻辑更新与画面渲染职责分离，主循环更加清晰。
+
+```java
+@Override
+protected void paintComponent(Graphics graphics) {
+    super.paintComponent(graphics);
+    Graphics2D graphics2d = (Graphics2D) graphics.create();
+    try {
+        int viewW = getViewportWidth();
+        int viewH = getViewportHeight();
+        double scale = getScale();
+
+        graphics2d.scale(scale, scale);
+        graphics2d.setClip(0, 0, viewW, viewH);
+
+        world.render(graphics2d);
+        hintsOverlay.render(graphics2d, viewW, viewH, world, aiTestManager.isEnabled());
+        minimapOverlay.render(graphics2d, world, viewW, viewH);
+        goalOverlay.render(graphics2d, world, viewW, viewH);
+    } finally {
+        graphics2d.dispose();
+    }
+}
+```
+
+3.3 核心类设计（类图）
+
+核心类设计以 `GameWorld` 为中心。`GameWorld` 聚合 `EntityManager`、`PhysicsEngine`、`LightingManager` 和 `SoundManager`，并关联 `Camera` 与 `GameStateMachine`。这一设计体现了运行时世界对象对实体管理、物理系统、光照系统、音效系统和状态机的统一调度关系。对应的核心成员和构造方法摘录如下：
+
+```java
+private final EntityManager entityManager;
+private final PhysicsEngine physicsEngine;
+private final LightingManager lightingManager;
+private final SoundManager soundManager;
+private Camera camera;
+private GameStateMachine stateMachine;
+
+public GameWorld(int width, int height, Color backgroundColor) {
+    this.entityManager = new EntityManager();
+    this.physicsEngine = new PhysicsEngine();
+    this.lightingManager = new LightingManager();
+    this.soundManager = new SoundManager();
+    this.width = Math.max(0, width);
+    this.height = Math.max(0, height);
+    this.backgroundColor = backgroundColor == null ? new Color(32, 36, 48) : backgroundColor;
+    this.gravityEnabled = false;
+    this.gravityStrength = 900;
+}
+```
+
+3.3.1 org.example 与 lib.game 包
+
+`org.example.App` 是程序入口，负责创建仓库、关卡管理器、游戏世界和 Swing 窗口。`lib.game.GameWorld` 是运行时核心，管理世界尺寸、背景、重力、胜利条件、击杀收集进度和对象集合。`LevelManager` 负责内置关卡与程序化关卡创建，`WinConditionType` 描述到达终点、消灭怪物、收集物品等胜利条件。
+
+3.3.2 lib.render 与 lib.input 包
+
+`lib.render` 负责显示层，`SwingGamePanel` 是主面板，`Camera` 负责视口跟随，`LightingManager` 负责光照与探索效果。该面板直接组合游戏世界、输入控制器、计时器、摄像机和设置仓库：
+
+```java
+private final GameWorld world;
+private final GameInputController inputController;
+private final Timer timer;
+private final SettingsRepository settingsRepository;
+private final Camera camera;
+private final ControlHintsOverlay hintsOverlay;
+private final DebugManager debugManager;
+private final MinimapOverlay minimapOverlay;
+private final GoalOverlay goalOverlay;
+```
+
+`lib.input` 将键盘和鼠标输入抽象为语义动作，`GameInputController` 会优先把输入交给状态机处理，若没有状态机则直接处理玩家移动、菜单导航和体素系统，对应代码如下：
+
+```java
+public void processInputs(GameStateContext context) {
+    if (context == null) {
+        return;
+    }
+    if (context.getWorld().getStateMachine() != null) {
+        context.getWorld().getStateMachine().processInput(context);
+        return;
+    }
+    applyPlayerMovement(context.getWorld(), context.getSettings(),
+        context.getWorld().findPlayer().orElse(null), context.getDeltaSeconds());
+    applyMenuNavigation(context.getWorld());
+    applyVoxelSystem(context.getWorld());
+}
+```
+
+3.3.3 lib.state 状态机包
+
+状态机包将游戏分为 `MENU`、`PLAYING`、`DIALOG`、`PAUSED`、`GAMEOVER`、`SETTLEMENT` 等状态。`DefaultGameStateMachine` 根据当前状态分发输入逻辑，实现菜单、暂停、对话、失败和结算的流程控制：
+
+```java
+public void processInput(GameStateContext context) {
+    Objects.requireNonNull(context, "context must not be null");
+    
+    switch (currentState) {
+        case MENU:
+            processMenuInput(context);
+            break;
+        case PLAYING:
+            processPlayingInput(context);
+            break;
+        case DIALOG:
+            processDialogInput(context);
+            break;
+        case PAUSED:
+            processPausedInput(context);
+            break;
+        case GAMEOVER:
+            processGameOverInput(context);
+            break;
+        case SETTLEMENT:
+            processSettlementInput(context);
+            break;
+        default:
+            break;
+    }
+}
+```
+
+3.3.4 lib.object 游戏对象包
+
+对象系统采用统一接口设计。`GameObject` 定义所有游戏对象必须具备的位置、尺寸、颜色、激活状态、更新和渲染方法。`BaseObject` 实现通用属性，`ActorObject` 扩展生命值、攻击力、速度和死亡动画。`PlayerObject`、`MonsterObject`、`ProjectileObject`、`ItemObject`、`GoalObject`、`SceneObject`、`MenuObject` 和 `DialogObject` 均在此基础上扩展各自行为。
+
+```java
+public interface GameObject {
+    String getName();
+    void setName(String name);
+
+    GameObjectType getType();
+
+    int getX();
+    int getY();
+    void setPosition(int x, int y);
+
+    int getWidth();
+    int getHeight();
+    void setSize(int width, int height);
+
+    Color getColor();
+    void setColor(Color color);
+
+    boolean isActive();
+    void setActive(boolean active);
+
+    void update(GameWorld world, double deltaSeconds);
+
+    default void updateInactive(GameWorld world, double deltaSeconds) {
+    }
+
+    void render(Graphics2D graphics);
+}
+```
+
+3.3.5 lib.physics 与 lib.manager 包
+
+`lib.physics` 负责 AABB 碰撞检测和移动解析。`GameWorld.moveObject()` 会调用 `PhysicsEngine.resolveMovement()`，将目标位置修正到合法位置。`lib.manager.EntityManager` 负责对象生命周期、类型缓存和分层渲染，其中世界层对象和 UI 层对象分开绘制，保证菜单、对话不受光照遮挡。分层渲染的核心代码如下：
+
+```java
+public void renderWorld(Graphics2D graphics) {
+    updateCache();
+    renderList(graphics, typeCache.get(GameObjectType.SCENE));
+    renderList(graphics, typeCache.get(GameObjectType.WALL));
+    renderList(graphics, typeCache.get(GameObjectType.BOUNDARY));
+    renderList(graphics, typeCache.get(GameObjectType.VOXEL));
+    renderList(graphics, typeCache.get(GameObjectType.GOAL));
+
+    renderList(graphics, typeCache.get(GameObjectType.PLAYER));
+    renderList(graphics, typeCache.get(GameObjectType.MONSTER));
+    renderList(graphics, typeCache.get(GameObjectType.ITEM));
+    renderList(graphics, typeCache.get(GameObjectType.PROJECTILE));
+}
+
+public void renderUI(Graphics2D graphics) {
+    updateCache();
+    renderList(graphics, typeCache.get(GameObjectType.MENU));
+    renderList(graphics, typeCache.get(GameObjectType.DIALOG));
+}
+```
+
+3.3.6 lib.persistence 与 lib.object.dto 包
+
+持久化设计使用 DTO 隔离运行时对象和数据库对象。`MapData` 表示地图整体数据，`ObjectData` 表示地图中的单个对象。`MapDataMapper` 将 `GameWorld` 转换为 `MapData`，再交给 `MapRepository` 保存到 SQLite。关键转换代码如下：
+
+```java
+public static MapData fromWorld(GameWorld world, String name) {
+    if (world == null) {
+        return null;
+    }
+    MapData mapData = new MapData();
+    mapData.setName(name);
+    mapData.setWidth(world.getWidth());
+    mapData.setHeight(world.getHeight());
+    mapData.setBackgroundColor(world.getBackgroundColor());
+    mapData.setBackgroundMode(world.getBackgroundMode());
+    mapData.setBackgroundPreset(world.getBackgroundPreset());
+    mapData.setBackgroundImageName(world.getBackgroundImageName());
+    mapData.setBackgroundImageData(encodeImage(world.getBackgroundImage()));
+    mapData.setGravityEnabled(world.isGravityEnabled());
+    mapData.setGravityStrength(world.getGravityStrength());
+    mapData.setWinCondition(world.getWinCondition());
+    mapData.setTargetKills(world.getTargetKills());
+    mapData.setTargetItems(world.getTargetItems());
+    for (GameObject object : world.getObjects()) {
+        ObjectData data = GameObjectFactory.toObjectData(object);
+        if (data != null) {
+            mapData.addObject(data);
+        }
+    }
+    return mapData;
+}
+```
+
+3.3.7 lib.editor 地图编辑器包
+
+编辑器包负责可视化编辑关卡。`EditorWindow` 提供对象库、预览区、属性面板和工具栏；`EditorGamePanel` 负责预览绘制；`MapEditorController` 负责选择、建造、破坏、拖拽、复制、删除、撤销和重做；`EditorOverlay` 显示网格和选中框；`LevelAutoScanner` 用于检查关卡是否缺少玩家、目标或配置不合理。编辑器控制器的模式与核心成员如下：
+
+```java
+public enum EditMode {
+    SELECT,
+    BUILD,
+    ERASE
+}
+
+private final GameWorld world;
+private final EditorGamePanel panel;
+private final EditorOverlay overlay;
+private GameObjectType selectedType;
+private GameObject selectedObject;
+private boolean gridSnap = true;
+private int gridSize = 20;
+private EditMode editMode = EditMode.SELECT;
+private final Deque<EditorCommand> undoStack = new ArrayDeque<>();
+private final Deque<EditorCommand> redoStack = new ArrayDeque<>();
+```
+
+4、系统实现
+
+4.1 游戏界面与 Swing 渲染实现
+
+游戏界面由 `JFrame` 承载，核心显示区域为 `SwingGamePanel`。面板采用双缓冲绘制，先根据窗口大小换算逻辑视口比例，再调用 `GameWorld.render()` 绘制背景、实体、光照和 UI。主菜单、关卡选择、暂停菜单、失败菜单和胜利菜单都以 `MenuObject` 形式存在于游戏世界中，因此 UI 也能复用对象系统和状态机控制。
+
+4.2 玩家控制、输入映射与菜单交互实现
+
+输入实现分为三层：`KeyboardManager` 和 `MouseManager` 记录原始输入状态，`InputActionMapper` 将按键和鼠标映射为移动、射击、跳跃、暂停等语义动作，`GameInputController` 根据当前游戏状态执行具体逻辑。在游玩状态下，输入会控制玩家移动、冲刺、射击、弹种切换和体素建造；在菜单状态下，输入会控制选项切换、确认和返回。
+
+4.3 状态机、关卡胜利与失败流程实现
+
+状态机是系统流程控制的核心。主菜单状态负责开始游戏、选择关卡、打开编辑器和设置选项；游玩状态负责检测玩家死亡、对话触发、目标点碰撞和关卡完成条件；暂停状态负责显示暂停菜单并停止玩家移动；失败状态显示复活或返回菜单选项；结算状态显示胜利菜单并支持进入下一关。胜利条件由 `WinConditionType` 统一描述，支持到达终点、击杀全部怪物、击杀指定数量怪物、收集指定数量物品和清空所有物品。
+
+4.4 玩家、怪物、投射物与道具系统实现
+
+玩家对象支持生命值、体力、冲刺、跳跃、等级经验、颜色切换和多弹种射击。怪物对象支持普通追击、飞行、远程攻击、投弹、治疗掉落和复活等行为，并通过 `MonsterKind` 区分史莱姆、蜘蛛、蝙蝠、幽灵、石像鬼、飞龙和飞行器。投射物通过 `ProjectileType` 配置普通弹、照明弹、炸弹、穿透弹、追踪弹、冰霜弹、激光弹和寻敌弹等效果。道具对象通过 `kind` 字段区分回血、速度、光球、经验和护盾效果。
+
+4.5 物理碰撞、摄像机与动态光照实现
+
+物理碰撞使用 AABB 方式判断对象矩形是否重叠，并在移动时通过 `PhysicsEngine` 修正位置，避免玩家穿过墙体和场景块。重力开启后，玩家和部分对象会受到竖直方向速度影响，跳跃需要结合地面检测。摄像机跟随玩家位置更新，使大地图能够平滑滚动。动态光照由 `LightingManager` 统一绘制，玩家、目标点、投射物和光球效果都能影响可见范围，增强了《暮光之旅》的探索氛围。
+
+4.6 地图编辑器与关卡扫描实现
+
+地图编辑器与游戏运行时共用 `GameWorld` 对象模型。编辑器界面左侧为对象库，中间为地图预览，右侧为地图和对象属性面板。用户可以创建玩家、怪物、墙体、道具、终点、菜单和对话对象，并修改坐标、尺寸、颜色、生命值、攻击力、道具类型、怪物种类和胜利条件。`MapEditorController` 通过命令对象实现撤销和重做，`LevelAutoScanner` 在保存或手动扫描时检查关卡配置问题，提高地图制作可靠性。
+
+4.7 SQLite 持久化与 JSON 导入导出实现
+
+地图持久化由 `MapRepository` 负责，数据库中包含 `maps` 和 `map_objects` 两张表。保存地图时，系统先将 `GameWorld` 转换为 `MapData`，再将每个 `GameObject` 转换为 `ObjectData`，对象的特殊属性写入 `extraJson`。读取地图时则反向构造运行时对象。JSON 导入导出由 `MapDataMapper` 完成，便于地图分享和备份。运行时设置如 FPS、分辨率、字号、光照、音量和键位绑定则由 `SettingsRepository` 保存。
+
+5、游戏画面展示
+
+图1.游戏主菜单与关卡选择界面
+
+此处插入游戏主菜单与关卡选择界面截图。
+
+图2.教程关卡移动与跳跃画面
+
+此处插入教程关卡中玩家移动、跳跃或通过障碍的截图。
+
+图3.玩家与魔物战斗画面
+
+此处插入玩家攻击魔物、投射物命中或怪物追击的截图。
+
+图4.光球视野增强与动态光照画面
+
+此处插入拾取光球后视野扩大、动态光照效果明显的截图。
+
+图5.程序化森林 / 洞穴关卡画面
+
+此处插入程序化森林或洞穴关卡生成后的游戏画面。
+
+6、项目特色与总结
+
+本项目的主要特色在于不是单纯完成一个固定关卡小游戏，而是实现了较完整的 2D 游戏系统框架。首先，项目通过 `GameWorld`、`EntityManager` 和 `GameObject` 接口形成统一对象模型，使玩家、怪物、道具、菜单和对话都能用同一套生命周期机制管理。其次，项目使用状态机组织菜单、游玩、暂停、失败和结算流程，降低了界面逻辑和游戏逻辑混杂的问题。再次，地图编辑器和游戏运行时共用对象模型，并配合 SQLite 与 JSON 实现持久化，增强了项目的可扩展性。
+
+项目也存在一些不足。首先，游戏美术资源和剧情演出仍然比较简单，很多对象主要依靠基础图形和颜色区分，视觉表现与正式游戏相比还有差距。其次，怪物 AI 虽然已经具备追击、飞行、远程攻击等行为，但整体策略仍偏基础，缺少更复杂的 Boss 阶段、群体协作和地形利用。再次，部分系统类承担的职责较多，例如主面板和状态机中包含较多菜单、设置和流程处理逻辑，后续可以进一步拆分为更细的 UI 控制器和流程管理模块。此外，地图编辑器虽然支持保存、加载和属性修改，但交互体验仍可继续优化，例如增加更直观的拖拽缩放、对象分组、图层管理和资源预览功能。
+
+在实作过程中，我进一步理解了软件设计中“分层、抽象、解耦”的重要性。输入、渲染、物理、状态、对象和数据存储分别由不同模块负责，系统整体更容易测试和维护。项目仍有可改进空间，例如可以继续优化怪物 AI、增加 Boss 阶段机制、完善素材资源和剧情演出，并将 Swing 渲染进一步封装。但从课程实作角度看，《暮光之旅》已经完成了从剧情设定、架构设计、系统实现到测试验证的完整闭环。

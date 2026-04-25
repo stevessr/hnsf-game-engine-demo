@@ -1,0 +1,377 @@
+《暮光之旅》项目总体架构设计图生成提示词
+
+使用说明：
+将下面任意一个提示词复制给支持 Mermaid、PlantUML 或架构图生成的 AI 工具。若工具支持代码图，优先要求输出 Mermaid 或 PlantUML 源码；若工具是可视化绘图工具，则按提示词中的模块、关系和布局生成系统结构图 / 分析类图。
+
+============================================================
+提示词一：生成“系统结构图 / 总体架构图”
+============================================================
+
+你是一名资深软件架构师、UML 建模专家和游戏引擎架构分析师。请根据以下项目事实，为 Java Swing 2D 游戏项目《暮光之旅》生成一张清晰、专业、适合课程设计/软件设计文档使用的“总体架构设计图 / 系统结构图”。
+
+请优先输出 Mermaid flowchart 代码，方向使用 TB 或 LR，图中必须体现分层架构、核心模块职责、主要调用/依赖关系、运行时数据流和持久化数据流。请不要虚构不存在的模块，不要把所有类平铺成一团，要按层次分组。节点文字使用中文为主，可在括号中保留关键类名。
+
+项目技术栈：
+- Java 桌面应用，Gradle 构建，主类为 org.example.App。
+- GUI 使用 Java Swing/AWT。
+- 数据持久化使用 SQLite，仓库类为 MapRepository，默认数据库路径为 ~/.hnsfgame/maps.db。
+- JSON 导入导出和对象扩展字段使用 org.json。
+- 日志使用 logback，测试使用 JUnit 5。
+
+项目核心定位：
+- 这是一个 2D 游戏引擎原型，包含可运行游戏窗口、关卡/地图编辑器、对象系统、物理碰撞、动态光照、输入控制、状态机、地图持久化和程序化关卡生成。
+
+请按以下层次绘制：
+
+1. 启动与应用层
+- App：应用入口，判断命令行参数。
+- 游戏模式：App.startGame() 创建 MapRepository、LevelManager、GameWorld、SwingGamePanel、JFrame。
+- 编辑器模式：App.startEditor() 创建 MapRepository、LevelManager、GameWorld，并打开 EditorWindow。
+- GameRuntimeActions：状态机和 UI 菜单调用的运行时动作接口，用于加载关卡、下一关、打开编辑器、退出、生成程序化关卡。
+
+2. 表现与主循环层
+- SwingGamePanel：游戏主面板，持有 GameWorld、GameInputController、Swing Timer、Camera、SettingsRepository、ControlHintsOverlay、MinimapOverlay、GoalOverlay、DebugManager、AITestManager。
+- 帧循环 onFrame：读取输入 -> 状态机处理输入 -> AI 测试更新 -> GameWorld.update -> Camera 跟随玩家 -> repaint。
+- paintComponent：缩放逻辑视口 -> GameWorld.render -> 控制提示/调试/小地图/目标叠加层渲染。
+- Camera：负责大地图视口跟随玩家。
+- LightingManager：动态光照和探索雾渲染。
+- SoundManager：播放伤害、射击、菜单、治疗、胜利等音效。
+
+3. 核心游戏世界层
+- GameWorld：运行时核心聚合对象，管理世界尺寸、背景、重力、胜利条件、击杀/收集进度、重生点、屏幕震动。
+- GameWorld 持有 EntityManager、PhysicsEngine、LightingManager、SoundManager、Camera、GameStateMachine。
+- EntityManager：管理所有 GameObject 生命周期、按 GameObjectType 缓存分组、分层渲染世界对象和 UI 对象。
+- PhysicsEngine：AABB 碰撞、移动解析、实体与固体场景碰撞检测。
+- LevelManager：注册内置关卡 tutorial、demo-map、level-1 到 level-4、procedural-forest、procedural-cave、air-raid-demo；创建内置关卡和程序化关卡。
+- ProceduralLevelGenerator + NoiseGenerator：生成森林/洞穴地图数据。
+
+4. 输入与状态机层
+- GameInputController：统一处理键盘、鼠标和语义动作，调用状态机或直接控制玩家移动、射击、跳跃、冲刺、菜单导航、体素建造/销毁。
+- KeyboardManager / MouseManager：记录原始输入状态。
+- InputActionMapper：将按键/鼠标映射到 InputAction。
+- InputAction：MOVE、SHOOT、PAUSE、JUMP、SPRINT、CYCLE_COLOR、CYCLE_PROJECTILE_TYPE、MENU_CONFIRM 等语义动作。
+- GameStateMachine 接口与 DefaultGameStateMachine 实现：管理 MENU、PLAYING、DIALOG、PAUSED、GAMEOVER、SETTLEMENT 状态；根据状态处理输入、创建暂停菜单、失败菜单、胜利菜单，检查胜利/失败。
+- GameStateContext：把 GameWorld、GameInputController、GameSettings、GameRuntimeActions、deltaSeconds 组合成状态机输入上下文。
+- GameSettings：运行时设置接口，由 SwingGamePanel 实现，提供 FPS、UI 字号、重力、光照、音量等配置。
+
+5. 游戏对象模型层
+- GameObject 接口：定义 name、type、position、size、color、active、update、updateInactive、render。
+- BaseObject：实现 GameObject 的通用字段。
+- ActorObject：角色基类，提供生命值、最大生命值、攻击力、速度、受伤、治疗、死亡动画、血条/体力条渲染。
+- PlayerObject：玩家，支持移动加速度、冲刺、跳跃、射击、弹种切换、颜色切换、经验等级、光球视野增强、补色伤害机制。
+- MonsterObject：怪物，支持追击、飞行、远程攻击、投弹、掉落治疗、复活、不同 MonsterKind。
+- ProjectileObject：投射物，支持 ProjectileType，如普通弹、照明弹、炸弹、穿透弹、追踪弹、冰霜弹、激光弹、寻敌弹。
+- SceneObject：场景块，支持 solid/background、可破坏、耐久、失去支撑倒塌、踩踏损坏。
+- WallObject、BoundaryObject、VoxelObject：场景类对象的特殊实现。
+- ItemObject：可拾取物品，支持 health、speed、lightorb、coin/gem/xp、shield。
+- GoalObject：终点/传送门。
+- MenuObject、DialogObject：UI 层对象。
+- GameObjectFactory：GameObject 与 ObjectData 之间的创建/序列化工厂。
+
+6. 持久化与数据层
+- MapData：地图 DTO，包含名称、尺寸、背景颜色/预设/模式/图片、重力、胜利条件、目标击杀/收集数量、ObjectData 列表。
+- ObjectData：对象 DTO，包含 type、name、x/y、width/height、color、solid、background、texturePath、material、extraJson。
+- MapDataMapper：GameWorld <-> MapData <-> JSONObject 的转换；导入/导出 JSON；Base64 编码背景图；加载时用 GameObjectFactory 还原对象。
+- MapRepository：SQLite 仓库，负责 maps 和 map_objects 表的初始化、迁移、保存、加载、列表查询。
+- SettingsRepository：保存运行时设置，如 FPS、分辨率、UI 字号、重力、光照、音量、键位绑定。
+
+7. 地图编辑器层
+- EditorWindow：Swing 地图编辑器主窗口，包含对象库、预览区、地图属性、对象属性、工具面板。
+- EditorGamePanel：编辑器预览面板。
+- MapEditorController：处理选择、建造、破坏、拖拽、复制、删除、撤销/重做、网格吸附。
+- EditorOverlay：显示网格、选中框、编辑模式等叠加信息。
+- EditorBounds：约束对象坐标和尺寸在地图范围内。
+- LevelAutoScanner：扫描关卡配置问题，如缺少玩家/终点、击杀/收集目标不合理等。
+
+必须画出的关键关系：
+- App -> SwingGamePanel -> GameWorld。
+- App -> MapRepository、LevelManager、MapDataMapper。
+- SwingGamePanel -> GameInputController、Camera、SettingsRepository、Overlays、DebugManager、AITestManager。
+- SwingGamePanel 每帧调用 GameInputController.processInputs()、GameWorld.update()、GameWorld.render()。
+- GameWorld 聚合 EntityManager、PhysicsEngine、LightingManager、SoundManager、GameStateMachine。
+- GameInputController 依赖 KeyboardManager、MouseManager、InputActionMapper，并通过 GameStateContext 调用 DefaultGameStateMachine。
+- DefaultGameStateMachine 读取 GameWorld 对象和碰撞结果，驱动菜单/对话/暂停/胜利/失败流程，并通过 GameRuntimeActions 请求 App 加载关卡、打开编辑器、生成程序化地图。
+- EntityManager 管理 GameObject 集合；GameObject 由 BaseObject、ActorObject 及各具体对象实现。
+- MapDataMapper 连接运行时模型 GameWorld/GameObject 与 DTO MapData/ObjectData；GameObjectFactory 连接 ObjectData 和具体 GameObject。
+- MapRepository 将 MapData 保存到 SQLite 的 maps、map_objects 表；也从 SQLite 读取 MapData。
+- EditorWindow 使用 GameWorld 预览和修改地图，通过 MapDataMapper + MapRepository 保存/加载。
+- LevelManager 创建内置关卡，ProceduralLevelGenerator 创建程序化关卡，输出 MapData。
+
+建议布局：
+- 左侧：用户 / App / 游戏模式 / 编辑器模式。
+- 中间：运行时主循环层、GameWorld 核心层、对象模型层。
+- 右侧：编辑器层。
+- 下方：持久化层 SQLite/JSON/Settings。
+- 用不同颜色或子图区分“UI 表现层”“输入/状态层”“核心世界层”“对象模型层”“数据持久化层”“编辑器层”。
+- 用实线表示直接持有/调用，用虚线表示数据转换或配置/存储关系。
+
+输出要求：
+- 输出完整 Mermaid flowchart 代码。
+- 使用 subgraph 表示架构分层。
+- 每个节点要有简短职责说明。
+- 图不要过度拥挤，必要时合并同类节点，如“Overlays：ControlHints / Minimap / Goal”。
+- 代码块之外只给极简说明。
+
+============================================================
+提示词二：生成“分析类图 / UML 类图”
+============================================================
+
+你是一名资深 UML 建模专家。请根据以下 Java Swing 2D 游戏项目《暮光之旅》的真实类结构，生成一张“分析类图”。请优先输出 PlantUML class diagram 代码；如果只能输出 Mermaid，请使用 classDiagram。图要突出核心领域模型、继承/实现关系、聚合关系和关键依赖关系，适合软件工程课程文档使用。
+
+请遵循：
+- 不要列出所有字段和所有方法，只保留分析类图需要的关键属性和关键职责方法。
+- 用 `<<interface>>`、`<<abstract>>`、`<<enum>>` 表示接口、抽象类和枚举。
+- 继承/实现关系必须清晰。
+- 聚合/组合关系使用菱形或合适箭头。
+- 依赖关系使用虚线。
+- 类名保留英文源码类名，注释/职责用中文。
+- 可以将 UI overlay、具体工具类适度简化，但不要遗漏核心架构类。
+
+核心类与关系如下：
+
+1. 入口与运行时
+- App
+  - main(args)：根据 args 判断游戏模式或编辑器模式。
+  - startGame()：创建 MapRepository、LevelManager、GameWorld、SwingGamePanel、JFrame。
+  - startEditor()：创建 MapRepository、LevelManager、GameWorld、EditorWindow。
+  - 依赖 MapRepository、LevelManager、MapDataMapper、SwingGamePanel、EditorWindow、DefaultGameStateMachine、GameRuntimeActions。
+
+- SwingGamePanel extends JPanel implements GameSettings
+  - 组合 GameWorld、GameInputController、Timer、Camera、SettingsRepository。
+  - 关联 ControlHintsOverlay、MinimapOverlay、GoalOverlay、DebugManager、AITestManager。
+  - start()/stop()/onFrame()/paintComponent()/savePersistentSettings()。
+  - 每帧调用 inputController.processInputs(context)、world.update(delta)、camera.update(world, player)、world.render(graphics)。
+
+2. 核心世界
+- GameWorld
+  - 组合 EntityManager、PhysicsEngine、LightingManager、SoundManager。
+  - 关联 Camera、GameStateMachine。
+  - 管理 width、height、background、gravity、winCondition、targetKills、targetItems、kills、itemsCollected、respawn、screenShake。
+  - addObject/removeObject/getObjects/getObjectsByType/findPlayer/moveObject/collidesWithSolid/getCollisions/update/render/isComplete。
+
+- EntityManager
+  - 管理 List<GameObject> 和 EnumMap<GameObjectType, List<GameObject>> typeCache。
+  - add/remove/clear/getObjects/getActiveObjects/getObjectsByType/getSolidScenes/updateAll/renderWorld/renderUI。
+  - 聚合多个 GameObject。
+
+- PhysicsEngine
+  - resolveMovement()/collidesAt()/findCollisions()。
+  - 依赖 Aabb、MovementResult、SceneObject、GameObject。
+
+- LightingManager
+  - 管理动态光源、环境光、探索雾、渲染光照层。
+
+- SoundManager
+  - 管理音量、音效开关、不同音效通道，playSound(name)。
+
+- LevelManager
+  - 管理内置关卡名、当前关卡索引。
+  - createLevelData()/createGeneratedProceduralLevel()/loadLevel()/loadNextLevel()/restartLevel()。
+  - 依赖 GameWorld、MapDataMapper、ProceduralLevelGenerator 和各 GameObject 具体类。
+
+3. 对象模型
+- GameObject <<interface>>
+  - getName/setName/getType/getX/getY/setPosition/getWidth/getHeight/setSize/getColor/setColor/isActive/setActive/update/updateInactive/render。
+
+- BaseObject <<abstract>> implements GameObject
+  - 通用字段：type、name、x、y、width、height、active、color、texturePath、material、velocityY。
+  - 实现大部分 GameObject 基础属性。
+
+- ActorObject <<abstract>> extends BaseObject
+  - 字段：health、maxHealth、attack、speed、dying。
+  - 方法：takeDamage()/heal()/startDeathAnimation()/updateDeathAnimation()/renderInfo()。
+
+- PlayerObject extends ActorObject
+  - 玩家控制对象。
+  - 关键职责：移动、冲刺、跳跃、射击、炸弹蓄力、弹种切换、颜色切换、经验等级、光球视野、补色伤害。
+  - 依赖 ProjectileObject、ProjectileType、GameWorld。
+
+- MonsterObject extends ActorObject
+  - 敌人 AI 对象。
+  - 关键职责：追击玩家、飞行/重力、远程攻击、投弹、掉落治疗、复活、根据 MonsterKind 调整表现。
+  - 依赖 MonsterKind、ProjectileObject、ItemObject、GameWorld。
+
+- SceneObject extends BaseObject
+  - 场景块。
+  - 字段/职责：solid、background、destructible、durability、collapseWhenUnsupported、collapseDamage、breakAfterSteps。
+
+- WallObject extends SceneObject
+- BoundaryObject extends SceneObject
+- VoxelObject extends SceneObject
+
+- ProjectileObject extends BaseObject
+  - 字段/职责：velocityX、velocityY、damage、owner、ProjectileType、explosion、lightRadius。
+  - 依赖 ProjectileType。
+
+- ItemObject extends BaseObject
+  - 字段/职责：kind、value、message、renewable、respawnDelay。
+  - applyEffect：health/heal、speed/boost、lightorb/vision、coin/gem/xp、shield。
+
+- GoalObject extends BaseObject
+  - 终点/传送门，玩家触碰后触发胜利条件。
+
+- MenuObject extends BaseObject
+  - UI 菜单，包含 title、subtitle、options、selectedIndex、fontSize。
+
+- DialogObject extends BaseObject
+  - UI 对话框，包含 speakerName、message、fontSize。
+
+- GameObjectFactory
+  - 静态工厂/映射器。
+  - toObjectData(GameObject) / fromObjectData(ObjectData)。
+  - 依赖所有 GameObject 子类和 ObjectData。
+
+- 枚举：
+  - GameObjectType：PLAYER、MONSTER、WALL、BOUNDARY、SCENE、VOXEL、ITEM、GOAL、PROJECTILE、MENU、DIALOG。
+  - ProjectileType：STANDARD、FLARE、BOMB、PIERCE、HOMING、ICE、LASER、SEEKER。
+  - MonsterKind：DEFAULT、SLIME、SPIDER、BAT、GHOST、GARGOYLE、DRAGON、PLANE。
+  - WinConditionType：REACH_GOAL、KILL_ALL_MONSTERS、KILL_TARGET_COUNT、COLLECT_TARGET_COUNT、CLEAR_ALL_ITEMS。
+
+4. 输入和状态机
+- GameInputController
+  - 组合 KeyboardManager、MouseManager、InputActionMapper。
+  - processInputs(context)、applyPlayerMovement()、applyMenuNavigation()、applyVoxelSystem()、finishFrame()。
+  - 依赖 GameStateContext、GameWorld、PlayerObject、MenuObject、DialogObject。
+
+- KeyboardManager
+  - 管理按键按下、释放、justActivated 等瞬时状态。
+
+- MouseManager
+  - 管理鼠标位置、按钮状态、justActivated 等瞬时状态。
+
+- InputActionMapper
+  - 管理 InputAction 到键盘/鼠标绑定。
+  - createDefaultGameMapping()。
+
+- InputAction <<enum>>
+  - 移动、射击、暂停、跳跃、冲刺、菜单、对话、颜色切换、弹种切换、体素建造/销毁等语义动作。
+
+- GameStateMachine <<interface>>
+  - getCurrentState()/canTransitionTo()/transitionTo()/processInput()。
+
+- DefaultGameStateMachine implements GameStateMachine
+  - 管理状态转换图和 dismissedDialogNames。
+  - 处理 MENU、PLAYING、DIALOG、PAUSED、GAMEOVER、SETTLEMENT。
+  - 创建暂停菜单、选项菜单、失败菜单、胜利菜单；检查目标接触和世界完成状态。
+  - 依赖 GameWorld、GameInputController、MenuObject、DialogObject、PlayerObject、GameRuntimeActions、GameSettings。
+
+- GameStateContext
+  - 聚合 GameWorld、GameInputController、GameSettings、GameRuntimeActions、deltaSeconds。
+
+- GameRuntimeActions <<interface>>
+  - requestExit()/requestLoadLevel()/requestLoadNextLevel()/hasNextLevel()/requestOpenEditor()/requestGenerateProceduralLevel()。
+
+- GameSettings <<interface>>
+  - FPS、UI 字号、分辨率、重力、光照、音量、键位等设置读写。
+
+5. 持久化和 DTO
+- MapData
+  - 地图 DTO：id、name、width、height、backgroundColor、backgroundMode、backgroundPreset、backgroundImageName、backgroundImageData、gravityEnabled、gravityStrength、winCondition、targetKills、targetItems、List<ObjectData>。
+
+- ObjectData
+  - 对象 DTO：id、mapId、type、name、x、y、width、height、color、solid、background、texturePath、material、extraJson。
+
+- MapDataMapper
+  - fromWorld(GameWorld, name)、toWorld(MapData)、applyToWorld(GameWorld, MapData)、exportToJson(MapData)、importFromJson(JSONObject)。
+  - 依赖 GameWorld、GameObjectFactory、MapData、ObjectData、JSONObject。
+
+- MapRepository
+  - SQLite 仓库：saveMap/loadMapById/loadMapByName/listMapNames。
+  - 管理表 maps、map_objects。
+  - 依赖 MapData、ObjectData、GameObjectType。
+
+- SettingsRepository
+  - 保存/加载运行时设置 JSON。
+
+- ProceduralLevelGenerator
+  - generateForest()/generateCave()，输出 MapData。
+  - 依赖 NoiseGenerator、ObjectData、GameObjectType。
+
+6. 编辑器
+- EditorWindow extends JFrame
+  - 组合 GameWorld、EditorOverlay、EditorGamePanel、MapEditorController、MapRepository。
+  - 保存/加载/导入/导出地图；编辑地图属性和对象属性；调用 LevelAutoScanner。
+
+- EditorGamePanel extends JPanel
+  - 渲染编辑器预览。
+
+- MapEditorController
+  - 组合 GameWorld、EditorGamePanel、EditorOverlay。
+  - 管理 EditMode SELECT/BUILD/ERASE、selectedType、selectedObject、gridSnap、gridSize、undoStack、redoStack。
+  - 创建/删除/复制/拖拽对象，使用 GameObjectFactory。
+
+- EditorOverlay
+  - 网格、选中对象、编辑模式提示等。
+
+- EditorBounds
+  - 坐标/尺寸归一化，限制对象在地图范围内。
+
+- LevelAutoScanner
+  - 扫描关卡问题，返回 ScanIssue 和 Severity。
+
+请在类图中重点体现这些关系：
+- GameObject <|.. BaseObject，BaseObject <|-- ActorObject，ActorObject <|-- PlayerObject / MonsterObject。
+- BaseObject <|-- SceneObject / ProjectileObject / ItemObject / GoalObject / MenuObject / DialogObject。
+- SceneObject <|-- WallObject / BoundaryObject / VoxelObject。
+- GameWorld *-- EntityManager / PhysicsEngine / LightingManager / SoundManager。
+- GameWorld o-- Camera，GameWorld o-- GameStateMachine。
+- EntityManager o-- GameObject。
+- SwingGamePanel *-- GameWorld / GameInputController / Camera / SettingsRepository。
+- GameInputController *-- KeyboardManager / MouseManager / InputActionMapper。
+- DefaultGameStateMachine ..|> GameStateMachine。
+- SwingGamePanel ..|> GameSettings。
+- GameStateContext o-- GameWorld / GameInputController / GameSettings / GameRuntimeActions。
+- MapDataMapper ..> GameWorld / MapData / GameObjectFactory / JSONObject。
+- MapRepository ..> MapData / ObjectData / SQLite。
+- GameObjectFactory ..> ObjectData，并创建 PlayerObject、MonsterObject、SceneObject、ItemObject、GoalObject、ProjectileObject、MenuObject、DialogObject 等。
+- EditorWindow *-- MapEditorController / EditorGamePanel / EditorOverlay，并依赖 MapRepository、MapDataMapper、LevelAutoScanner。
+
+输出要求：
+- 输出完整 PlantUML 代码。
+- 使用 package 分组：entry、render、game、input、state、object、persistence、editor、manager、physics。
+- 只保留核心类，不需要把所有 overlay 小类展开成复杂细节，可合并或简化。
+- 类图要能直接渲染，不要包含语法错误。
+
+============================================================
+提示词三：生成“运行流程图 / 数据流图”（可选）
+============================================================
+
+你是一名游戏引擎流程建模专家。请为 Java Swing 2D 游戏项目《暮光之旅》生成一张“运行流程图 / 主循环数据流图”，优先使用 Mermaid sequenceDiagram 或 flowchart。
+
+请重点表现：
+1. App 启动：
+- main(args) 判断是否为 editor。
+- 游戏模式：创建 MapRepository 和 LevelManager -> 确保内置关卡保存到 SQLite -> 加载 MapData -> MapDataMapper.toWorld() 创建 GameWorld -> 安装主菜单/关卡菜单 -> 创建 DefaultGameStateMachine -> 创建 SwingGamePanel 和 JFrame -> panel.start()。
+- 编辑器模式：创建 MapRepository/LevelManager -> 加载 GameWorld -> EditorWindow.open()。
+
+2. 游戏帧循环：
+- Swing Timer 触发 SwingGamePanel.onFrame()。
+- 计算 deltaSeconds，并限制最大值。
+- GameInputController.processInputs(GameStateContext)。
+- 如果 GameWorld 有 GameStateMachine，则 DefaultGameStateMachine.processInput(context)。
+- PLAYING 状态下处理暂停、目标显示、对话触发、失败/胜利判断、玩家移动/射击/跳跃/冲刺、体素建造/销毁。
+- AITestManager 可选更新。
+- GameWorld.update(deltaSeconds)。
+- EntityManager.updateAll(world, deltaSeconds) 遍历活跃对象 update。
+- GameWorld.updateInactiveObjects(deltaSeconds) 处理失活对象后台逻辑，如光球复生。
+- Camera.update(world, player) 跟随玩家。
+- inputController.finishFrame() 清除瞬时输入。
+- repaint()。
+
+3. 渲染流程：
+- SwingGamePanel.paintComponent() 设置逻辑视口缩放。
+- GameWorld.render(Graphics2D)。
+- GameWorld 渲染背景 -> 应用 Camera 偏移和屏幕震动 -> EntityManager.renderWorld() -> LightingManager.render() -> EntityManager.renderUI()。
+- SwingGamePanel 继续渲染 ControlHintsOverlay、DebugManager、MinimapOverlay、GoalOverlay。
+
+4. 地图数据流：
+- LevelManager / ProceduralLevelGenerator 生成 MapData。
+- MapRepository 从 SQLite 保存/读取 MapData。
+- MapDataMapper 在 GameWorld、MapData、JSONObject 之间转换。
+- GameObjectFactory 在 GameObject 和 ObjectData 之间转换。
+- EditorWindow 通过 MapDataMapper + MapRepository 保存、加载、导入、导出地图。
+
+输出要求：
+- 输出 Mermaid 代码。
+- 图中必须标注“运行时对象流”和“持久化数据流”。
+- 保持图清晰，节点不要超过 35 个。
